@@ -98,6 +98,67 @@ $("menuDelete").onclick=()=>{
  if(p&&confirm(`Supprimer "${p.name}" ?`)){products=products.filter(x=>x.id!==selectedProductId);selectedProductId=null;save();render();toast("Produit supprimé")}
 };
 
+
+/* Sauvegarde complète : produits + informations + photos + panier */
+function exportBackup(){
+ const backup={
+   format:"3D_PEINTURES_CATALOG_BACKUP",
+   version:1,
+   createdAt:new Date().toISOString(),
+   products:products,
+   cart:cart
+ };
+ const blob=new Blob([JSON.stringify(backup)],{type:"application/json"});
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+ const d=new Date();
+ const pad=n=>String(n).padStart(2,"0");
+ a.href=url;
+ a.download=`3D_PEINTURES_SAUVEGARDE_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.3dbackup`;
+ document.body.appendChild(a);a.click();a.remove();
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+ toast("Sauvegarde téléchargée avec les photos");
+}
+
+function importBackupFile(file){
+ if(!file)return;
+ const reader=new FileReader();
+ reader.onload=e=>{
+   try{
+     const data=JSON.parse(e.target.result);
+     if(data.format!=="3D_PEINTURES_CATALOG_BACKUP" || !Array.isArray(data.products)){
+       throw new Error("Format de sauvegarde invalide");
+     }
+     if(!confirm(`Restaurer ${data.products.length} produit(s) et leurs photos ?\n\nLes données actuelles seront remplacées.`))return;
+     products=data.products;
+     cart=Array.isArray(data.cart)?data.cart:[];
+     save();
+     localStorage.setItem("3d_peintures_cart_v4",JSON.stringify(cart));
+     selectedProductId=null;
+     selectedImage="";
+     active="Produits";
+     renderCart();
+     render();
+     toast(`Sauvegarde restaurée : ${products.length} produit(s)`);
+   }catch(err){
+     alert("Impossible de restaurer cette sauvegarde.\nLe fichier est invalide ou incomplet.");
+   }finally{
+     $("backupInput").value="";
+   }
+ };
+ reader.readAsText(file);
+}
+
+$("menuExport").onclick=()=>{
+ $("actionMenu").classList.remove("show");
+ exportBackup();
+};
+$("menuImport").onclick=()=>{
+ $("actionMenu").classList.remove("show");
+ $("backupInput").click();
+};
+$("backupInput").onchange=e=>importBackupFile(e.target.files[0]);
+
 /* form */
 function openForm(p=null){
  $("formModal").classList.add("show");$("modalTitle").textContent=p?"Modifier le produit":"Nouveau produit";

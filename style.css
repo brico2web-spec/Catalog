@@ -347,3 +347,7 @@ main{padding:14px}
 .box-selector-summary{display:flex;justify-content:space-between;gap:8px;margin-top:10px;font-size:7px;color:#98a2b3}
 .box-selector-summary span:first-child{font-weight:900;color:#155eef}
 @media(min-width:700px){.box-selector{max-width:100%}}
+
+.menu-separator{height:1px;background:rgba(255,255,255,.09);margin:6px 12px}
+.action-menu .export{color:#4fd1c5}
+.action-menu .import{color:#f5c451}

@@ -23,6 +23,9 @@
       <button id="menuAdd"><span class="mi add">＋</span><div><b>Ajouter</b><small>Nouveau produit</small></div></button>
       <button id="menuEdit"><span class="mi edit">✎</span><div><b>Modifier</b><small>Produit sélectionné</small></div></button>
       <button id="menuDelete"><span class="mi delete">⌫</span><div><b>Supprimer</b><small>Produit sélectionné</small></div></button>
+      <div class="menu-separator"></div>
+      <button id="menuExport"><span class="mi export">⇩</span><div><b>Télécharger sauvegarde</b><small>Produits + photos + panier</small></div></button>
+      <button id="menuImport"><span class="mi import">⇧</span><div><b>Restaurer sauvegarde</b><small>Importer un fichier</small></div></button>
     </div>
   </div>
 </header>
@@ -175,6 +178,7 @@
 </div>
 <div class="cart-overlay" id="cartOverlay"></div>
 <div class="toast" id="toast"></div>
+<input type="file" id="backupInput" accept=".json,.3dbackup,application/json" hidden>
 <script src="app.js"></script>
 </body>
 </html>
