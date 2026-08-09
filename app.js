@@ -5,10 +5,27 @@ let active="Produits", selectedImage="", selectedProductId=null, viewerBoxQty=1;
 let cart=JSON.parse(localStorage.getItem("3d_peintures_cart_v4")||"[]");
 const $=id=>document.getElementById(id);
 
-function save(){localStorage.setItem(KEY,JSON.stringify(products))}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(products));return true}catch(err){console.error(err);toast(err&&err.name==="QuotaExceededError"?"Mémoire pleine : image trop grande.":"Impossible d'enregistrer le produit");return false}}
+function makeId(){try{if(window.crypto&&typeof crypto.randomUUID==="function")return crypto.randomUUID()}catch(e){}return "p_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,10)}
+function compressImage(file,maxSide=1000,quality=.78){return new Promise((resolve,reject)=>{const r=new FileReader();r.onerror=()=>reject(new Error("Lecture impossible"));r.onload=e=>{const img=new Image();img.onerror=()=>reject(new Error("Image invalide"));img.onload=()=>{const ow=img.naturalWidth||img.width,oh=img.naturalHeight||img.height,s=Math.min(1,maxSide/Math.max(ow,oh)),w=Math.max(1,Math.round(ow*s)),h=Math.max(1,Math.round(oh*s)),c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);resolve(c.toDataURL("image/webp",quality))};img.src=e.target.result};r.readAsDataURL(file)})}
 function saveCart(){localStorage.setItem("3d_peintures_cart_v4",JSON.stringify(cart));renderCart()}
 function isAvailable(p){ return p && p.availability !== "unavailable"; }
 function unavailableText(){ return "غير موجود حالياً — هاد المنتوج غير متوفر حالياً"; }
+
+function compressDataUrl(data,maxSide=900,quality=.68){
+ return new Promise((resolve,reject)=>{
+  const img=new Image(); img.onerror=()=>reject(new Error("Image invalide"));
+  img.onload=()=>{const ow=img.naturalWidth||img.width,oh=img.naturalHeight||img.height,s=Math.min(1,maxSide/Math.max(ow,oh)),w=Math.max(1,Math.round(ow*s)),h=Math.max(1,Math.round(oh*s)),c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);resolve(c.toDataURL("image/webp",quality))};
+  img.src=data;
+ });
+}
+async function compactProductsImages(){
+ for(const p of products){
+  if(typeof p.image==="string" && p.image.length>180000){
+   try{p.image=await compressDataUrl(p.image)}catch(e){}
+  }
+ }
+}
 function addToCart(id, boxes=1){
  const p=products.find(x=>x.id===id); if(!p)return;
  boxes=Math.max(1,Number(boxes)||1);
@@ -169,14 +186,23 @@ function openForm(p=null){
 function closeForm(){$("formModal").classList.remove("show")}
 $("closeForm").onclick=closeForm;
 $("formModal").onclick=e=>{if(e.target===$("formModal"))closeForm()};
-$("imageInput").onchange=e=>{
- const f=e.target.files[0];if(!f)return;const r=new FileReader();
- r.onload=ev=>{selectedImage=ev.target.result;$("preview").src=selectedImage;$("photoPicker").classList.add("has-image")};r.readAsDataURL(f);
+$("imageInput").onchange=async e=>{
+ const f=e.target.files[0];if(!f)return;
+ try{selectedImage=await compressImage(f);$("preview").src=selectedImage;$("photoPicker").classList.add("has-image")}
+ catch(err){toast("Impossible de charger cette image")}
 };
-$("productForm").onsubmit=e=>{
- e.preventDefault();const id=$("editId").value||crypto.randomUUID();
+$("productForm").onsubmit=async e=>{
+ e.preventDefault();
+ const id=$("editId").value||makeId();
  const data={id,name:$("name").value.trim(),price:Number($("price").value),qty:Number($("qty").value),category:$("category").value,availability:$("availability").value,description:$("description").value.trim(),image:selectedImage};
- const i=products.findIndex(p=>p.id===id);if(i>=0){products[i]=data}else{products.unshift(data)}selectedProductId=id;active=data.category;save();closeForm();render();toast(i>=0?"Produit modifié":"Produit ajouté");e.target.reset();selectedImage="";
+ const i=products.findIndex(p=>p.id===id);
+ const old=i>=0?products[i]:null;
+ if(i>=0) products[i]=data; else products.unshift(data);
+ if(!save()){
+   await compactProductsImages();
+   if(!save()){ if(i>=0) products[i]=old; else products=products.filter(p=>p.id!==id); return; }
+ }
+ selectedProductId=id;active=data.category;closeForm();render();toast(i>=0?"Produit modifié":"Produit ajouté");e.target.reset();selectedImage="";
 };
 
 /* viewer */
