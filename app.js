@@ -80,6 +80,28 @@ function render(){
  $("empty").style.display=list.length?"none":"block";
  document.querySelectorAll(".photo").forEach(x=>x.onclick=e=>{e.stopPropagation();selectedProductId=x.dataset.id;view(x.dataset.id)});
  document.querySelectorAll(".card").forEach(x=>x.onclick=()=>{selectedProductId=x.dataset.id;});
+ // تأثير اللمس: يظهر فقط على المنتوج الذي لمسه المستخدم
+ document.querySelectorAll(".card").forEach(cardEl=>{
+   const startTouch=(e)=>{
+     const r=cardEl.getBoundingClientRect();
+     const point=e.touches&&e.touches[0]?e.touches[0]:e;
+     cardEl.style.setProperty("--touch-x",`${point.clientX-r.left}px`);
+     cardEl.style.setProperty("--touch-y",`${point.clientY-r.top}px`);
+     cardEl.classList.remove("touching");
+     void cardEl.offsetWidth;
+     cardEl.classList.add("touching");
+     clearTimeout(cardEl._touchTimer);
+     cardEl._touchTimer=setTimeout(()=>cardEl.classList.remove("touching"),520);
+   };
+   const endTouch=()=>{
+     clearTimeout(cardEl._touchTimer);
+     cardEl._touchTimer=setTimeout(()=>cardEl.classList.remove("touching"),180);
+   };
+   cardEl.addEventListener("pointerdown",startTouch,{passive:true});
+   cardEl.addEventListener("pointerup",endTouch,{passive:true});
+   cardEl.addEventListener("pointercancel",endTouch,{passive:true});
+   cardEl.addEventListener("pointerleave",endTouch,{passive:true});
+ });
  
 }
 

@@ -351,3 +351,47 @@ main{padding:14px}
 .menu-separator{height:1px;background:rgba(255,255,255,.09);margin:6px 12px}
 .action-menu .export{color:#4fd1c5}
 .action-menu .import{color:#f5c451}
+
+/* V10 — تأثير لمس المنتج: Ripple + Zoom + Glow */
+.card{
+  position:relative;
+  overflow:hidden;
+  transform:translateZ(0);
+  transition:transform .22s cubic-bezier(.2,.8,.2,1), box-shadow .22s ease, filter .22s ease;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+.card::after{
+  content:"";
+  position:absolute;
+  width:18px;
+  height:18px;
+  left:var(--touch-x,50%);
+  top:var(--touch-y,50%);
+  border-radius:50%;
+  pointer-events:none;
+  opacity:0;
+  transform:translate(-50%,-50%) scale(.2);
+  background:radial-gradient(circle, rgba(245,212,119,.48) 0%, rgba(21,94,239,.22) 35%, rgba(21,94,239,0) 72%);
+}
+.card.touching{
+  transform:scale(.975);
+  box-shadow:0 12px 30px rgba(11,46,99,.16), 0 0 0 2px rgba(245,212,119,.34);
+  filter:saturate(1.06);
+}
+.card.touching::after{
+  opacity:1;
+  animation:productRipple .48s ease-out forwards;
+}
+.card.touching .photo img{
+  transform:scale(1.035);
+  transition:transform .35s cubic-bezier(.2,.8,.2,1);
+}
+@keyframes productRipple{
+  0%{opacity:.9;transform:translate(-50%,-50%) scale(.2)}
+  70%{opacity:.38}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(13)}
+}
+@media (prefers-reduced-motion:reduce){
+  .card,.card::after,.card .photo img{animation:none!important;transition:none!important}
+}
