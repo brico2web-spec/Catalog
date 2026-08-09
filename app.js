@@ -78,11 +78,17 @@ function render(){
  $("count").textContent=`${list.length} produit${list.length!==1?"s":""}`;
  $("grid").innerHTML=list.map(card).join("");
  $("empty").style.display=list.length?"none":"block";
- document.querySelectorAll(".photo").forEach(x=>x.onclick=e=>{e.stopPropagation();selectedProductId=x.dataset.id;view(x.dataset.id)});
- document.querySelectorAll(".card").forEach(x=>x.onclick=()=>{selectedProductId=x.dataset.id;});
- // تأثير اللمس: يظهر فقط على المنتوج الذي لمسه المستخدم
+ const selectCard=(cardEl)=>{
+   document.querySelectorAll(".card.selected").forEach(other=>{ if(other!==cardEl) other.classList.remove("selected"); });
+   cardEl.classList.add("selected");
+   selectedProductId=cardEl.dataset.id;
+ };
+ document.querySelectorAll(".photo").forEach(x=>x.onclick=e=>{e.stopPropagation();selectCard(x.closest(".card"));view(x.dataset.id)});
+ document.querySelectorAll(".card").forEach(x=>x.onclick=()=>selectCard(x));
+ // تأثير اللمس + إطار أزرق ثابت للمنتوج المحدد
  document.querySelectorAll(".card").forEach(cardEl=>{
    const startTouch=(e)=>{
+     selectCard(cardEl);
      document.querySelectorAll(".card.touching").forEach(other=>{
        if(other!==cardEl){ other.classList.remove("touching"); clearTimeout(other._touchTimer); }
      });
