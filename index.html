@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06152f">
+<title>3D PEINTURES</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+
+<header class="topbar">
+  <div>
+    <div class="brand">3D <span>PEINTURES</span></div>
+    <div class="subtitle">CATALOGUE PRODUITS</div>
+  </div>
+  <div class="header-actions">
+  <button class="cart-btn" id="cartBtn" aria-label="Panier"><span>🛒</span><b id="cartCount">0</b></button>
+  <div class="action-menu-wrap">
+    <button class="menu-btn" id="menuBtn" aria-label="Menu">⋮</button>
+    <div class="action-menu" id="actionMenu">
+      <button id="menuAdd"><span class="mi add">＋</span><div><b>Ajouter</b><small>Nouveau produit</small></div></button>
+      <button id="menuEdit"><span class="mi edit">✎</span><div><b>Modifier</b><small>Produit sélectionné</small></div></button>
+      <button id="menuDelete"><span class="mi delete">⌫</span><div><b>Supprimer</b><small>Produit sélectionné</small></div></button>
+    </div>
+  </div>
+</header>
+
+<section class="hero">
+  <div class="hero-orb orb1"></div><div class="hero-orb orb2"></div>
+  <div class="hero-content">
+    <span class="eyebrow">CATALOGUE PROFESSIONNEL</span>
+    <h1>Nos produits<br><b>3D PEINTURES</b></h1>
+    <p>Découvrez nos références avec leurs prix et disponibilités.</p>
+  </div>
+</section>
+
+<section class="toolbar">
+  <div class="search">
+    <span>⌕</span>
+    <input id="search" placeholder="Rechercher un produit..." autocomplete="off">
+  </div>
+  <div class="categories" id="categories"></div>
+</section>
+
+<main>
+  <div class="section-head">
+    <div>
+      <h2 id="sectionTitle">Produits</h2>
+      <span id="count">0 produits</span>
+    </div>
+  </div>
+  <div class="grid" id="grid"></div>
+
+  <div class="empty" id="empty">
+    <div class="empty-icon">🎨</div>
+    <h3>Aucun produit</h3>
+    <p>Ajoutez un produit avec le bouton <b>⋮</b> en haut.</p>
+  </div>
+</main>
+
+<!-- Fiche produit -->
+<div class="viewer" id="viewer">
+  <button class="viewer-close" id="closeViewer">×</button>
+
+  <div class="viewer-box">
+    <div class="viewer-image-wrap">
+      <div class="image-topline">
+        <span id="viewerCategory"></span>
+        <span class="available-dot" id="viewerAvailable">● DISPONIBLE</span>
+      </div>
+
+      <img id="viewerImage" alt="">
+
+      <!-- Informations directement sur la grande image -->
+      <div class="image-product-info">
+        <div class="image-product-name" id="viewerImageName"></div>
+        <div class="image-product-details">
+          <span id="viewerImageUnits"></span>
+          <strong id="viewerImagePrice"></strong>
+        </div>
+      </div>
+
+      <div class="viewer-unavailable-overlay" id="viewerUnavailable">
+        <div>غير موجود</div>
+      </div>
+    </div>
+
+    <div class="viewer-info">
+      <div class="product-kicker">RÉFÉRENCE PRODUIT</div>
+      <h2 id="viewerName"></h2>
+      <p id="viewerDescription">Produit disponible</p>
+
+      <div class="info-grid">
+        <div class="info-card price-card">
+          <span>PRIX / UNITÉ</span>
+          <strong id="viewerPrice2"></strong>
+          <small>Prix d'une pièce</small>
+        </div>
+        <div class="info-card stock-card">
+          <span>UNITÉS / BOÎTE</span>
+          <strong id="viewerStock"></strong>
+          <small id="stockText">unités par boîte</small>
+        </div>
+      </div>
+
+      <div class="box-selector">
+        <div class="box-selector-head">
+          <div><span>QUANTITÉ</span><b>Nombre de boîtes</b></div>
+          <strong id="viewerBoxTotal">0,00 DH</strong>
+        </div>
+        <div class="box-selector-controls">
+          <button type="button" id="viewerMinus" aria-label="Diminuer">−</button>
+          <div><strong id="viewerBoxQty">1</strong><small>boîte(s)</small></div>
+          <button type="button" id="viewerPlus" aria-label="Augmenter">＋</button>
+        </div>
+        <div class="box-selector-summary"><span id="viewerBoxUnits">0 unité</span><span>Prix = prix/unité × unités/boîte × boîtes</span></div>
+      </div>
+
+      <button type="button" class="viewer-cart" id="viewerCart">🛒 Ajouter au panier</button>
+    </div>
+  </div>
+</div>
+
+<!-- Formulaire -->
+<div class="modal" id="formModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 id="modalTitle">Nouveau produit</h3>
+      <button class="close" id="closeForm">×</button>
+    </div>
+    <form id="productForm">
+      <input type="hidden" id="editId">
+      <div class="photo-picker" id="photoPicker">
+        <img id="preview" alt="">
+        <div id="photoPlaceholder"><span>＋</span><small>Ajouter une photo</small></div>
+        <input id="imageInput" type="file" accept="image/*">
+      </div>
+      <label>Nom du produit
+        <input id="name" required placeholder="Ex: Peinture blanche">
+      </label>
+      <div class="two">
+        <label>Prix (DH)<input id="price" type="number" min="0" step="0.01" required></label>
+        <label>Unités dans la boîte<input id="qty" type="number" min="0" step="1" required></label>
+      </div>
+      <label>Catégorie
+        <select id="category">
+          <option>Produits</option><option>Essence Jupiter</option><option>Diluant</option><option>Colle</option><option>Peinture</option>
+        </select>
+      </label>
+      <label>Disponibilité du produit
+        <select id="availability">
+          <option value="available">Disponible</option>
+          <option value="unavailable">Non disponible</option>
+        </select>
+      </label>
+      <label>Description<textarea id="description" rows="3" placeholder="Description courte..."></textarea></label>
+      <button class="gold-btn full" type="submit">Enregistrer le produit</button>
+    </form>
+  </div>
+</div>
+
+<div class="cart-drawer" id="cartDrawer">
+  <div class="cart-head">
+    <div><small>VOTRE COMMANDE</small><h3>Panier</h3></div>
+    <button id="closeCart">×</button>
+  </div>
+  <div class="cart-items" id="cartItems"></div>
+  <div class="cart-empty" id="cartEmpty">Votre panier est vide.</div>
+  <div class="cart-footer">
+    <div><span>Total</span><strong id="cartTotal">0,00 DH</strong></div>
+    <button id="clearCart" class="clear-cart">Vider le panier</button>
+  </div>
+</div>
+<div class="cart-overlay" id="cartOverlay"></div>
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
