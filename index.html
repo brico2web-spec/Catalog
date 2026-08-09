@@ -1,151 +1,284 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
- <meta charset="UTF-8">
- <meta name="viewport" content="width=device-width, initial-scale=1.0">
- <title>Catalog 3D Peintures</title>
- <link rel="stylesheet" href="style.css">
-</head>
-<body>
+/* إعدادات عامة */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  scroll-behavior: smooth;
+}
 
- <header>
-  <div class="logo-area">
-   <div class="logo-icon">🎨</div>
-   <div class="logo-text">
-    <span class="brand">CATALOG 3D</span>
-    <span class="sub">PEINTURES</span>
-   </div>
-  </div>
-  <div class="header-actions">
-   <button class="round-btn" id="searchToggle">🔍</button>
-   <button class="round-btn" id="adminToggle">+</button>
-  </div>
- </header>
+body {
+  background: linear-gradient(145deg, #f5f7fc 0%, #e9edf5 100%);
+  color: #1e2a3a;
+  padding-top: 80px;
+}
 
- <div class="search-panel" id="searchPanel">
-  <input id="search" placeholder="Rechercher un produit..." autocomplete="off">
- </div>
+/* الهيدر */
+header {
+  position: fixed;
+  top: 0;
+  width: 100%;
+  background: rgba(18, 30, 51, 0.92);
+  backdrop-filter: blur(8px);
+  padding: 18px 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 1000;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+  border-bottom: 2px solid #ffb347;
+}
 
- <main>
-  <section class="hero">
-   <div class="hero-content">
-    <span class="pill">CATALOGUE 2026</span>
-    <h1>Votre gamme. <br><em>Votre identité.</em> <br>Votre catalogue.</h1>
-    <p>Présentez vos produits avec une expérience moderne, élégante et professionnelle.</p>
-    <button class="hero-btn" onclick="document.getElementById('catalog').scrollIntoView({behavior:'smooth'})">
-     Explorer le catalogue <b>↓</b>
-    </button>
-   </div>
-   <div class="hero-product">
-    <img src="https://www.dropbox.com/scl/fi/zm1wzs3igd3p2n2u45sy1/1756839678627.jpg?rlkey=q2fnrrkh69ax0zm7nqk02hgzh&st=y1wy6c9w&raw=1" alt="Produit" style="max-width: 100%; border-radius: 20px;">
-   </div>
-  </section>
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #fff;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.logo i {
+  color: #ffb347;
+  font-size: 30px;
+}
 
-  <section class="category-strip">
-   <div class="cat-intro"><small>COLLECTIONS</small><h2>Nos catégories</h2></div>
-   <div class="cat-cards">
-    <button data-cat="Produits" class="nav-item active"><span>✦</span><b>Tous</b><small>Catalogue global</small></button>
-    <button data-cat="Essence Jupiter" class="nav-item"><span>🧪</span><b>Essence Jupiter</b><small>Solvants & diluants</small></button>
-    <button data-cat="Diluant" class="nav-item"><span>🫙</span><b>Diluant</b><small>Solutions techniques</small></button>
-    <button data-cat="Colle" class="nav-item"><span>🧴</span><b>Colle</b><small>Fixation & collage</small></button>
-    <button data-cat="Peinture" class="nav-item"><span>🎨</span><b>Peinture</b><small>Finitions & décors</small></button>
-   </div>
-  </section>
+nav a {
+  color: #f0f4ff;
+  text-decoration: none;
+  margin: 0 16px;
+  font-weight: 600;
+  font-size: 17px;
+  transition: all 0.3s;
+  position: relative;
+  padding: 6px 0;
+}
+nav a::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  width: 0%;
+  height: 3px;
+  background: #ffb347;
+  transition: 0.4s;
+}
+nav a:hover {
+  color: #ffb347;
+}
+nav a:hover::after {
+  width: 100%;
+}
 
-  <section id="catalog" class="catalog-section">
-   <div class="catalog-header">
-    <div>
-     <h2 id="sectionTitle">Tous les produits</h2>
-     <p id="resultCount">0 produit(s)</p>
-    </div>
-    <div class="sort-box">
-     <select id="sort">
-      <option value="default">Tنظم افتراضي</option>
-      <option value="priceAsc">Prix croissant</option>
-      <option value="priceDesc">Prix décroissant</option>
-      <option value="stock">Stock disponible</option>
-     </select>
-    </div>
-   </div>
-   <div class="grid" id="grid"></div>
-  </section>
+/* قسم الترحيب */
+.hero {
+  text-align: center;
+  padding: 70px 20px 60px;
+  background: linear-gradient(135deg, #1e2a3a 0%, #2c3e50 100%);
+  color: #fff;
+  border-radius: 0 0 60px 60px;
+  margin: -80px 20px 40px 20px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+}
+.hero h1 {
+  font-size: 44px;
+  margin-bottom: 18px;
+  letter-spacing: 1px;
+}
+.hero p {
+  font-size: 20px;
+  opacity: 0.9;
+  margin-bottom: 30px;
+}
+.btn-hero {
+  background: #ffb347;
+  color: #1e2a3a;
+  padding: 16px 40px;
+  border-radius: 50px;
+  font-weight: 700;
+  font-size: 20px;
+  text-decoration: none;
+  display: inline-block;
+  transition: 0.3s;
+  box-shadow: 0 8px 18px rgba(255, 179, 71, 0.4);
+}
+.btn-hero:hover {
+  transform: scale(1.07) rotate(-2deg);
+  background: #ffa01c;
+  box-shadow: 0 12px 28px rgba(255, 179, 71, 0.6);
+}
+.btn-hero i {
+  margin-right: 12px;
+}
 
-  <section class="stats-section">
-   <div class="stat-box">
-    <span class="stat-num" id="statProducts">0</span>
-    <span class="stat-label">Produits actifs</span>
-   </div>
-   <div class="stat-box">
-    <span class="stat-num" id="statStock">0</span>
-    <span class="stat-label">Unités en stock</span>
-   </div>
-   <div class="stat-box">
-    <span class="stat-num" id="statCats">4</span>
-    <span class="stat-label">Catégories</span>
-   </div>
-  </section>
- </main>
+/* الأقسام */
+.section {
+  padding: 50px 30px 30px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+.section h2 {
+  font-size: 34px;
+  color: #1e2a3a;
+  margin-bottom: 30px;
+  border-right: 8px solid #ffb347;
+  padding-right: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.section h2 i {
+  color: #ffb347;
+}
 
- <footer>
-  <p>© 2026 Catalog 3D Peintures · Tous droits réservés</p>
-  <button id="resetDemo" class="text-btn">Réinitialiser les données</button>
- </footer>
+/* شبكة المنتجات */
+.products-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 30px;
+}
 
- <div class="modal-bg" id="detailBg">
-  <div class="modal" id="detail"></div>
- </div>
+/* بطاقة المنتج */
+.product-card {
+  background: #ffffff;
+  border-radius: 28px;
+  padding: 20px 18px 25px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+  transition: all 0.35s cubic-bezier(0.15, 0.75, 0.45, 1);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(4px);
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.product-card:hover {
+  transform: translateY(-14px) scale(1.02);
+  box-shadow: 0 30px 50px rgba(0, 0, 0, 0.15);
+  border-color: #ffb347;
+}
 
- <div class="modal-bg" id="adminBg">
-  <div class="modal admin-modal">
-   <div class="modal-header">
-    <h3>Gestion du catalogue</h3>
-    <button class="close-modal" id="closeAdmin">×</button>
-   </div>
-   <form id="productForm">
-    <div class="field">
-     <label>Nom du produit</label>
-     <input type="text" id="pName" required>
-    </div>
-    <div class="field-row">
-     <div class="field">
-      <label>Catégorie</label>
-      <select id="pCat">
-       <option value="Essence Jupiter">Essence Jupiter</option>
-       <option value="Diluant">Diluant</option>
-       <option value="Colle">Colle</option>
-       <option value="Peinture">Peinture</option>
-       <option value="Produits">Produits</option>
-      </select>
-     </div>
-     <div class="field">
-      <label>Référence</label>
-      <input type="text" id="pRef">
-     </div>
-    </div>
-    <div class="field-row">
-     <div class="field">
-      <label>Prix (DH)</label>
-      <input type="number" step="0.01" id="pPrice" required>
-     </div>
-     <div class="field">
-      <label>Quantité</label>
-      <input type="number" id="pQty" required>
-     </div>
-    </div>
-    <div class="field">
-     <label>Photo du produit</label>
-     <input type="file" id="pImage" accept="image/*">
-     <div id="preview" class="preview-box">Aperçu de la photo</div>
-    </div>
-    <button type="submit" class="save-btn">Ajouter au catalogue <span>✦</span></button>
-   </form>
-   <div class="admin-list">
-    <h4>Produits existants</h4>
-    <div id="adminProducts"></div>
-   </div>
-  </div>
- </div>
+.product-card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+  border-radius: 20px;
+  background: #f0f4ff;
+  margin-bottom: 16px;
+  transition: 0.3s;
+  border: 2px solid transparent;
+}
+.product-card:hover img {
+  border-color: #ffb347;
+}
 
- <script src="app.js"></script>
-</body>
-</html>
+.product-card h3 {
+  font-size: 20px;
+  margin: 8px 0 6px;
+  color: #1e2a3a;
+}
+.product-card .price {
+  font-size: 22px;
+  font-weight: 700;
+  color: #e67e22;
+  margin: 6px 0;
+}
+.product-card .quantity {
+  font-size: 15px;
+  color: #555;
+  background: #f0f4ff;
+  padding: 4px 18px;
+  border-radius: 30px;
+  display: inline-block;
+  margin: 6px 0 14px;
+}
+
+/* الأزرار المثيرة */
+.btn-card {
+  background: #1e2a3a;
+  color: #fff;
+  border: none;
+  padding: 12px 32px;
+  border-radius: 40px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.25s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  margin-top: 6px;
+}
+.btn-card i {
+  font-size: 18px;
+  transition: 0.3s;
+}
+.btn-card:hover {
+  background: #ffb347;
+  color: #1e2a3a;
+  transform: scale(1.08) rotate(2deg);
+  box-shadow: 0 10px 28px rgba(255, 179, 71, 0.5);
+}
+.btn-card:hover i {
+  transform: translateX(-6px) scale(1.2);
+}
+.btn-card:active {
+  transform: scale(0.94);
+}
+
+/* زر الرجوع للأعلى */
+.btn-top {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  background: #ffb347;
+  color: #1e2a3a;
+  border: none;
+  border-radius: 50%;
+  width: 58px;
+  height: 58px;
+  font-size: 26px;
+  box-shadow: 0 8px 24px rgba(255, 179, 71, 0.5);
+  cursor: pointer;
+  transition: 0.3s;
+  opacity: 0;
+  visibility: hidden;
+  z-index: 999;
+}
+.btn-top.show {
+  opacity: 1;
+  visibility: visible;
+}
+.btn-top:hover {
+  transform: scale(1.15) rotate(8deg);
+  background: #ffa01c;
+}
+
+/* الفوتر */
+footer {
+  text-align: center;
+  padding: 30px;
+  margin-top: 40px;
+  color: #2c3e50;
+  border-top: 2px solid #dce3ef;
+}
+
+/* استجابة */
+@media (max-width: 768px) {
+  header {
+    flex-direction: column;
+    gap: 10px;
+    padding: 14px;
+  }
+  nav a {
+    margin: 0 8px;
+    font-size: 14px;
+  }
+  .hero h1 {
+    font-size: 28px;
+  }
+  .section h2 {
+    font-size: 26px;
+  }
+}
