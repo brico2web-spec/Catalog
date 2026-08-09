@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="fr" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#071c35">
+<title>CATALOG 3D PEINTURES — Catalogue Professionnel</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="ambient a1"></div><div class="ambient a2"></div>
+
+<header class="header">
+  <div class="nav">
+    <a class="logo" href="#">
+  <img class="brand-logo" src="assets/logo.png" alt="3D PEINTURES">
+  <span>CATALOG 3D<small>PEINTURES</small></span>
+</a>
+    <nav id="navCats">
+      <button class="nav-item active" data-cat="Produits">Produits</button>
+      <button class="nav-item" data-cat="Essence Jupiter">Essence Jupiter</button>
+      <button class="nav-item" data-cat="Diluant">Diluant</button>
+      <button class="nav-item" data-cat="Colle">Colle</button>
+      <button class="nav-item" data-cat="Peinture">Peinture</button>
+    </nav>
+    <div class="actions">
+      <button class="round-btn" id="searchToggle">⌕</button>
+      <button class="round-btn" id="adminToggle">＋</button>
+    </div>
+  </div>
+  <div class="search-panel" id="searchPanel">
+    <input id="search" placeholder="Rechercher un produit..." autocomplete="off">
+  </div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="hero-content">
+    <span class="pill">CATALOGUE 2026</span>
+    <h1>Votre gamme.<br><em>Votre identité.</em><br>Votre catalogue.</h1>
+    <p>Présentez vos produits avec une expérience moderne, élégante et professionnelle.</p>
+    <button class="hero-btn" onclick="document.getElementById('catalog').scrollIntoView({behavior:'smooth'})">Explorer le catalogue <b>↓</b></button>
+  </div>
+  <div class="hero-product">
+    <div class="ring ring1"></div><div class="ring ring2"></div>
+    <div class="bottle">
+      <div class="cap"></div><div class="bottle-body"><span>CATALOG</span><strong>PRO</strong></div>
+    </div>
+    <div class="float-tag t1">QUALITÉ <b>✓</b></div>
+    <div class="float-tag t2">NOUVEAUTÉ ✦</div>
+  </div>
+</section>
+
+<section class="category-strip">
+  <div class="cat-intro"><small>COLLECTIONS</small><h2>Nos catégories</h2></div>
+  <div class="cat-cards">
+    <button data-cat="Essence Jupiter"><span>✦</span><b>Essence Jupiter</b><small>Essences & solvants</small></button>
+    <button data-cat="Diluant"><span>◒</span><b>Diluant</b><small>Solutions techniques</small></button>
+    <button data-cat="Colle"><span>◈</span><b>Colle</b><small>Adhésifs</small></button>
+    <button data-cat="Peinture"><span>◉</span><b>Peinture</b><small>Finitions & couleurs</small></button>
+  </div>
+</section>
+
+<section class="catalog" id="catalog">
+  <div class="section-head">
+    <div><span class="eyebrow">CATALOGUE PRODUITS</span><h2 id="sectionTitle">Tous les produits</h2><p id="resultCount"></p></div>
+    <div class="view-sort"><select id="sort"><option value="default">Tri recommandé</option><option value="priceAsc">Prix croissant</option><option value="priceDesc">Prix décroissant</option><option value="stock">Stock disponible</option></select></div>
+  </div>
+  <div class="grid" id="grid"></div>
+</section>
+
+<section class="feature">
+  <div><span class="eyebrow light">PRÉSENTATION PROFESSIONNELLE</span><h2>Chaque produit mérite<br>une belle présentation.</h2><p>Ajoutez vos photos, prix, références et quantités en quelques secondes.</p></div>
+  <div class="feature-stats"><div><b>100%</b><small>Responsive</small></div><div><b>∞</b><small>Produits</small></div><div><b>1 clic</b><small>Ajout photo</small></div></div>
+</section>
+</main>
+
+<footer><div class="footer-logo">CATALOG<span>PRO</span></div><p>Catalogue digital — Présentation élégante de vos produits.</p><small>© 2026 CATALOG 3D PEINTURES</small></footer>
+
+<!-- Product detail -->
+<div class="modal-bg" id="detailBg"><div class="detail-modal" id="detail"></div></div>
+
+<!-- Admin -->
+<div class="modal-bg" id="adminBg">
+  <div class="admin-modal">
+    <button class="close" id="closeAdmin">×</button>
+    <span class="eyebrow">GESTION CATALOGUE</span>
+    <h2>Ajouter un produit</h2>
+    <p class="muted">Ajoutez une photo depuis votre téléphone ou ordinateur.</p>
+    <form id="productForm">
+      <label>Nom du produit<input id="pName" required placeholder="Ex: Essence Jupiter 1L"></label>
+      <div class="two"><label>Catégorie<select id="pCat"><option>Essence Jupiter</option><option>Diluant</option><option>Colle</option><option>Peinture</option></select></label><label>Référence<input id="pRef" placeholder="REF-001"></label></div>
+      <div class="two"><label>Prix (DH)<input id="pPrice" type="number" min="0" step="0.01" required></label><label>Quantité<input id="pQty" type="number" min="0" required></label></div>
+      <label>Photo du produit<input id="pImage" type="file" accept="image/*"></label>
+      <div class="preview" id="preview">Aperçu de la photo</div>
+      <button class="save-btn" type="submit">Ajouter au catalogue <span>✦</span></button>
+    </form>
+    <button class="reset-btn" id="resetDemo">Réinitialiser les produits de démonstration</button>
+    <div class="manage-title">Gestion des produits</div>
+    <div class="dashboard-stats">
+      <div><b id="statProducts">0</b><small>Produits</small></div>
+      <div><b id="statStock">0</b><small>Stock total</small></div>
+      <div><b id="statCats">0</b><small>Catégories</small></div>
+    </div>
+    <div id="adminProducts" class="admin-products"></div>
+  </div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
