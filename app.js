@@ -83,6 +83,9 @@ function render(){
  // تأثير اللمس: يظهر فقط على المنتوج الذي لمسه المستخدم
  document.querySelectorAll(".card").forEach(cardEl=>{
    const startTouch=(e)=>{
+     document.querySelectorAll(".card.touching").forEach(other=>{
+       if(other!==cardEl){ other.classList.remove("touching"); clearTimeout(other._touchTimer); }
+     });
      const r=cardEl.getBoundingClientRect();
      const point=e.touches&&e.touches[0]?e.touches[0]:e;
      cardEl.style.setProperty("--touch-x",`${point.clientX-r.left}px`);
