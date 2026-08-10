@@ -65,6 +65,36 @@ function changeCart(id,d){
 }
 function openCart(){$("cartDrawer").classList.add("show");$("cartOverlay").classList.add("show");renderCart()}
 function closeCart(){$("cartDrawer").classList.remove("show");$("cartOverlay").classList.remove("show")}
+function buildOrderMessage(){
+ const now=new Date();
+ const date=now.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
+ const time=now.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+ let total=0, lines=["🛒 COMMANDE — 3D PEINTURES",`📅 Date : ${date} à ${time}`,"", "Produits :"];
+ cart.forEach((row,i)=>{
+   const p=products.find(x=>x.id===row.id); if(!p)return;
+   const boxes=Number(row.qty)||1, units=Number(p.qty)||1, unit=Number(p.price)||0, line=unit*units*boxes; total+=line;
+   lines.push(`${i+1}. ${p.name}`);
+   lines.push(`   • ${boxes} boîte(s) × ${units} unités`);
+   lines.push(`   • ${money(unit)} DH / unité`);
+   lines.push(`   • Sous-total : ${money(line)} DH`);
+ });
+ lines.push("",`💰 TOTAL : ${money(total)} DH`);
+ return lines.join("\n");
+}
+async function sendCartOrder(){
+ if(!cart.length){toast("السلة فارغة");return}
+ const message=buildOrderMessage();
+ const encoded=encodeURIComponent(message);
+ // على Android يفتح WhatsApp مباشرة؛ وإذا لم يكن متاحاً يمكن استعمال المشاركة العادية.
+ const wa=`https://wa.me/?text=${encoded}`;
+ try{
+   if(navigator.share){
+     await navigator.share({title:"Commande 3D PEINTURES",text:message});
+     return;
+   }
+ }catch(e){}
+ window.open(wa,"_blank");
+}
 function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
 function money(v){return Number(v||0).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})}
 function toast(t){const x=$("toast");x.textContent=t;x.classList.add("show");setTimeout(()=>x.classList.remove("show"),1800)}
@@ -295,5 +325,6 @@ $("cartBtn").onclick=openCart;
 $("closeCart").onclick=closeCart;
 $("cartOverlay").onclick=closeCart;
 $("clearCart").onclick=()=>{cart=[];saveCart();toast("Panier vidé")};
+$("sendCart").onclick=sendCartOrder;
 renderCart();
 render();
