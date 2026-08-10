@@ -10,7 +10,7 @@ function makeId(){try{if(window.crypto&&typeof crypto.randomUUID==="function")re
 function compressImage(file,maxSide=1000,quality=.78){return new Promise((resolve,reject)=>{const r=new FileReader();r.onerror=()=>reject(new Error("Lecture impossible"));r.onload=e=>{const img=new Image();img.onerror=()=>reject(new Error("Image invalide"));img.onload=()=>{const ow=img.naturalWidth||img.width,oh=img.naturalHeight||img.height,s=Math.min(1,maxSide/Math.max(ow,oh)),w=Math.max(1,Math.round(ow*s)),h=Math.max(1,Math.round(oh*s)),c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);resolve(c.toDataURL("image/webp",quality))};img.src=e.target.result};r.readAsDataURL(file)})}
 function saveCart(){localStorage.setItem("3d_peintures_cart_v4",JSON.stringify(cart));renderCart()}
 function isAvailable(p){ return p && p.availability !== "unavailable"; }
-function unavailableText(){ return "غير موجود حالياً — هاد المنتوج غير متوفر حالياً"; }
+function unavailableText(){ return "غير متوفر حاليا حالياً — هاد المنتوج غير متوفر حالياً"; }
 
 function compressDataUrl(data,maxSide=900,quality=.68){
  return new Promise((resolve,reject)=>{
@@ -150,7 +150,7 @@ function card(p){
   <div class="photo ${available?"":"is-unavailable"}" data-id="${p.id}">
    ${p.image?`<img src="${p.image}" alt="">`:`<div class="no-photo">🎨</div>`}
    <span class="badge">${esc(p.category)}</span>
-   ${available?"":`<div class="unavailable-card-overlay"><span>غير موجود</span></div>`}
+   ${available?"":`<div class="unavailable-card-overlay"><span>غير متوفر حاليا</span></div>`}
   </div>
   <div class="card-body">
    <h3>${esc(p.name)}</h3><div class="desc">${esc(p.description||"Produit disponible")}</div>
