@@ -69,16 +69,40 @@ function buildOrderMessage(){
  const now=new Date();
  const date=now.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
  const time=now.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
- let total=0, lines=["🛒 COMMANDE — 3D PEINTURES",`📅 Date : ${date} à ${time}`,"", "Produits :"];
+ let total=0;
+ const lines=[
+   "🛍️ COMMANDE — 3D PEINTURES",
+   `📅 Date : ${date} à ${time}`,
+   "",
+   "━━━━━━━━━━━━━━━━━━━━",
+   "📦 PRODUITS",
+   "━━━━━━━━━━━━━━━━━━━━",
+   ""
+ ];
+
  cart.forEach((row,i)=>{
    const p=products.find(x=>x.id===row.id); if(!p)return;
-   const boxes=Number(row.qty)||1, units=Number(p.qty)||1, unit=Number(p.price)||0, line=unit*units*boxes; total+=line;
-   lines.push(`${i+1}. ${p.name}`);
-   lines.push(`   • ${boxes} boîte(s) × ${units} unités`);
-   lines.push(`   • ${money(unit)} DH / unité`);
-   lines.push(`   • Sous-total : ${money(line)} DH`);
+   const boxes=Number(row.qty)||1;
+   const units=Number(p.qty)||1;
+   const unit=Number(p.price)||0;
+   const line=unit*units*boxes;
+   total+=line;
+
+   lines.push(`🔹 PRODUIT ${i+1}`);
+   lines.push(`🧴 ${p.name}`);
+   lines.push(`📦 ${boxes} boîte(s) × ${units} unités`);
+   lines.push(`💵 ${money(unit)} DH / unité`);
+   lines.push(`💰 Sous-total : ${money(line)} DH`);
+   lines.push("");
+   if(i < cart.length-1){
+     lines.push("────────────────────");
+     lines.push("");
+   }
  });
- lines.push("",`💰 TOTAL : ${money(total)} DH`);
+
+ lines.push("━━━━━━━━━━━━━━━━━━━━");
+ lines.push(`💰 TOTAL : ${money(total)} DH`);
+ lines.push("━━━━━━━━━━━━━━━━━━━━");
  return lines.join("\n");
 }
 async function sendCartOrder(){
