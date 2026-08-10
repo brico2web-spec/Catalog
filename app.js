@@ -276,6 +276,10 @@ function updateViewerBoxTotal(p){
  $("viewerBoxUnits").textContent=`${units*viewerBoxQty} unité${units*viewerBoxQty!==1?"s":""}`;
 }
 
+function getViewerIndex(){ return products.findIndex(x=>x.id===selectedProductId); }
+function updateViewerNavigation(){ const i=getViewerIndex(), total=products.length; const prev=$("viewerPrev"), next=$("viewerNext"), counter=$("viewerCounter"); if(!prev||!next)return; prev.disabled=total<=1 || i<=0; next.disabled=total<=1 || i<0 || i>=total-1; prev.classList.toggle("is-disabled",prev.disabled); next.classList.toggle("is-disabled",next.disabled); if(counter) counter.textContent=i>=0 ? `${i+1} / ${total}` : ""; }
+function navigateViewer(direction){ const i=getViewerIndex(), n=i+direction; if(i<0 || n<0 || n>=products.length)return; view(products[n].id); }
+
 function view(id){
  const p=products.find(x=>x.id===id);if(!p)return;
  selectedProductId=id;
@@ -310,8 +314,12 @@ function view(id){
    $("viewer").classList.remove("show");
    return false;
  };
+ updateViewerNavigation();
  $("viewer").classList.add("show");
 }
+$("viewerPrev").onclick=()=>navigateViewer(-1);
+$("viewerNext").onclick=()=>navigateViewer(1);
+document.addEventListener("keydown",e=>{if(!$('viewer').classList.contains('show'))return;if(e.key==='ArrowLeft')navigateViewer(-1);if(e.key==='ArrowRight')navigateViewer(1);if(e.key==='Escape')$('viewer').classList.remove('show')});
 $("viewerMinus").onclick=()=>{
  if(viewerBoxQty>1){viewerBoxQty--; const p=products.find(x=>x.id===selectedProductId); if(p)updateViewerBoxTotal(p);}
 };
