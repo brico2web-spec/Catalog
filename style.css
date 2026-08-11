@@ -536,3 +536,23 @@ main{padding:14px}
  .detail-client>div:last-child{grid-column:auto}
  .detail-payment{grid-template-columns:1fr auto}
 }
+
+
+/* Order detail modal must always appear above the archive and all other layers */
+#orderDetailModal{
+  position:fixed !important;
+  inset:0 !important;
+  z-index:99999 !important;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  padding:16px;
+}
+#orderDetailModal.show{display:flex !important}
+#orderDetailModal .modal-card{
+  position:relative !important;
+  z-index:100000 !important;
+  max-height:92vh;
+  overflow-y:auto;
+  width:min(920px,96vw);
+}

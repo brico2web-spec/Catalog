@@ -594,6 +594,9 @@ function orderItemsForDisplay(order){
 function openOrderDetail(orderId){
  const o=orders.find(x=>String(x.id)===String(orderId));
  if(!o)return;
+ // Hide the archive underneath while the order details are displayed.
+ const archive=$("ordersModal");
+ if(archive) archive.classList.remove("show");
  const d=new Date(o.date);
  const date=d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
  const time=d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
@@ -630,7 +633,11 @@ function openOrderDetail(orderId){
  const payBtn=$("detailPaymentBtn");
  if(payBtn) payBtn.onclick=()=>{addPayment(o.id);openOrderDetail(o.id)};
 }
-function closeOrderDetail(){$("orderDetailModal").classList.remove("show")}
+function closeOrderDetail(){
+ $("orderDetailModal").classList.remove("show");
+ const archive=$("ordersModal");
+ if(archive) archive.classList.add("show");
+}
 
 
 /* form */
