@@ -495,7 +495,17 @@ async function saveOrder(e){
    ice:clientObj.ice||"",phone:clientObj.phone||"",
    total:x.total,paid:0,due:x.total,profit:x.profit,
    status:"unpaid",note:$('orderNote').value.trim() || "إستخلاص عند الاستلام — Paiement à la livraison",
-   items:cart.map(row=>({id:row.id,qty:Number(row.qty)||0}))
+   items:cart.map(row=>{
+     const p=products.find(x=>x.id===row.id)||{};
+     const boxes=Number(row.qty)||0, units=Number(p.qty)||0, unitPrice=Number(p.price)||0;
+     return {
+       id:row.id, qty:boxes,
+       name:p.name||"",
+       units,
+       unitPrice,
+       lineTotal:unitPrice*units*boxes
+     };
+   })
  };
  orders.unshift(order);
  localStorage.setItem("3d_peintures_orders_v1",JSON.stringify(orders));
@@ -540,7 +550,7 @@ function renderOrders(){
    const due=Math.max(0,Number(o.due ?? (total-paid)));
    const status=due<=0.000001?"مخلصة كاملة":paid>0?"مخلصة جزئياً":"غير مخلصة";
    const statusClass=due<=0.000001?"paid":paid>0?"partial":"unpaid";
-   return `<div class="order-row ${statusClass}">
+   return `<div class="order-row ${statusClass}" data-order-open="${esc(o.id)}" tabindex="0" role="button">
      <div class="order-main">
        <div class="order-client">${esc(o.client)}</div>
        <small>${date} · ${time}</small>
@@ -557,13 +567,71 @@ function renderOrders(){
      <button class="order-delete" data-order-delete="${o.id}" title="حذف">×</button>
    </div>`;
  }).join("");
- document.querySelectorAll("[data-order-pay]").forEach(b=>b.onclick=()=>addPayment(b.dataset.orderPay));
- document.querySelectorAll("[data-order-delete]").forEach(b=>b.onclick=()=>{
+ document.querySelectorAll("[data-order-pay]").forEach(b=>b.onclick=(e)=>{e.stopPropagation();addPayment(b.dataset.orderPay)});
+ document.querySelectorAll("[data-order-delete]").forEach(b=>b.onclick=(e)=>{
+   e.stopPropagation();
    if(confirm("حذف هاد الطلب من الأرشيف؟")){orders=orders.filter(o=>o.id!==b.dataset.orderDelete);localStorage.setItem("3d_peintures_orders_v1",JSON.stringify(orders));renderOrders();toast("تم حذف الطلب")}
+ });
+ document.querySelectorAll("[data-order-open]").forEach(b=>{
+   b.onclick=()=>openOrderDetail(b.dataset.orderOpen);
+   b.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openOrderDetail(b.dataset.orderOpen)}};
  });
 }
 function openOrdersModal(){renderOrders();$("ordersModal").classList.add("show")}
 function closeOrdersModal(){$("ordersModal").classList.remove("show")}
+
+function orderItemsForDisplay(order){
+ return (order.items||[]).map(row=>{
+   const p=products.find(x=>x.id===row.id)||{};
+   const boxes=Number(row.qty)||0;
+   const units=Number(row.units ?? p.qty)||0;
+   const unitPrice=Number(row.unitPrice ?? p.price)||0;
+   const name=row.name || p.name || "Produit";
+   const lineTotal=Number(row.lineTotal ?? (unitPrice*units*boxes)) || 0;
+   return {name,boxes,units,unitPrice,lineTotal};
+ });
+}
+function openOrderDetail(orderId){
+ const o=orders.find(x=>String(x.id)===String(orderId));
+ if(!o)return;
+ const d=new Date(o.date);
+ const date=d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
+ const time=d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+ const total=Number(o.total)||0;
+ const paid=Number(o.paid)||0;
+ const due=Math.max(0,Number(o.due ?? total-paid));
+ const items=orderItemsForDisplay(o);
+ $("orderDetailTitle").textContent="Commande de "+(o.client||"Client");
+ $("orderDetailBody").innerHTML=`
+   <div class="detail-client">
+     <div><span>Client</span><strong>${esc(o.client||"—")}</strong></div>
+     ${o.company?`<div><span>Société</span><strong>${esc(o.company)}</strong></div>`:""}
+     ${o.ice?`<div><span>ICE</span><strong>${esc(o.ice)}</strong></div>`:""}
+     ${o.phone?`<div><span>WhatsApp</span><strong>${esc(o.phone)}</strong></div>`:""}
+     <div><span>Date</span><strong>${date} · ${time}</strong></div>
+   </div>
+   <div class="detail-products">
+     <div class="detail-products-head"><span>Produit</span><span>Boîtes</span><span>Unités/boîte</span><span>Prix</span><span>Total</span></div>
+     ${items.length?items.map(it=>`
+       <div class="detail-product-row">
+         <strong>${esc(it.name)}</strong>
+         <span>${it.boxes}</span>
+         <span>${it.units}</span>
+         <span>${money(it.unitPrice)} DH</span>
+         <b>${money(it.lineTotal)} DH</b>
+       </div>`).join(""):`<div class="detail-empty">Aucun produit enregistré dans cette commande.</div>`}
+   </div>
+   <div class="detail-total"><span>Total Payé</span><strong>${money(total)} DH</strong></div>
+   <div class="detail-payment"><span>Déjà encaissé</span><strong>${money(paid)} DH</strong><span>Reste</span><strong>${money(due)} DH</strong></div>
+   ${o.note?`<div class="detail-note">${esc(o.note)}</div>`:""}
+   <button class="gold-btn full" id="detailPaymentBtn" type="button">💰 Enregistrer un paiement</button>
+ `;
+ $("orderDetailModal").classList.add("show");
+ const payBtn=$("detailPaymentBtn");
+ if(payBtn) payBtn.onclick=()=>{addPayment(o.id);openOrderDetail(o.id)};
+}
+function closeOrderDetail(){$("orderDetailModal").classList.remove("show")}
+
 
 /* form */
 function openForm(p=null){
@@ -670,6 +738,8 @@ $("orderModal").onclick=e=>{if(e.target===$("orderModal"))closeOrderModal()};
 $("orderForm").onsubmit=saveOrder;
 $("menuOrders").onclick=()=>{$("actionMenu").classList.remove("show");openOrdersModal()};
 $("closeOrders").onclick=closeOrdersModal;
+$("closeOrderDetail").onclick=closeOrderDetail;
+$("orderDetailModal").onclick=e=>{if(e.target===$("orderDetailModal"))closeOrderDetail()};
 $("ordersModal").onclick=e=>{if(e.target===$("ordersModal"))closeOrdersModal()};
 $("orderSearch").oninput=renderOrders;
 $("clearOrders").onclick=()=>{if(!orders.length)return;if(confirm("مسح جميع الطلبات؟")){orders=[];localStorage.setItem("3d_peintures_orders_v1","[]");renderOrders();toast("تم مسح الطلبات")}};
