@@ -104,6 +104,10 @@ main{padding:15px 16px}.section-head{display:flex;align-items:center;margin:5px 
 
 /* Form */
 .modal{position:fixed;inset:0;background:#06152f9c;backdrop-filter:blur(8px);z-index:70;display:none;align-items:flex-end}.modal.show{display:flex}
+/* Fenêtre d'enregistrement : toujours au-dessus du panier et de son bouton Envoyer */
+#orderModal,#ordersModal{z-index:140}
+#orderModal{background:rgba(2,8,23,.94);backdrop-filter:blur(8px)}
+#ordersModal{background:rgba(2,8,23,.94);backdrop-filter:blur(8px)}
 .modal-card{background:#fff;width:100%;max-height:92vh;overflow:auto;border-radius:26px 26px 0 0;padding:18px;animation:slide .3s ease}
 .modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}.modal-head h3{margin:0;font-size:19px}
 .close{border:0;background:#f2f4f7;border-radius:50%;width:37px;height:37px;font-size:24px}
@@ -422,3 +426,41 @@ main{padding:14px}
 }
 
 @media (max-width:480px){.viewer-nav{width:42px;height:42px;font-size:34px}.viewer-prev{left:8px}.viewer-next{right:8px}.viewer-product-counter{bottom:10px;font-size:9px;padding:4px 9px}}
+
+/* Gestion des commandes */
+.mi.orders{background:#e9f7ef;color:#087443}
+.order-modal-card,.orders-modal-card{max-width:620px}
+.modal-kicker{font-size:9px;letter-spacing:1.6px;color:#98a2b3}
+.order-total-preview{display:flex;justify-content:space-between;align-items:center;background:#f5f7fb;border:1px solid var(--line);border-radius:14px;padding:13px;margin:4px 0 12px}
+.order-total-preview span{font-size:11px;color:#667085;font-weight:700}
+.order-total-preview strong{font-size:20px;color:var(--navy)}
+.order-live{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:10px 0 14px}
+.order-live>div{background:#fff;border:1px solid var(--line);border-radius:13px;padding:11px}
+.order-live span{display:block;font-size:10px;color:#667085}.order-live strong{display:block;font-size:17px;margin-top:3px}
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:5px 0 14px}
+.stat-card{border:1px solid var(--line);border-radius:14px;background:#f8fafc;padding:12px}
+.stat-card small{display:block;color:#667085;font-size:9px;font-weight:800}.stat-card strong{display:block;margin-top:5px;font-size:16px}
+.orders-tools{display:flex;gap:8px;margin-bottom:10px}.orders-tools input{flex:1;border:1px solid var(--line);border-radius:12px;padding:10px;outline:0;font-size:12px}.orders-tools button{border:0;background:#ffebe9;color:#b42318;border-radius:12px;padding:8px 10px;font-size:10px;font-weight:800}
+.orders-list{display:grid;gap:8px;max-height:48vh;overflow:auto}
+.order-row{position:relative;border:1px solid var(--line);background:#fff;border-radius:15px;padding:12px 38px 12px 12px;display:flex;justify-content:space-between;gap:10px}
+.order-client{font-weight:900;font-size:13px}.order-main small{color:#98a2b3;font-size:9px}.order-main p{font-size:10px;color:#667085;margin:5px 0 0}
+.order-money{text-align:right;display:flex;flex-direction:column;gap:2px;font-size:10px}.order-money b{font-size:14px;color:var(--navy)}.order-money span{color:#667085}.order-money .due{color:#b54708;font-weight:800}.order-money .profit{color:#087443;font-weight:800}
+.order-delete{position:absolute;right:8px;top:8px;border:0;background:#ffebe9;color:#b42318;border-radius:9px;width:24px;height:24px;font-weight:900}
+.secondary-send{background:#eef2f7!important;color:#344054!important}
+@media(max-width:520px){
+ .order-row{display:block}.order-money{text-align:left;margin-top:8px;display:grid;grid-template-columns:1fr 1fr}.order-money b{grid-column:1/-1}
+}
+
+/* حالات وأزرار الخلاص في أرشيف الكوموندات */
+.order-status{display:inline-flex;margin-top:6px;padding:4px 8px;border-radius:999px;font-size:9px;font-weight:900}
+.order-status.unpaid{background:#fff4e5;color:#b54708}
+.order-status.partial{background:#eef4ff;color:#155eef}
+.order-status.paid{background:#e9f7ef;color:#087443}
+.order-row.unpaid{border-left:4px solid #f79009}
+.order-row.partial{border-left:4px solid #155eef}
+.order-row.paid{border-left:4px solid #12b76a}
+.payment-btn{border:0;border-radius:9px;padding:7px 9px;background:#0b2e63;color:#fff;font-size:9px;font-weight:900;cursor:pointer;margin-top:5px}
+.payment-btn:active{transform:scale(.96)}
+.paid-label{color:#087443!important;font-weight:900!important;margin-top:5px}
+
+.client-input-row{display:flex;gap:8px;align-items:center}.client-input-row input{flex:1}.client-add-btn{border:1px solid #d8dee8;background:#f4f6fa;border-radius:12px;padding:13px 12px;font-weight:800;white-space:nowrap;color:#12386f}.client-manager-title{font-weight:800;margin:20px 0 10px;color:#172033}.clients-manager-list{display:grid;gap:8px;max-height:220px;overflow:auto}.client-manager-row{display:flex;justify-content:space-between;gap:10px;align-items:center;border:1px solid #e2e6ee;border-radius:12px;padding:10px 12px;background:#fff}.client-manager-row b{display:block}.client-manager-row small{display:block;color:#667085;margin-top:4px}.client-manager-row button{border:1px solid #d8dee8;background:#f4f6fa;border-radius:9px;padding:7px 10px}

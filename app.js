@@ -3,7 +3,9 @@ const categories=["Produits","Essence Jupiter","Diluant","Colle","Peinture"];
 let products=JSON.parse(localStorage.getItem(KEY)||"[]");
 let active="Produits", selectedImage="", selectedProductId=null, viewerBoxQty=0;
 let cart=JSON.parse(localStorage.getItem("3d_peintures_cart_v4")||"[]");
+let orders=JSON.parse(localStorage.getItem("3d_peintures_orders_v1")||"[]");
 const $=id=>document.getElementById(id);
+products.forEach(p=>{if(p.costPrice==null)p.costPrice=0});
 
 function save(){try{localStorage.setItem(KEY,JSON.stringify(products));return true}catch(err){console.error(err);toast(err&&err.name==="QuotaExceededError"?"Mémoire pleine : image trop grande.":"Impossible d'enregistrer le produit");return false}}
 function makeId(){try{if(window.crypto&&typeof crypto.randomUUID==="function")return crypto.randomUUID()}catch(e){}return "p_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,10)}
@@ -208,7 +210,9 @@ function exportBackup(){
    version:1,
    createdAt:new Date().toISOString(),
    products:products,
-   cart:cart
+   cart:cart,
+   orders:orders,
+   clients:clients
  };
  const blob=new Blob([JSON.stringify(backup)],{type:"application/json"});
  const url=URL.createObjectURL(blob);
@@ -231,9 +235,15 @@ function importBackupFile(file){
      if(data.format!=="3D_PEINTURES_CATALOG_BACKUP" || !Array.isArray(data.products)){
        throw new Error("Format de sauvegarde invalide");
      }
-     if(!confirm(`Restaurer ${data.products.length} produit(s) et leurs photos ?\n\nLes données actuelles seront remplacées.`))return;
+     if(!confirm(`Restaurer ${data.products.length} produit(s) et leurs photos ?
+
+Les données actuelles seront remplacées.`))return;
      products=data.products;
      cart=Array.isArray(data.cart)?data.cart:[];
+     orders=Array.isArray(data.orders)?data.orders:[];
+     clients=Array.isArray(data.clients)?data.clients:[];
+     localStorage.setItem("3d_peintures_orders_v1",JSON.stringify(orders));
+     saveClients();
      save();
      localStorage.setItem("3d_peintures_cart_v4",JSON.stringify(cart));
      selectedProductId=null;
@@ -261,10 +271,304 @@ $("menuImport").onclick=()=>{
 };
 $("backupInput").onchange=e=>importBackupFile(e.target.files[0]);
 
+
+
+/* Import clients Excel */
+const CLIENTS_KEY="3d_peintures_clients_v1";
+let clients=JSON.parse(localStorage.getItem(CLIENTS_KEY)||"[]");
+
+function saveClients(){
+  localStorage.setItem(CLIENTS_KEY,JSON.stringify(clients));
+  renderClientList();
+}
+function clientField(row, names){
+  const keys=Object.keys(row||{});
+  const norm=x=>String(x||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[\s_\-./]/g,"");
+  for(const wanted of names){
+    const k=keys.find(key=>norm(key)===norm(wanted) || norm(key).includes(norm(wanted)));
+    if(k && row[k]!=null && String(row[k]).trim()!=="") return String(row[k]).trim();
+  }
+  return "";
+}
+function renderClientList(){
+  const dl=$("clientsList"); if(!dl)return;
+  const unique=[...new Set(clients.map(c=>c.name).filter(Boolean))];
+  dl.innerHTML=unique.map(n=>`<option value="${esc(n)}"></option>`).join("");
+}
+function importClientsExcel(file){
+  if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    try{
+      if(typeof XLSX==="undefined") throw new Error("Excel library not loaded");
+      const wb=XLSX.read(e.target.result,{type:"array"});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:""});
+      if(!rows.length) throw new Error("Le fichier est vide");
+      const imported=[];
+      rows.forEach((r,i)=>{
+        const name=clientField(r,["Nom","Nom client","Client","Raison sociale","Client Name","Name","Societe","Société"]);
+        if(!name)return;
+        imported.push({
+          id:"c_"+Date.now().toString(36)+"_"+i+"_"+Math.random().toString(36).slice(2,7),
+          name,
+          phone:clientField(r,["WhatsApp","Whatsapp","Téléphone","Telephone","Tel","Phone","GSM","Mobile"]),
+          company:clientField(r,["Société","Societe","Company","Entreprise","Raison sociale"]),
+          city:clientField(r,["Ville","City"]),
+          address:clientField(r,["Adresse","Address"]),
+          ice:clientField(r,["ICE","Identifiant fiscal"]),
+          importedAt:new Date().toISOString()
+        });
+      });
+      if(!imported.length) throw new Error("ما لقيتش عمود ديال اسم الكليان. خاص يكون مثلاً: Nom, Client أو Nom client.");
+      const map=new Map(clients.map(c=>[String(c.name).trim().toLowerCase(),c]));
+      imported.forEach(c=>map.set(c.name.trim().toLowerCase(),c));
+      clients=[...map.values()];
+      saveClients();
+      toast(`تم إدخال ${imported.length} كليان من Excel`);
+      $("orderClient").focus();
+      setTimeout(()=>openOrdersModal(),350);
+    }catch(err){
+      alert("تعذر إدخال ملف Excel.\n"+(err.message||"تأكد من الملف والأعمدة."));
+    }finally{
+      $("clientsExcelInput").value="";
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+$("menuImportClients").onclick=()=>{
+  $("actionMenu").classList.remove("show");
+  $("clientsExcelInput").click();
+};
+$("clientsExcelInput").onchange=e=>importClientsExcel(e.target.files[0]);
+renderClientList();
+
+
+/* Gestion des clients */
+function openClientModal(prefillName=""){
+  $("clientForm").reset();
+  $("clientEditId").value="";
+  $("clientName").value=prefillName||$("orderClient").value.trim();
+  $("clientCompany").value=""; $("clientICE").value=""; $("clientWhatsapp").value="";
+  renderClientsManager();
+  $("clientModal").classList.add("show");
+}
+function closeClientModal(){$("clientModal").classList.remove("show")}
+function renderClientsManager(){
+ const box=$("clientsManagerList"); if(!box)return;
+ box.innerHTML=clients.map(c=>`<div class="client-manager-row"><div><b>${esc(c.name||"")}</b><small>${esc(c.company||"")}${c.ice?` · ICE ${esc(c.ice)}`:""}${c.phone?` · WhatsApp ${esc(c.phone)}`:""}</small></div><button type="button" data-client-edit="${esc(c.id)}">Modifier</button></div>`).join("") || '<div class="cart-empty">Aucun client enregistré.</div>';
+ box.querySelectorAll("[data-client-edit]").forEach(btn=>btn.onclick=()=>{
+   const c=clients.find(x=>x.id===btn.dataset.clientEdit); if(!c)return;
+   $("clientEditId").value=c.id; $("clientName").value=c.name||""; $("clientCompany").value=c.company||""; $("clientICE").value=c.ice||""; $("clientWhatsapp").value=c.phone||"";
+ });
+}
+function saveClientForm(e){
+ e.preventDefault();
+ const name=$("clientName").value.trim(); if(!name){alert("دخل اسم الكليان");return}
+ const data={id:$("clientEditId").value||("c_"+Date.now().toString(36)),name,company:$("clientCompany").value.trim(),ice:$("clientICE").value.trim(),phone:$("clientWhatsapp").value.trim()};
+ const idx=clients.findIndex(c=>c.id===data.id);
+ const duplicate=clients.findIndex(c=>c.id!==data.id && String(c.name||"").trim().toLowerCase()===name.toLowerCase());
+ if(duplicate>=0){ clients[duplicate]={...clients[duplicate],...data,id:clients[duplicate].id}; }
+ else if(idx>=0) clients[idx]=data; else clients.unshift(data);
+ saveClients(); renderClientsManager(); $("orderClient").value=name; closeClientModal(); toast("تم حفظ معلومات الكليان");
+}
+
+/* Commandes : archive, paiements et bénéfice */
+function orderCartSummary(){
+ let total=0,profit=0;
+ cart.forEach(row=>{
+   const p=products.find(x=>x.id===row.id); if(!p)return;
+   const boxes=Number(row.qty)||0, units=Number(p.qty)||0;
+   total += Number(p.price||0)*units*boxes;
+   profit += (Number(p.price||0)-Number(p.costPrice||0))*units*boxes;
+ });
+ return {total,profit};
+}
+function openOrderModal(){
+ if(!cart.length){toast("السلة فارغة");return}
+ const x=orderCartSummary();
+ $("orderClient").value="";
+ $("orderNote").value="إستخلاص عند الاستلام — Paiement à la livraison";
+ $("orderGrandTotal").textContent=money(x.total)+" DH";
+ $("orderDue").textContent="غير مخلص";
+ $("orderProfit").textContent=money(x.profit)+" DH";
+ // La fenêtre d'enregistrement passe au-dessus du panier : le panier et ses boutons restent derrière.
+ $("orderModal").classList.add("show");
+ // Ne pas ouvrir automatiquement le clavier sur Android.
+}
+function closeOrderModal(){$("orderModal").classList.remove("show")}
+async function createOrderPDF(order){
+ try{
+   if(!window.html2canvas || !window.jspdf) throw new Error("PDF libraries unavailable");
+   const root=document.createElement("div");
+   root.dir="ltr";
+   root.style.cssText="position:fixed;left:-10000px;top:0;width:760px;background:#fff;color:#172033;padding:42px;font-family:Arial,sans-serif;z-index:-1;box-sizing:border-box";
+   const d=new Date(order.date);
+   const date=d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
+   const time=d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+   const rows=order.items.map(row=>{
+     const p=products.find(x=>x.id===row.id); if(!p)return "";
+     const boxes=Number(row.qty)||0, units=Number(p.qty)||0, line=Number(p.price||0)*units*boxes;
+     return `<tr><td style="padding:12px;border-bottom:1px solid #ddd;text-align:right">${esc(p.name)}</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:center">${boxes}</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:center">${units}</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:right">${money(p.price)} DH</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:right;font-weight:700">${money(line)} DH</td></tr>`;
+   }).join("");
+   root.innerHTML=`<div style="border-bottom:4px solid #12386f;padding-bottom:18px;margin-bottom:25px">
+<div style="font-size:16px;letter-spacing:4px;color:#b58a2a;font-weight:700">3D PEINTURES</div>
+<div style="font-size:34px;font-weight:800;margin-top:6px">BON DE COMMANDE</div>
+<div style="font-size:14px;color:#667085;margin-top:8px">${date} à ${time}</div></div>
+<div style="display:flex;justify-content:space-between;gap:25px;margin-bottom:25px;direction:ltr">
+<div style="flex:1;border:1px solid #ddd;border-radius:12px;padding:18px"><div style="color:#777">CLIENT</div><div style="font-size:24px;font-weight:800;margin-top:8px">${esc(order.client)}</div>
+${order.company?`<div style="margin-top:8px"><b>Société :</b> ${esc(order.company)}</div>`:""}${order.ice?`<div style="margin-top:5px"><b>ICE :</b> ${esc(order.ice)}</div>`:""}${order.phone?`<div style="margin-top:5px"><b>Téléphone :</b> ${esc(order.phone)}</div>`:""}</div>
+<div style="width:240px;border:1px solid #ddd;border-radius:12px;padding:18px"><div style="color:#777">DATE</div><div style="font-size:20px;font-weight:700;margin-top:8px">${date} · ${time}</div></div></div>
+<table style="width:100%;border-collapse:collapse;font-size:16px;direction:ltr"><thead><tr style="background:#12386f;color:#fff"><th style="padding:12px;text-align:left">Désignation</th><th style="padding:12px">Boîtes</th><th style="padding:12px">Unités / boîte</th><th style="padding:12px;text-align:right">Prix unitaire</th><th style="padding:12px;text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table>
+<div style="margin-top:25px;margin-left:auto;width:360px;border:2px solid #12386f;border-radius:14px;padding:18px;direction:ltr"><div style="display:flex;justify-content:space-between;font-size:22px;font-weight:800"><span>Total commande</span><span>${money(order.total)} DH</span></div><div style="display:flex;justify-content:space-between;margin-top:12px;font-size:18px"><span>Montant payé</span><span>${money(order.paid||0)} DH</span></div><div style="display:flex;justify-content:space-between;margin-top:8px;font-size:20px;font-weight:800"><span>Solde dû</span><span>${money(order.due||order.total)} DH</span></div></div>
+<div style="margin-top:38px;text-align:center;font-weight:900;color:#ff0000;font-size:30px;line-height:1.25">إستخلاص عند الاستلام</div>
+<div style="text-align:center;font-weight:900;color:#ff0000;font-size:24px;line-height:1.25">Paiement à la livraison</div>
+<div style="margin-top:28px;text-align:center;color:#777;font-size:14px">Merci pour votre confiance · 3D PEINTURES</div>`;
+   document.body.appendChild(root);
+   const canvas=await html2canvas(root,{scale:2,backgroundColor:"#ffffff",useCORS:true,logging:false});
+   const {jsPDF}=window.jspdf;
+   const pdf=new jsPDF({orientation:"p",unit:"mm",format:"a4"});
+   const pageW=210,pageH=297,margin=8;
+   const imgW=pageW-margin*2;
+   const imgH=canvas.height*imgW/canvas.width;
+   const pagePx=Math.floor(canvas.width*(pageH-margin*2)/imgH);
+   let yPx=0, page=0;
+   while(yPx<canvas.height){
+     const sliceH=Math.min(pagePx,canvas.height-yPx);
+     const slice=document.createElement("canvas"); slice.width=canvas.width; slice.height=sliceH;
+     slice.getContext("2d").drawImage(canvas,0,yPx,canvas.width,sliceH,0,0,canvas.width,sliceH);
+     if(page>0) pdf.addPage();
+     pdf.addImage(slice.toDataURL("image/jpeg",.92),"JPEG",margin,margin,imgW,sliceH*imgW/canvas.width);
+     yPx+=sliceH; page++;
+   }
+   document.body.removeChild(root);
+   return {blob:pdf.output("blob"),name:`Bon_Commande_${String(order.client).replace(/[^a-z0-9_-]+/gi,"_")}_${date.replaceAll("/","-")}.pdf`};
+ }catch(err){console.error(err); return null;}
+}
+async function shareOrderPDF(order){
+ const nativePayload={
+   id:order.id,date:order.date,client:order.client,company:order.company||"",
+   ice:order.ice||"",phone:order.phone||"",whatsapp:order.phone||"",total:Number(order.total||0),
+   paid:Number(order.paid||0),due:Number(order.due||0),status:order.status||"unpaid",
+   note:order.note||"إستخلاص عند الاستلام — Paiement à la livraison",
+   items:order.items.map(row=>{
+     const p=products.find(x=>x.id===row.id)||{};
+     const boxes=Number(row.qty)||0, units=Number(p.qty)||0;
+     return {name:p.name||"",boxes,units,unitPrice:Number(p.price||0),lineTotal:Number(p.price||0)*units*boxes};
+   })
+ };
+ // Android native PDF: works offline inside the APK and shares the real PDF file.
+ if(window.Android && typeof window.Android.createOrderPdf==="function"){
+   try{
+     window.Android.createOrderPdf(JSON.stringify(nativePayload));
+     toast("تم تسجيل الكوموند — جاري إنشاء Bon de commande PDF…");
+     return;
+   }catch(err){ console.error("Native PDF error",err); }
+ }
+ // Web fallback: generate a real PDF with jsPDF/html2canvas when the libraries are available.
+ const result=await createOrderPDF(order);
+ if(result){
+   const file=new File([result.blob],result.name,{type:"application/pdf"});
+   try{
+     if(navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
+       await navigator.share({title:"Bon de commande",files:[file]});
+       return;
+     }
+   }catch(e){ if(e&&e.name==="AbortError") return; }
+   const url=URL.createObjectURL(result.blob);
+   const a=document.createElement("a"); a.href=url; a.download=result.name; a.click();
+   setTimeout(()=>URL.revokeObjectURL(url),5000);
+   toast("PDF créé — vous pouvez le partager sur WhatsApp");
+   return;
+ }
+ toast("Impossible de créer le PDF. Vérifiez la connexion ou ouvrez la commande dans l'application Android.");
+}
+async function saveOrder(e){
+ e.preventDefault();
+ const x=orderCartSummary();
+ const client=$("orderClient").value.trim();
+ if(!client){toast("دخل اسم الكليان");return}
+ const clientObj=clients.find(c=>String(c.name||"").trim().toLowerCase()===client.toLowerCase())||{};
+ const order={
+   id:makeId(),date:new Date().toISOString(),client,
+   company:clientObj.company||clientObj.societe||"",
+   ice:clientObj.ice||"",phone:clientObj.phone||"",
+   total:x.total,paid:0,due:x.total,profit:x.profit,
+   status:"unpaid",note:$('orderNote').value.trim() || "إستخلاص عند الاستلام — Paiement à la livraison",
+   items:cart.map(row=>({id:row.id,qty:Number(row.qty)||0}))
+ };
+ orders.unshift(order);
+ localStorage.setItem("3d_peintures_orders_v1",JSON.stringify(orders));
+ cart=[];saveCart();closeOrderModal();
+ toast("تسجلت الكوموند — جاري تجهيز Bon de commande PDF…");
+ await shareOrderPDF(order);
+}
+function addPayment(orderId){
+ const order=orders.find(o=>o.id===orderId);
+ if(!order)return;
+ const remaining=Math.max(0,Number(order.total||0)-Number(order.paid||0));
+ if(remaining<=0){toast("هاد الكوموند مخلصة كاملة");return}
+ const raw=prompt(`الكوموند: ${order.client}\nالمجموع: ${money(order.total)} DH\nمخلص دابا: ${money(order.paid||0)} DH\nالباقي: ${money(remaining)} DH\n\nدخل شحال خلص الكليان دابا (DH):`, String(remaining));
+ if(raw===null)return;
+ const amount=Number(String(raw).replace(',','.'));
+ if(!Number.isFinite(amount)||amount<=0){alert("دخل مبلغ صحيح.");return}
+ const added=Math.min(amount,remaining);
+ order.paid=Number(order.paid||0)+added;
+ order.due=Math.max(0,Number(order.total||0)-order.paid);
+ order.status=order.due<=0.000001?"paid":"partial";
+ order.updatedAt=new Date().toISOString();
+ localStorage.setItem("3d_peintures_orders_v1",JSON.stringify(orders));
+ renderOrders();
+ toast(order.due<=0.000001?"الكوموند تخلصات كاملة و بقات فالأرشيف":"تسجل الخلاص وباقي جزء من الكوموند");
+}
+function renderOrders(){
+ const q=($("orderSearch").value||"").trim().toLowerCase();
+ let sales=0,paid=0,due=0,profit=0;
+ orders.forEach(o=>{sales+=Number(o.total)||0;paid+=Number(o.paid)||0;due+=Math.max(0,Number(o.due ?? ((Number(o.total)||0)-(Number(o.paid)||0))));profit+=Number(o.profit)||0});
+ $("statSales").textContent=money(sales)+" DH";
+ $("statPaid").textContent=money(paid)+" DH";
+ $("statDue").textContent=money(due)+" DH";
+ $("statProfit").textContent=money(profit)+" DH";
+ const list=orders.filter(o=>!q||String(o.client||"").toLowerCase().includes(q));
+ $("ordersEmpty").style.display=list.length?"none":"block";
+ $("ordersList").innerHTML=list.map(o=>{
+   const d=new Date(o.date);
+   const date=d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
+   const time=d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+   const total=Number(o.total)||0;
+   const paid=Number(o.paid)||0;
+   const due=Math.max(0,Number(o.due ?? (total-paid)));
+   const status=due<=0.000001?"مخلصة كاملة":paid>0?"مخلصة جزئياً":"غير مخلصة";
+   const statusClass=due<=0.000001?"paid":paid>0?"partial":"unpaid";
+   return `<div class="order-row ${statusClass}">
+     <div class="order-main">
+       <div class="order-client">${esc(o.client)}</div>
+       <small>${date} · ${time}</small>
+       <div class="order-status ${statusClass}">${status}</div>
+       ${o.note?`<p>${esc(o.note)}</p>`:""}
+     </div>
+     <div class="order-money">
+       <b>${money(total)} DH</b>
+       <span>خلص: ${money(paid)} DH</span>
+       <span class="${due>0?"due":""}">باقي: ${money(due)} DH</span>
+       <span class="profit">ربح: ${money(o.profit)} DH</span>
+       ${due>0?`<button class="payment-btn" data-order-pay="${o.id}">💰 تسجيل الخلاص</button>`:`<span class="paid-label">✓ مخلصة</span>`}
+     </div>
+     <button class="order-delete" data-order-delete="${o.id}" title="حذف">×</button>
+   </div>`;
+ }).join("");
+ document.querySelectorAll("[data-order-pay]").forEach(b=>b.onclick=()=>addPayment(b.dataset.orderPay));
+ document.querySelectorAll("[data-order-delete]").forEach(b=>b.onclick=()=>{
+   if(confirm("حذف هاد الطلب من الأرشيف؟")){orders=orders.filter(o=>o.id!==b.dataset.orderDelete);localStorage.setItem("3d_peintures_orders_v1",JSON.stringify(orders));renderOrders();toast("تم حذف الطلب")}
+ });
+}
+function openOrdersModal(){renderOrders();$("ordersModal").classList.add("show")}
+function closeOrdersModal(){$("ordersModal").classList.remove("show")}
+
 /* form */
 function openForm(p=null){
  $("formModal").classList.add("show");$("modalTitle").textContent=p?"Modifier le produit":"Nouveau produit";
- $("editId").value=p?.id||"";$("name").value=p?.name||"";$("price").value=p?.price??"";$("qty").value=p?.qty??"";
+ $("editId").value=p?.id||"";$("name").value=p?.name||"";$("price").value=p?.price??"";$("costPrice").value=p?.costPrice??0;$("qty").value=p?.qty??"";
  $("category").value=p?.category||active;$("availability").value=p?.availability==="unavailable"?"unavailable":"available";$("description").value=p?.description||"";selectedImage=p?.image||"";
  if(selectedImage){$("preview").src=selectedImage;$("photoPicker").classList.add("has-image")}else{$("preview").src="";$("photoPicker").classList.remove("has-image")}
 }
@@ -279,7 +583,7 @@ $("imageInput").onchange=async e=>{
 $("productForm").onsubmit=async e=>{
  e.preventDefault();
  const id=$("editId").value||makeId();
- const data={id,name:$("name").value.trim(),price:Number($("price").value),qty:Number($("qty").value),category:$("category").value,availability:$("availability").value,description:$("description").value.trim(),image:selectedImage};
+ const data={id,name:$("name").value.trim(),price:Number($("price").value),costPrice:Number($("costPrice").value)||0,qty:Number($("qty").value),category:$("category").value,availability:$("availability").value,description:$("description").value.trim(),image:selectedImage};
  const i=products.findIndex(p=>p.id===id);
  const old=i>=0?products[i]:null;
  if(i>=0) products[i]=data; else products.unshift(data);
@@ -359,5 +663,22 @@ $("closeCart").onclick=closeCart;
 $("cartOverlay").onclick=closeCart;
 $("clearCart").onclick=()=>{cart=[];saveCart();toast("Panier vidé")};
 $("sendCart").onclick=sendCartOrder;
+
+$("sendOrderSave").onclick=openOrderModal;
+$("closeOrder").onclick=closeOrderModal;
+$("orderModal").onclick=e=>{if(e.target===$("orderModal"))closeOrderModal()};
+$("orderForm").onsubmit=saveOrder;
+$("menuOrders").onclick=()=>{$("actionMenu").classList.remove("show");openOrdersModal()};
+$("closeOrders").onclick=closeOrdersModal;
+$("ordersModal").onclick=e=>{if(e.target===$("ordersModal"))closeOrdersModal()};
+$("orderSearch").oninput=renderOrders;
+$("clearOrders").onclick=()=>{if(!orders.length)return;if(confirm("مسح جميع الطلبات؟")){orders=[];localStorage.setItem("3d_peintures_orders_v1","[]");renderOrders();toast("تم مسح الطلبات")}};
+
+$("openClientFormFromOrder").onclick=()=>openClientModal($("orderClient").value.trim());
+$("closeClientModal").onclick=closeClientModal;
+$("clientModal").onclick=e=>{if(e.target===$("clientModal"))closeClientModal()};
+$("clientForm").onsubmit=saveClientForm;
+$("menuClients").onclick=()=>{$("actionMenu").classList.remove("show");openClientModal()};
+
 renderCart();
 render();

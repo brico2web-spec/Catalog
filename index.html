@@ -26,6 +26,10 @@
       <div class="menu-separator"></div>
       <button id="menuExport"><span class="mi export">⇩</span><div><b>Télécharger sauvegarde</b><small>Produits + photos + panier</small></div></button>
       <button id="menuImport"><span class="mi import">⇧</span><div><b>Restaurer sauvegarde</b><small>Importer un fichier</small></div></button>
+      <div class="menu-separator"></div>
+      <button id="menuOrders"><span class="mi orders">▣</span><div><b>Gestion des commandes</b><small>الكوموندات · الخلاص · الربح</small></div></button>
+      <button id="menuClients"><span class="mi import">👤</span><div><b>Gestion des clients</b><small>Nom · Société · ICE · WhatsApp</small></div></button>
+      <button id="menuImportClients"><span class="mi import">📊</span><div><b>رفع ملف Excel للكليان</b><small>إضافة الكليان دفعة واحدة</small></div></button>
     </div>
   </div>
 </header>
@@ -148,9 +152,10 @@
         <input id="name" required placeholder="Ex: Peinture blanche">
       </label>
       <div class="two">
-        <label>Prix (DH)<input id="price" type="number" min="0" step="0.01" required></label>
-        <label>Unités dans la boîte<input id="qty" type="number" min="0" step="1" required></label>
+        <label>Prix de vente / unité (DH)<input id="price" type="number" min="0" step="0.01" required></label>
+        <label>Prix d’achat / unité (DH)<input id="costPrice" type="number" min="0" step="0.01" value="0"></label>
       </div>
+      <label>Unités dans la boîte<input id="qty" type="number" min="0" step="1" required></label>
       <label>Catégorie
         <select id="category">
           <option>Produits</option><option>Essence Jupiter</option><option>Diluant</option><option>Colle</option><option>Peinture</option>
@@ -168,6 +173,77 @@
   </div>
 </div>
 
+
+<!-- Gestion des commandes -->
+<div class="modal" id="orderModal">
+  <div class="modal-card order-modal-card">
+    <div class="modal-head">
+      <div><small class="modal-kicker">NOUVELLE COMMANDE</small><h3>تسجيل الكوموند</h3></div>
+      <button class="close" id="closeOrder">×</button>
+    </div>
+    <form id="orderForm">
+      <label>Nom du client
+        <div class="client-input-row">
+          <input id="orderClient" list="clientsList" required placeholder="Ex: Épicerie Al Amal">
+          <button class="client-add-btn" id="openClientFormFromOrder" type="button">👤 + Client</button>
+        </div>
+        <datalist id="clientsList"></datalist>
+      </label>
+      <div class="order-total-preview">
+        <span>Total commande</span><strong id="orderGrandTotal">0,00 DH</strong>
+      </div>
+      <div class="order-live">
+        <div><span>الحالة</span><strong id="orderDue">غير مخلص</strong></div>
+        <div><span>الربح المتوقع</span><strong id="orderProfit">0,00 DH</strong></div>
+      </div>
+      <label>ملاحظة (اختياري)
+        <textarea id="orderNote" rows="2" placeholder="مثلاً: خلص 500 DH والباقي نهاية الشهر"></textarea>
+      </label>
+      <button class="gold-btn full" type="submit">✓ تسجيل الكوموند (غير مخلص)</button>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="clientModal">
+  <div class="modal-card orders-modal-card">
+    <div class="modal-head">
+      <div><small class="modal-kicker">CLIENT</small><h3>إضافة معلومات الكليان</h3></div>
+      <button class="close" id="closeClientModal">×</button>
+    </div>
+    <form id="clientForm">
+      <input type="hidden" id="clientEditId">
+      <label>Nom du client<input id="clientName" required placeholder="Nom et prénom"></label>
+      <label>Société<input id="clientCompany" placeholder="Nom de la société"></label>
+      <label>ICE<input id="clientICE" placeholder="ICE"></label>
+      <label>WhatsApp<input id="clientWhatsapp" type="tel" placeholder="06XXXXXXXX"></label>
+      <button class="gold-btn full" type="submit">✓ Enregistrer le client</button>
+    </form>
+    <div class="client-manager-title">Clients enregistrés</div>
+    <div id="clientsManagerList" class="clients-manager-list"></div>
+  </div>
+</div>
+
+<div class="modal" id="ordersModal">
+  <div class="modal-card orders-modal-card">
+    <div class="modal-head">
+      <div><small class="modal-kicker">ARCHIVE</small><h3>أرشيف الكوموندات والخلاص</h3></div>
+      <button class="close" id="closeOrders">×</button>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-card"><small>المبيعات</small><strong id="statSales">0,00 DH</strong></div>
+      <div class="stat-card"><small>الخلاص</small><strong id="statPaid">0,00 DH</strong></div>
+      <div class="stat-card"><small>الباقي</small><strong id="statDue">0,00 DH</strong></div>
+      <div class="stat-card"><small>الربح</small><strong id="statProfit">0,00 DH</strong></div>
+    </div>
+    <div class="orders-tools">
+      <input id="orderSearch" placeholder="🔎 قلب على الكليان...">
+      <button id="clearOrders" type="button">مسح الطلبات</button>
+    </div>
+    <div id="ordersList" class="orders-list"></div>
+    <div id="ordersEmpty" class="cart-empty">مازال ما تسجل حتى طلب.</div>
+  </div>
+</div>
+
 <div class="cart-drawer" id="cartDrawer">
   <div class="cart-head">
     <div><small>VOTRE COMMANDE</small><h3>Panier</h3></div>
@@ -177,13 +253,18 @@
   <div class="cart-empty" id="cartEmpty">Votre panier est vide.</div>
   <div class="cart-footer">
     <div><span>Total</span><strong id="cartTotal">0,00 DH</strong></div>
-    <button id="sendCart" class="send-cart" type="button">📤 Envoyer la commande</button>
+    <button id="sendOrderSave" class="send-cart" type="button">🧾 تسجيل الكوموند</button>
+    <button id="sendCart" class="send-cart secondary-send" type="button">📤 Envoyer la commande</button>
     <button id="clearCart" class="clear-cart">Vider le panier</button>
   </div>
 </div>
 <div class="cart-overlay" id="cartOverlay"></div>
 <div class="toast" id="toast"></div>
 <input type="file" id="backupInput" accept=".json,.3dbackup,application/json" hidden>
+<input type="file" id="clientsExcelInput" accept=".xlsx,.xls,.csv" hidden>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
