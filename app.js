@@ -400,6 +400,15 @@ function closeOrderModal(){$("orderModal").classList.remove("show")}
 async function createOrderPDF(order){
  try{
    if(!window.html2canvas || !window.jspdf) throw new Error("PDF libraries unavailable");
+
+   // Pre-load logo as base64 so html2canvas can render it offline
+   let logoB64 = "";
+   try{
+     const r = await fetch("https://www.dropbox.com/scl/fi/xw1zrjilt00hydjh1bc6m/1756847562213.jpg?rlkey=hfxxdkzfb6c2av6op4qibeu8e&st=yv1m9vxd&raw=1");
+     const blob = await r.blob();
+     logoB64 = await new Promise(res=>{ const fr=new FileReader(); fr.onload=e=>res(e.target.result); fr.readAsDataURL(blob); });
+   }catch(e){ console.warn("Logo load failed",e); }
+
    const root=document.createElement("div");
    root.dir="ltr";
    root.style.cssText="position:fixed;left:-10000px;top:0;width:760px;background:#fff;color:#172033;padding:42px;font-family:Arial,sans-serif;z-index:-1;box-sizing:border-box";
@@ -411,6 +420,11 @@ async function createOrderPDF(order){
      const boxes=Number(row.qty)||0, units=Number(p.qty)||0, line=Number(p.price||0)*units*boxes;
      return `<tr><td style="padding:12px;border-bottom:1px solid #ddd;text-align:right">${esc(p.name)}</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:center">${boxes}</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:center">${units}</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:right">${money(p.price)} DH</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:right;font-weight:700">${money(line)} DH</td></tr>`;
    }).join("");
+
+   const logoHtml = logoB64
+     ? `<div style="margin-top:40px;text-align:center"><img src="${logoB64}" style="width:180px;max-width:55%;height:auto;opacity:.18;filter:grayscale(1)"></div>`
+     : `<div style="margin-top:40px;text-align:center;font-size:22px;letter-spacing:6px;font-weight:900;color:#ddd;opacity:.35">3D PEINTURES</div>`;
+
    root.innerHTML=`<div style="border-bottom:4px solid #12386f;padding-bottom:18px;margin-bottom:25px">
 <div style="font-size:16px;letter-spacing:4px;color:#b58a2a;font-weight:700">3D PEINTURES</div>
 <div style="font-size:34px;font-weight:800;margin-top:6px">BON DE COMMANDE</div>
@@ -423,7 +437,9 @@ ${order.company?`<div style="margin-top:8px"><b>Société :</b> ${esc(order.comp
 <div style="margin-top:25px;margin-left:auto;width:360px;border:2px solid #12386f;border-radius:14px;padding:18px;direction:ltr"><div style="display:flex;justify-content:space-between;font-size:24px;font-weight:900"><span>Total Payé</span><span>${money(order.total)} DH</span></div></div>
 <div style="margin-top:38px;text-align:center;font-weight:900;color:#ff0000;font-size:30px;line-height:1.25">إستخلاص عند الاستلام</div>
 <div style="text-align:center;font-weight:900;color:#ff0000;font-size:24px;line-height:1.25">Paiement à la livraison</div>
-<div style="margin-top:28px;text-align:center;color:#777;font-size:14px">Merci pour votre confiance · 3D PEINTURES</div>`;
+<div style="margin-top:28px;text-align:center;color:#777;font-size:14px">Merci pour votre confiance · 3D PEINTURES</div>
+${logoHtml}`;
+
    document.body.appendChild(root);
    const canvas=await html2canvas(root,{scale:2,backgroundColor:"#ffffff",useCORS:true,logging:false});
    const {jsPDF}=window.jspdf;
@@ -465,23 +481,39 @@ async function shareOrderPDF(order){
      return;
    }catch(err){ console.error("Native PDF error",err); }
  }
- // Web fallback: generate a real PDF with jsPDF/html2canvas when the libraries are available.
+ // Web fallback: generate PDF then share / open WhatsApp
  const result=await createOrderPDF(order);
  if(result){
    const file=new File([result.blob],result.name,{type:"application/pdf"});
-   try{
-     if(navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
-       await navigator.share({title:"Bon de commande",files:[file]});
-       return;
-     }
-   }catch(e){ if(e&&e.name==="AbortError") return; }
+   // 1. Try native share sheet (Android/iOS — user can pick WhatsApp)
+   if(navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
+     try{ await navigator.share({title:"Bon de commande — "+order.client, files:[file]}); return; }
+     catch(e){ if(e&&e.name==="AbortError") return; }
+   }
+   // 2. Fallback: download PDF then open WhatsApp with order summary
    const url=URL.createObjectURL(result.blob);
    const a=document.createElement("a"); a.href=url; a.download=result.name; a.click();
-   setTimeout(()=>URL.revokeObjectURL(url),5000);
-   toast("PDF créé — vous pouvez le partager sur WhatsApp");
+   setTimeout(()=>URL.revokeObjectURL(url),8000);
+   // Build WhatsApp message with order summary
+   const phone=order.phone?String(order.phone).replace(/\D/g,""):"";
+   const lines=["🧾 *BON DE COMMANDE — 3D PEINTURES*","","👤 Client : "+order.client];
+   if(order.company) lines.push("🏢 Société : "+order.company);
+   if(order.ice)     lines.push("📋 ICE : "+order.ice);
+   lines.push("");
+   (order.items||[]).forEach(it=>{
+     const p=products.find(x=>x.id===(it.id||""))||{name:it.name||"",price:it.unitPrice||0,qty:it.units||0};
+     const boxes=Number(it.qty||it.boxes||0), units=Number(it.units||p.qty||0), price=Number(it.unitPrice||p.price||0);
+     const total=boxes*units*price;
+     lines.push(`🔹 ${p.name||it.name} — ${boxes} boîte(s) × ${units} u = *${money(total)} DH*`);
+   });
+   lines.push("","💰 *Total Payé : "+money(order.total)+" DH*","","إستخلاص عند الاستلام — Paiement à la livraison");
+   const msg=encodeURIComponent(lines.join("\n"));
+   const waUrl=phone ? `https://wa.me/${phone}?text=${msg}` : `https://wa.me/?text=${msg}`;
+   setTimeout(()=>window.open(waUrl,"_blank"),600);
+   toast("PDF téléchargé — ouverture WhatsApp…");
    return;
  }
- toast("Impossible de créer le PDF. Vérifiez la connexion ou ouvrez la commande dans l'application Android.");
+ toast("Impossible de créer le PDF. Vérifiez la connexion.");
 }
 async function saveOrder(e){
  e.preventDefault();
@@ -687,6 +719,7 @@ function view(id){
  const p=products.find(x=>x.id===id);if(!p)return;
  selectedProductId=id;
  viewerBoxQty=1;
+ updateViewerBoxTotal(p);
  const available=isAvailable(p);
  $("viewerImage").src=p.image||"";
  $("viewerName").textContent=p.name;
@@ -759,3 +792,43 @@ $("menuClients").onclick=()=>{$("actionMenu").classList.remove("show");openClien
 
 renderCart();
 render();
+
+/* ===== SLIDER — auto only, no arrows, no dots ===== */
+(function(){
+  const wrap  = document.getElementById('sliderWrap');
+  const track = document.getElementById('sliderTrack');
+  if(!track || !wrap) return;
+  const slides = Array.from(track.querySelectorAll('.slide'));
+  const total = slides.length;
+  if(total === 0) return;
+  let current = 0, autoTimer;
+
+  // Ken Burns variants per slide
+  const kbAnims = ['kenBurns','kenBurns2','kenBurns3','kenBurns','kenBurns3','kenBurns2'];
+
+  function applyKB(slide, idx){
+    const img = slide.querySelector('img');
+    if(!img) return;
+    img.style.animation = 'none';
+    void img.offsetWidth;
+    img.style.animation = kbAnims[idx % kbAnims.length] + ' 6.5s ease-out forwards';
+  }
+
+  function goTo(n){
+    const prev = current;
+    current = (n + total) % total;
+    if(prev === current) return;
+    slides[prev].classList.remove('active');
+    slides[prev].classList.add('prev');
+    setTimeout(()=> slides[prev].classList.remove('prev'), 900);
+    applyKB(slides[current], current);
+    slides[current].classList.add('active');
+  }
+
+  // Init first slide
+  slides[0].classList.add('active');
+  applyKB(slides[0], 0);
+
+  // Auto every 4s
+  autoTimer = setInterval(()=> goTo(current + 1), 4000);
+})();
