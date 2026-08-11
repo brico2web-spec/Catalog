@@ -1,5 +1,5 @@
 const KEY="3d_peintures_catalog_v3";
-const categories=["Produits","Essence Jupiter","Diluant","Colle","Peinture"];
+const categories=["PRODUITS","ESSE JUPITER","DILUANT","COLLE","PEINTURE"];
 let products=JSON.parse(localStorage.getItem(KEY)||"[]");
 let active="Produits", selectedImage="", selectedProductId=null, viewerBoxQty=0;
 let cart=JSON.parse(localStorage.getItem("3d_peintures_cart_v4")||"[]");
