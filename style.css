@@ -719,3 +719,20 @@ main{padding:14px}
   transform:none;
   animation:none !important;
 }
+
+
+/* Splash Screen vidéo de démarrage */
+.splash-screen{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#06152f;opacity:1;visibility:visible;transition:opacity .65s ease,visibility .65s ease}
+.splash-screen.is-leaving{opacity:0;visibility:hidden;pointer-events:none}
+.splash-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#06152f}
+.splash-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(3,12,31,.28),rgba(3,12,31,.56) 58%,rgba(3,12,31,.9));pointer-events:none}
+.splash-content{position:relative;z-index:1;width:min(82vw,360px);margin-top:auto;margin-bottom:clamp(54px,12vh,125px);text-align:center;color:#fff;animation:splashContentIn .9s ease both}
+.splash-brand{font-size:clamp(25px,7vw,42px);font-weight:950;letter-spacing:2px;text-shadow:0 4px 22px rgba(0,0,0,.3)}
+.splash-brand span{color:#f3d37b}.splash-caption{margin-top:4px;color:rgba(255,255,255,.72);font-size:clamp(8px,2.4vw,11px);letter-spacing:4px;font-weight:700}
+.splash-loader{display:flex;align-items:center;justify-content:center;gap:8px;margin:27px auto 12px;color:rgba(255,255,255,.9);font-size:10px;font-weight:700;letter-spacing:.25px}
+.splash-spinner{width:15px;height:15px;border:2px solid rgba(255,255,255,.3);border-top-color:#f3d37b;border-radius:50%;animation:splashSpin .8s linear infinite}
+.splash-progress{height:3px;width:100%;overflow:hidden;border-radius:99px;background:rgba(255,255,255,.22);box-shadow:0 2px 12px rgba(0,0,0,.18)}
+.splash-progress i{display:block;width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,#bd8d31,#f3d37b,#fff3bf);box-shadow:0 0 12px rgba(243,211,123,.75);transition:width .18s linear}
+@keyframes splashSpin{to{transform:rotate(360deg)}}
+@keyframes splashContentIn{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.splash-content{animation:none}.splash-spinner{animation:none}.splash-screen{transition:none}}

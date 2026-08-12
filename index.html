@@ -8,6 +8,21 @@
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<div class="splash-screen" id="splashScreen" aria-label="Chargement de 3D Peintures">
+  <video id="splashVideo" class="splash-video" autoplay muted playsinline preload="auto">
+    <source src="assets/loading-intro.mp4" type="video/mp4">
+  </video>
+  <div class="splash-shade"></div>
+  <div class="splash-content">
+    <div class="splash-brand">3D <span>PEINTURES</span></div>
+    <div class="splash-caption">CATALOGUE PRODUITS</div>
+    <div class="splash-loader" role="status" aria-live="polite">
+      <span class="splash-spinner"></span>
+      <span>Préparation du catalogue...</span>
+    </div>
+    <div class="splash-progress"><i id="splashProgress"></i></div>
+  </div>
+</div>
 <div class="app">
 
 <header class="topbar">

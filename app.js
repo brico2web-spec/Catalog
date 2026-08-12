@@ -962,3 +962,32 @@ render();
   slides[0].classList.add('active');
   setInterval(()=> goTo(current + 1), 4000);
 })();
+
+
+/* Splash Screen vidéo de démarrage */
+(function initSplashScreen(){
+ const splash=document.getElementById("splashScreen");
+ const video=document.getElementById("splashVideo");
+ const progress=document.getElementById("splashProgress");
+ if(!splash||!video)return;
+ let closed=false;
+ const finish=()=>{
+   if(closed)return;
+   closed=true;
+   if(progress)progress.style.width="100%";
+   splash.classList.add("is-leaving");
+   window.setTimeout(()=>splash.remove(),700);
+ };
+ const updateProgress=()=>{
+   if(!progress)return;
+   const value=video.duration&&Number.isFinite(video.duration)?Math.min(100,(video.currentTime/video.duration)*100):Math.min(92,Number(progress.dataset.fallback||0)+1.5);
+   progress.dataset.fallback=String(value);
+   progress.style.width=`${value}%`;
+ };
+ video.addEventListener("timeupdate",updateProgress,{passive:true});
+ video.addEventListener("ended",finish,{once:true});
+ video.addEventListener("error",()=>window.setTimeout(finish,900),{once:true});
+ const fallbackTimer=window.setTimeout(finish,8000);
+ splash.addEventListener("transitionend",()=>window.clearTimeout(fallbackTimer),{once:true});
+ video.play().catch(()=>window.setTimeout(finish,2200));
+})();
