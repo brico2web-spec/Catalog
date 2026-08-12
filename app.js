@@ -13,6 +13,8 @@ products.forEach(p=>{if(p.costPrice==null)p.costPrice=0});
 
 function save(){try{localStorage.setItem(KEY,JSON.stringify(products));return true}catch(err){console.error(err);toast(err&&err.name==="QuotaExceededError"?"Mémoire pleine : image trop grande.":"Impossible d'enregistrer le produit");return false}}
 function makeId(){try{if(window.crypto&&typeof crypto.randomUUID==="function")return crypto.randomUUID()}catch(e){}return "p_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,10)}
+function normalizeProductCode(value){return String(value||"").trim().toUpperCase().replace(/\s+/g,"")}
+function productCode(p){return normalizeProductCode(p?.code||p?.productCode||"")}
 function compressImage(file,maxSide=1000,quality=.78){return new Promise((resolve,reject)=>{const r=new FileReader();r.onerror=()=>reject(new Error("Lecture impossible"));r.onload=e=>{const img=new Image();img.onerror=()=>reject(new Error("Image invalide"));img.onload=()=>{const ow=img.naturalWidth||img.width,oh=img.naturalHeight||img.height,s=Math.min(1,maxSide/Math.max(ow,oh)),w=Math.max(1,Math.round(ow*s)),h=Math.max(1,Math.round(oh*s)),c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);resolve(c.toDataURL("image/webp",quality))};img.src=e.target.result};r.readAsDataURL(file)})}
 function saveCart(){localStorage.setItem("3d_peintures_cart_v4",JSON.stringify(cart));renderCart()}
 function isAvailable(p){ return p && p.availability !== "unavailable"; }
@@ -151,13 +153,18 @@ function render(){
  $("categories").innerHTML=categories.map(c=>`<button class="cat ${active===c?"active":""}" data-cat="${esc(c)}">${esc(c)}</button>`).join("");
  document.querySelectorAll(".cat").forEach(b=>b.onclick=()=>{active=b.dataset.cat;selectedProductId=null;render()});
  $("sectionTitle").textContent=active;
- const q="";
- const list=products.filter(p=>{
-   const pCat = String(p.category||"").trim().toUpperCase();
-   const activeCat = String(active||"").trim().toUpperCase();
-   return pCat === activeCat;
- });
- $("count").textContent=`${list.length} produit${list.length!==1?"s":""}`;
+  const q=String($("productSearch")?.value||"").trim().toLowerCase();
+  const list=products.filter(p=>{
+    const pCat = String(p.category||"").trim().toUpperCase();
+    const activeCat = String(active||"").trim().toUpperCase();
+    if(q){
+      const code=productCode(p).toLowerCase();
+      return code.includes(q)||String(p.name||"").toLowerCase().includes(q);
+    }
+    return pCat === activeCat;
+  });
+  $("sectionTitle").textContent=q?`Recherche : ${q}`:active;
+  $("count").textContent=`${list.length} produit${list.length!==1?"s":""}`;
  $("grid").innerHTML=list.map(card).join("");
  $("empty").style.display=list.length?"none":"block";
  const selectCard=(cardEl)=>{
@@ -206,8 +213,10 @@ function card(p){
    ${hasPromo10Plus1(p)?`<div class="card-promo-note">🎁 1 pièce offerte / 10</div>`:""}
    ${available?"":`<div class="unavailable-card-overlay"><span>غير متوفر حاليا</span></div>`}
   </div>
-  <div class="card-body">
-   <h3>${esc(p.name)}</h3><div class="desc">${esc(p.description||"Produit disponible")}</div>
+   <div class="card-body">
+    <h3>${esc(p.name)}</h3>
+    <div class="product-code-line">Code : <b>${esc(productCode(p)||"—")}</b></div>
+    <div class="desc">${esc(p.description||"Produit disponible")}</div>
    <div class="price">${money(p.price)} <small>DH</small></div>
    <div class="stock ${low?"low":""}">${available?`Unités / boîte : ${p.qty}`:unavailableText()}</div>
   </div>
@@ -815,7 +824,7 @@ function closeOrderDetail(){
 /* form */
 function openForm(p=null){
  $("formModal").classList.add("show");$("modalTitle").textContent=p?"Modifier le produit":"Nouveau produit";
- $("editId").value=p?.id||"";$("name").value=p?.name||"";$("price").value=p?.price??"";$("costPrice").value=p?.costPrice??0;$("qty").value=p?.qty??"";
+  $("editId").value=p?.id||"";$("name").value=p?.name||"";$("productCode").value=productCode(p);$("price").value=p?.price??"";$("qty").value=p?.qty??"";
  $("category").value=p?canonicalCategory(p.category):canonicalCategory(active);$("availability").value=p?.availability==="unavailable"?"unavailable":"available";$("description").value=p?.description||"";selectedImage=p?.image||"";
  $("promo10Plus1").checked=hasPromo10Plus1(p);
  if(selectedImage){$("preview").src=selectedImage;$("photoPicker").classList.add("has-image")}else{$("preview").src="";$("photoPicker").classList.remove("has-image")}
@@ -834,7 +843,11 @@ $("productForm").onsubmit=async e=>{
  const i=products.findIndex(p=>p.id===id);
  const old=i>=0?products[i]:null;
  const keepCategory=old?canonicalCategory(old.category||active):canonicalCategory($("category").value||active);
- const data={id,name:$("name").value.trim(),price:Number($("price").value),costPrice:Number($("costPrice").value)||0,qty:Number($("qty").value),category:keepCategory,availability:$("availability").value,description:$("description").value.trim(),image:selectedImage,promo10Plus1:$("promo10Plus1").checked};
+  const code=normalizeProductCode($("productCode").value);
+  if(!code){toast("دخل كود المنتوج مثل D402 أو W202");return;}
+  const duplicate=products.find(p=>p.id!==id&&productCode(p)===code);
+  if(duplicate){toast("هاد الكود مستعمل من طرف منتوج آخر");return;}
+  const data={id,name:$("name").value.trim(),code,price:Number($("price").value),costPrice:old?.costPrice??0,qty:Number($("qty").value),category:keepCategory,availability:$("availability").value,description:$("description").value.trim(),image:selectedImage,promo10Plus1:$("promo10Plus1").checked};
  if(i>=0) products[i]=data; else products.unshift(data);
  if(!save()){
    await compactProductsImages();
@@ -863,9 +876,10 @@ function view(id){
  viewerBoxQty=1;
  updateViewerBoxTotal(p);
  const available=isAvailable(p);
- $("viewerImage").src=p.image||"";
- $("viewerName").textContent=p.name;
- $("viewerCategory").textContent=p.category;
+  $("viewerImage").src=p.image||"";
+  $("viewerName").textContent=p.name;
+  $("viewerCode").textContent=productCode(p)?`Code produit : ${productCode(p)}`:"";
+  $("viewerCategory").textContent=p.category;
  const badge=$("viewerPromoBadge"); if(badge) badge.style.display=hasPromo10Plus1(p)?"block":"none";
  $("viewerDescription").textContent=available?(p.description||"Produit disponible"):unavailableText();
  $("viewerPrice2").textContent=`${money(p.price)} DH`;
@@ -935,6 +949,8 @@ $("clientStatsMonth").onchange=renderClientStats;
 $("clientStatsSearch").oninput=renderClientStats;
 $("exportStatsExcel").onclick=exportClientStatsToExcel;
 $("menuClients").onclick=()=>{$("actionMenu").classList.remove("show");openClientModal()};
+$("productSearch").oninput=()=>{render();$("clearProductSearch").style.display=$("productSearch").value?"block":"none"};
+$("clearProductSearch").onclick=()=>{$("productSearch").value="";$("clearProductSearch").style.display="none";render();$("productSearch").focus()};
 
 renderCart();
 render();

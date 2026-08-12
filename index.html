@@ -62,6 +62,11 @@
   </div>
 </section>
 <section class="toolbar">
+  <div class="product-search" id="productSearchBox">
+    <span class="product-search-icon">⌕</span>
+    <input id="productSearch" type="search" autocomplete="off" placeholder="قلب بكود المنتوج: d402 أو w202...">
+    <button id="clearProductSearch" type="button" aria-label="مسح البحث">×</button>
+  </div>
   <div class="categories" id="categories"></div>
 </section>
 
@@ -116,6 +121,7 @@
     <div class="viewer-info">
       <div class="product-kicker">RÉFÉRENCE PRODUIT</div>
       <h2 id="viewerName"></h2>
+      <div class="viewer-code" id="viewerCode"></div>
       <p id="viewerDescription">Produit disponible</p>
 
       <div class="info-grid">
@@ -166,10 +172,10 @@
       <label>Nom du produit
         <input id="name" required placeholder="Ex: Peinture blanche">
       </label>
-      <div class="two">
-        <label>Prix de vente / unité (DH)<input id="price" type="number" min="0" step="0.01" required></label>
-        <label>Prix d’achat / unité (DH)<input id="costPrice" type="number" min="0" step="0.01" value="0"></label>
-      </div>
+      <label>Code produit
+        <input id="productCode" required maxlength="30" autocomplete="off" placeholder="Ex: d402 ou w202">
+      </label>
+      <label>Prix de vente / unité (DH)<input id="price" type="number" min="0" step="0.01" required></label>
       <label>Unités dans la boîte<input id="qty" type="number" min="0" step="1" required></label>
       <label>Catégorie
         <select id="category">
