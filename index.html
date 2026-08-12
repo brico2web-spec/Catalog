@@ -207,6 +207,9 @@
         </div>
         <datalist id="clientsList"></datalist>
       </label>
+      <label>رقم الشيك / الكمبيالة (اختياري)
+        <input id="orderPaymentNumber" placeholder="مثلاً: CH-2026-001">
+      </label>
       <div class="order-total-preview">
         <span>Total commande</span><strong id="orderGrandTotal">0,00 DH</strong>
       </div>
@@ -233,6 +236,8 @@
       <label>Nom du client<input id="clientName" required placeholder="Nom et prénom"></label>
       <label>Société<input id="clientCompany" placeholder="Nom de la société"></label>
       <label>ICE<input id="clientICE" placeholder="ICE"></label>
+      <label>Titulaire du chèque / cambiale<input id="clientPaymentHolder" placeholder="اسم صاحب الشيك أو الكمبيالة"></label>
+      <label>Numéro du chèque / cambiale<input id="clientPaymentNumber" placeholder="رقم الشيك أو الكمبيالة"></label>
       <label>WhatsApp<input id="clientWhatsapp" type="tel" placeholder="06XXXXXXXX"></label>
       <button class="gold-btn full" type="submit">✓ Enregistrer le client</button>
     </form>
@@ -249,7 +254,20 @@
       <div id="clientStatsSummary" class="client-stats-summary"></div>
       <div id="clientStatsList" class="client-stats-list"></div>
     </div>
+    <button class="sales-forecast-toggle" id="salesForecastToggle" type="button">📈 توقعات المبيعات</button>
+    <div class="sales-forecast-panel" id="salesForecastPanel">
+      <div class="sales-forecast-toolbar">
+        <div><b>توقعات المبيعات</b><small>تقدير الشهر القادم حسب آخر 3 أشهر</small></div>
+        <div class="sales-forecast-actions"><input id="salesForecastMonth" type="month" aria-label="شهر التوقعات"><button id="exportSalesForecastExcel" class="stats-export-btn" type="button" title="تحميل توقعات المبيعات Excel">📊 Excel</button></div>
+      </div>
+      <div id="salesForecastSummary" class="sales-forecast-summary"></div>
+      <div class="sales-forecast-chart-title">تطور المبيعات خلال آخر 6 أشهر</div>
+      <div id="salesForecastChart" class="sales-forecast-chart"></div>
+      <div class="sales-forecast-products-title">المنتوجات الأكثر طلباً والمتوقع طلبها</div>
+      <div id="salesForecastProducts" class="sales-forecast-products"></div>
+    </div>
     <div class="client-manager-title">Clients enregistrés</div>
+    <div class="client-manager-search"><span>⌕</span><input id="clientManagerSearch" type="search" placeholder="قلب بالاسم أو الشركة أو ICE..." autocomplete="off"><button id="clearClientManagerSearch" type="button" aria-label="مسح البحث">×</button></div>
     <div id="clientsManagerList" class="clients-manager-list"></div>
   </div>
 </div>

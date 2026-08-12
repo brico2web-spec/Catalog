@@ -393,6 +393,8 @@ function importClientsExcel(file){
           city:clientField(r,["Ville","City"]),
           address:clientField(r,["Adresse","Address"]),
           ice:clientField(r,["ICE","Identifiant fiscal"]),
+          paymentHolder:clientField(r,["Titulaire du chèque","Titulaire cheque","Propriétaire chèque","Nom du chèque","Cheque holder","Payment holder"]),
+          paymentNumber:clientField(r,["Numéro du chèque","Numero cheque","N° chèque","Num cheque","Numéro cambiale","Cheque number","Payment number"]),
           importedAt:new Date().toISOString()
         });
       });
@@ -424,8 +426,11 @@ renderClientList();
 function openClientModal(prefillName=""){
   $("clientForm").reset();
   $("clientEditId").value="";
-  $("clientName").value=prefillName||$("orderClient").value.trim();
-  $("clientCompany").value=""; $("clientICE").value=""; $("clientWhatsapp").value="";
+  const initialName=prefillName||$("orderClient").value.trim();
+  const existing=clients.find(c=>String(c.name||"").trim().toLowerCase()===String(initialName||"").trim().toLowerCase());
+  $("clientName").value=initialName;
+  if($("clientManagerSearch")){ $("clientManagerSearch").value=""; $("clearClientManagerSearch").style.display="none"; }
+  $("clientCompany").value=existing?.company||""; $("clientICE").value=existing?.ice||""; $("clientPaymentHolder").value=existing?.paymentHolder||existing?.chequeHolder||existing?.paymentName||""; $("clientPaymentNumber").value=existing?.paymentNumber||existing?.chequeNumber||""; $("clientWhatsapp").value=existing?.phone||"";
    renderClientsManager();
    renderClientStats();
    $("clientModal").classList.add("show");
@@ -465,6 +470,112 @@ function renderClientStats(){
  summary.innerHTML=`<span><b>${totalOrders}</b>طلبات</span><span><b>${activeClients}</b>زبناء نشيطين</span><span><b>${money(totalSales)}</b>DH</span>`;
  listBox.innerHTML=rows.length?rows.map(row=>`<div class="client-stat-row"><div><strong>${esc(row.name)}</strong>${row.company?`<small>${esc(row.company)}</small>`:""}</div><span class="client-stat-orders">${row.count} طلب</span><span class="client-stat-total">${money(row.total)} DH</span></div>`).join(""):"<div class=\"cart-empty\">لا يوجد نتائج.</div>";
 }
+function forecastMonthKey(baseKey,offset){
+ const [year,month]=String(baseKey||currentMonthKey()).split("-").map(Number);
+ const d=new Date(year,Math.max(0,month-1)+offset,1);
+ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+}
+function forecastMonthLabel(key){
+ const [year,month]=String(key).split("-").map(Number);
+ const d=new Date(year,month-1,1);
+ return d.toLocaleDateString("fr-FR",{month:"short"}).replace(".","");
+}
+function orderItemUnits(row){
+ const boxes=Math.max(0,Number(row?.qty)||0);
+ const units=Math.max(0,Number(row?.units)||0);
+ return Math.max(0,Number(row?.paidUnits ?? (boxes*units))||0);
+}
+function buildSalesForecast(targetMonth){
+ const target=targetMonth||currentMonthKey();
+ const historyKeys=Array.from({length:6},(_,i)=>forecastMonthKey(target,i-6));
+ const recentKeys=historyKeys.slice(3);
+ const previousKeys=historyKeys.slice(0,3);
+ const monthly=new Map(historyKeys.map(key=>[key,{sales:0,orders:0,units:0}]));
+ const productMap=new Map();
+ let recentSales=0,previousSales=0;
+ orders.forEach(order=>{
+   const key=monthKey(order.date);
+   if(!monthly.has(key))return;
+   const month=monthly.get(key);
+   const orderTotal=Number(order.total)||0;
+   month.sales+=orderTotal;month.orders++;
+   if(recentKeys.includes(key))recentSales+=orderTotal;
+   if(previousKeys.includes(key))previousSales+=orderTotal;
+   (order.items||[]).forEach(row=>{
+     const units=orderItemUnits(row);
+     month.units+=units;
+     const id=String(row.id||row.code||row.name||"unknown");
+     const product=products.find(p=>String(p.id)===String(row.id));
+     const existing=productMap.get(id)||{name:row.name||product?.name||"Produit",units:0,sales:0,orders:0};
+     existing.units+=units;
+     existing.sales+=Number(row.lineTotal ?? ((Number(row.unitPrice ?? product?.price)||0)*units))||0;
+     existing.orders++;
+     productMap.set(id,existing);
+   });
+ });
+ const recentProductRows=[...productMap.values()].filter(row=>row.units>0).map(row=>({
+   ...row,
+   averageUnits:row.units/3,
+   forecastUnits:Math.max(1,Math.ceil(row.units/3)),
+   averageSales:row.sales/3,
+   forecastSales:row.sales/3
+ })).sort((a,b)=>b.units-a.units||b.sales-a.sales).slice(0,8);
+ const chart=historyKeys.map(key=>({...monthly.get(key),key,label:forecastMonthLabel(key)}));
+ const trend=previousSales>0?((recentSales-previousSales)/previousSales)*100:null;
+ return {target,chart,recentProductRows,forecastSales:recentSales/3,trend,recentSales,previousSales};
+}
+function exportSalesForecastToExcel(){
+ const monthInput=$("salesForecastMonth");
+ const target=monthInput?.value||forecastMonthKey(currentMonthKey(),1);
+ try{
+   if(typeof XLSX==="undefined") throw new Error("Excel library not loaded");
+   const data=buildSalesForecast(target);
+   const productRows=data.recentProductRows.map(row=>({
+     "المنتوج":row.name,
+     "القطع المباعة خلال آخر 3 أشهر":row.units,
+     "المعدل الشهري":Number(row.averageUnits.toFixed(2)),
+     "الكمية المتوقعة للشهر القادم":row.forecastUnits,
+     "المبيعات خلال آخر 3 أشهر (DH)":Number(row.sales.toFixed(2)),
+     "المبيعات المتوقعة (DH)":Number(row.forecastSales.toFixed(2))
+   }));
+   const monthlyRows=data.chart.map(row=>({"الشهر":row.key,"المبيعات (DH)":Number(row.sales.toFixed(2)),"عدد الطلبات":row.orders,"القطع المباعة":row.units}));
+   const summaryRows=[
+     {"المؤشر":"الشهر المستهدف", "القيمة":target},
+     {"المؤشر":"المبيعات المتوقعة (DH)", "القيمة":Number(data.forecastSales.toFixed(2))},
+     {"المؤشر":"المبيعات خلال آخر 3 أشهر (DH)", "القيمة":Number(data.recentSales.toFixed(2))},
+     {"المؤشر":"الاتجاه مقارنة بالـ 3 أشهر السابقة", "القيمة":data.trend===null?"لا توجد مقارنة كافية":`${data.trend.toFixed(2)}%`}
+   ];
+   const wb=XLSX.utils.book_new();
+   const wsProducts=XLSX.utils.json_to_sheet(productRows.length?productRows:[{"المنتوج":"لا توجد بيانات كافية"}]);
+   const wsMonthly=XLSX.utils.json_to_sheet(monthlyRows);
+   const wsSummary=XLSX.utils.json_to_sheet(summaryRows);
+   XLSX.utils.book_append_sheet(wb,wsProducts,"توقعات المنتوجات");
+   XLSX.utils.book_append_sheet(wb,wsMonthly,"المبيعات الشهرية");
+   XLSX.utils.book_append_sheet(wb,wsSummary,"الملخص");
+   XLSX.writeFile(wb,`توقعات_المبيعات_${target}.xlsx`);
+   toast("تم تحميل توقعات المبيعات Excel");
+ }catch(err){console.error(err);toast("خطأ أثناء تحميل توقعات المبيعات")}
+}
+function renderSalesForecast(){
+ const panel=$("salesForecastPanel"),monthInput=$("salesForecastMonth"),summary=$("salesForecastSummary"),chartBox=$("salesForecastChart"),productsBox=$("salesForecastProducts");
+ if(!panel||!monthInput||!summary||!chartBox||!productsBox)return;
+ if(!monthInput.value)monthInput.value=forecastMonthKey(currentMonthKey(),1);
+ const data=buildSalesForecast(monthInput.value);
+ const maxSales=Math.max(...data.chart.map(item=>item.sales),1);
+ const trendText=data.trend===null?"لا توجد مقارنة كافية":`${data.trend>=0?"▲":"▼"} ${Math.abs(data.trend).toFixed(0)}% مقابل 3 أشهر قبل`;
+ summary.innerHTML=`<span><b>${money(data.forecastSales)}</b>DH متوقعة<small>للشهر القادم</small></span><span><b>${data.recentProductRows.length}</b>منتوجات<small>ذات مبيعات مسجلة</small></span><span><b>${esc(trendText)}</b><small>الاتجاه العام</small></span>`;
+ chartBox.innerHTML=data.chart.map(item=>{
+   const height=item.sales?Math.max(6,Math.round((item.sales/maxSales)*82)):4;
+   return `<div class="forecast-bar-item"><span class="forecast-bar-value">${item.sales?money(item.sales):"0"}</span><div class="forecast-bar" style="height:${height}px" title="${money(item.sales)} DH"></div><span class="forecast-bar-label">${esc(item.label)}</span></div>`;
+ }).join("");
+ productsBox.innerHTML=data.recentProductRows.length?data.recentProductRows.map(row=>`<div class="forecast-product-row"><div><strong>${esc(row.name)}</strong><small>معدل آخر 3 أشهر: ${row.averageUnits.toFixed(0)} قطعة / شهر</small></div><span class="forecast-product-stat">${row.units} قطعة</span><span class="forecast-product-next">متوقع: ${row.forecastUnits}</span></div>`).join(""):"<div class=\"forecast-empty\">لا توجد طلبات كافية لإعداد توقعات. سجّل بعض الطلبات أولاً.</div>";
+}
+function toggleSalesForecast(){
+ const panel=$("salesForecastPanel"),button=$("salesForecastToggle"); if(!panel)return;
+ const visible=panel.classList.toggle("show");
+ if(visible){renderSalesForecast();if(button)button.textContent="📉 إخفاء توقعات المبيعات";}
+ else if(button)button.textContent="📈 توقعات المبيعات";
+}
 function toggleClientStats(){
  const panel=$("clientStatsPanel"), button=$("clientStatsToggle"); if(!panel)return;
  const visible=panel.classList.toggle("show");
@@ -493,18 +604,82 @@ function exportClientStatsToExcel(){
    toast("خطأ أثناء تحميل الملف");
  }
 }
+async function createClientBillingPDF(client){
+ try{
+   if(!window.html2canvas||!window.jspdf) throw new Error("PDF libraries unavailable");
+   let logoB64="";
+   try{
+     const r=await fetch("https://www.dropbox.com/scl/fi/g6bef6j1a3gtse98o9ktp/Picsart_26-08-12_00-00-35-616.png?rlkey=z5wm1262vccogra8t9n71stei&st=5lq7g02n&raw=1");
+     const blob=await r.blob();
+     logoB64=await new Promise(resolve=>{const fr=new FileReader();fr.onload=e=>resolve(e.target.result);fr.readAsDataURL(blob)});
+   }catch(e){console.warn("Logo client billing load failed",e)}
+   const now=new Date();
+   const date=now.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
+   const watermark=logoB64?`<div style="position:absolute;top:57%;left:50%;transform:translate(-50%,-50%);width:500px;opacity:.08;z-index:0"><img src="${logoB64}" style="width:100%;height:auto"></div>`:"";
+   const root=document.createElement("div");
+   root.dir="ltr";
+   root.style.cssText="position:fixed;left:-10000px;top:0;width:760px;background:#fff;color:#172033;padding:46px;font-family:Arial,sans-serif;z-index:-1;box-sizing:border-box";
+   root.innerHTML=`${watermark}<div style="position:relative;z-index:1">
+     <div style="border-bottom:4px solid #c49a38;padding-bottom:20px;margin-bottom:34px">
+       <div style="font-size:17px;letter-spacing:4px;color:#b58a2a;font-weight:700">3D PEINTURES</div>
+       <div style="font-size:32px;font-weight:800;margin-top:8px">FICHE DE FACTURATION</div>
+       <div style="font-size:13px;color:#667085;margin-top:9px">Document d'informations client · ${date}</div>
+     </div>
+     <div style="padding:24px;border:1px solid #dfe3e8;border-radius:16px;background:#fffdf7">
+       <div style="font-size:14px;letter-spacing:1px;color:#9a6b12;font-weight:800;margin-bottom:20px">INFORMATIONS À UTILISER POUR LA FACTURATION</div>
+       <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px 28px;font-size:16px">
+         <div style="padding-bottom:13px;border-bottom:1px solid #e5e7eb"><span style="display:block;color:#667085;font-size:12px;margin-bottom:6px">NOM DU CLIENT</span><b>${esc(client.name||"—")}</b></div>
+         <div style="padding-bottom:13px;border-bottom:1px solid #e5e7eb"><span style="display:block;color:#667085;font-size:12px;margin-bottom:6px">SOCIÉTÉ</span><b>${esc(client.company||"—")}</b></div>
+         <div style="padding-bottom:13px;border-bottom:1px solid #e5e7eb"><span style="display:block;color:#667085;font-size:12px;margin-bottom:6px">ICE</span><b>${esc(client.ice||"—")}</b></div>
+         <div style="padding-bottom:13px;border-bottom:1px solid #e5e7eb"><span style="display:block;color:#667085;font-size:12px;margin-bottom:6px">TITULAIRE DU CHÈQUE / CAMBIALE</span><b>${esc(client.paymentHolder||client.chequeHolder||client.paymentName||"—")}</b></div>
+         <div style="padding-bottom:13px;border-bottom:1px solid #e5e7eb"><span style="display:block;color:#667085;font-size:12px;margin-bottom:6px">NUMÉRO DU CHÈQUE / CAMBIALE</span><b>${esc(client.paymentNumber||client.chequeNumber||"—")}</b></div>
+         <div style="padding-bottom:13px;border-bottom:1px solid #e5e7eb"><span style="display:block;color:#667085;font-size:12px;margin-bottom:6px">DATE D'ENVOI</span><b>${date}</b></div>
+       </div>
+     </div>
+     <div style="margin-top:28px;padding:18px 20px;border-left:4px solid #c49a38;background:#fff9e9;color:#344054;font-size:15px;line-height:1.6">Merci d'utiliser ces informations pour préparer la facture du client indiqué ci-dessus.</div>
+     <div style="margin-top:100px;text-align:center;color:#667085;font-size:13px">Document neutre · 3D PEINTURES</div>
+   </div>`;
+   document.body.appendChild(root);
+   const canvas=await html2canvas(root,{scale:2,backgroundColor:"#fff",useCORS:true,logging:false});
+   const {jsPDF}=window.jspdf;
+   const pdf=new jsPDF({orientation:"p",unit:"mm",format:"a4"});
+   const pageW=210,pageH=297,margin=8,imgW=pageW-margin*2,imgH=canvas.height*imgW/canvas.width,pagePx=Math.floor(canvas.width*(pageH-margin*2)/imgH);
+   let yPx=0,page=0;
+   while(yPx<canvas.height){const sliceH=Math.min(pagePx,canvas.height-yPx);const slice=document.createElement("canvas");slice.width=canvas.width;slice.height=sliceH;slice.getContext("2d").drawImage(canvas,0,yPx,canvas.width,sliceH,0,0,canvas.width,sliceH);if(page>0)pdf.addPage();pdf.addImage(slice.toDataURL("image/jpeg",.92),"JPEG",margin,margin,imgW,sliceH*imgW/canvas.width);yPx+=sliceH;page++}
+   document.body.removeChild(root);
+   return {blob:pdf.output("blob"),name:`Fiche_Facturation_${String(client.name||"Client").replace(/[^a-z0-9_-]+/gi,"_")}_${date.replaceAll("/","-")}.pdf`};
+ }catch(err){console.error(err);return null}
+}
+async function shareClientBillingPDF(client){
+ const result=await createClientBillingPDF(client);
+ if(!result){toast("تعذر إنشاء ملف معلومات الفوترة");return}
+ const file=new File([result.blob],result.name,{type:"application/pdf"});
+ if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
+   try{await navigator.share({title:"Fiche de facturation — "+(client.name||"Client"),text:"معلومات الفوترة الخاصة بالزبون",files:[file]});toast("تم تجهيز ملف معلومات الفوترة");return}catch(e){if(e?.name==="AbortError")return}
+ }
+ const url=URL.createObjectURL(file);const a=document.createElement("a");a.href=url;a.download=result.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);toast("تم تحميل ملف معلومات الفوترة PDF");
+}
+function normalizeClientSearch(value){return String(value||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim()}
 function renderClientsManager(){
  const box=$("clientsManagerList"); if(!box)return;
- box.innerHTML=clients.map(c=>`<div class="client-manager-row"><div><b>${esc(c.name||"")}</b><small>${esc(c.company||"")}${c.ice?` · ICE ${esc(c.ice)}`:""}${c.phone?` · WhatsApp ${esc(c.phone)}`:""}</small></div><button type="button" data-client-edit="${esc(c.id)}">Modifier</button></div>`).join("") || '<div class="cart-empty">Aucun client enregistré.</div>';
- box.querySelectorAll("[data-client-edit]").forEach(btn=>btn.onclick=()=>{
-   const c=clients.find(x=>x.id===btn.dataset.clientEdit); if(!c)return;
-   $("clientEditId").value=c.id; $("clientName").value=c.name||""; $("clientCompany").value=c.company||""; $("clientICE").value=c.ice||""; $("clientWhatsapp").value=c.phone||"";
+ const query=normalizeClientSearch($("clientManagerSearch")?.value||"");
+ const visibleClients=clients.filter(c=>{
+   if(!query)return true;
+   return [c.name,c.company,c.ice,c.paymentHolder,c.paymentNumber,c.paymentName,c.chequeHolder,c.chequeNumber,c.chequeName,c.cambiale].some(value=>normalizeClientSearch(value).includes(query));
  });
+ box.innerHTML=visibleClients.map(c=>`<div class="client-manager-row"><div><b>${esc(c.name||"")}</b><small>${esc(c.company||"")}${c.ice?` · ICE ${esc(c.ice)}`:""}${(c.paymentHolder||c.paymentName)?` · صاحب: ${esc(c.paymentHolder||c.paymentName)}`:""}${c.paymentNumber?` · رقم: ${esc(c.paymentNumber)}`:""}${c.phone?` · WhatsApp ${esc(c.phone)}`:""}</small></div><div class="client-manager-actions"><button type="button" data-client-invoice="${esc(c.id)}">📄 Infos facturation</button><button type="button" data-client-edit="${esc(c.id)}">Modifier</button></div></div>`).join("") || `<div class="cart-empty">${query?"ما لقيتش زبون مطابق للبحث.":"Aucun client enregistré."}</div>`;
+   box.querySelectorAll("[data-client-edit]").forEach(btn=>btn.onclick=()=>{
+     const c=clients.find(x=>x.id===btn.dataset.clientEdit); if(!c)return;
+     $("clientEditId").value=c.id; $("clientName").value=c.name||""; $("clientCompany").value=c.company||""; $("clientICE").value=c.ice||""; $("clientPaymentHolder").value=c.paymentHolder||c.chequeHolder||c.paymentName||""; $("clientPaymentNumber").value=c.paymentNumber||c.chequeNumber||""; $("clientWhatsapp").value=c.phone||"";
+   });
+   box.querySelectorAll("[data-client-invoice]").forEach(btn=>btn.onclick=()=>{
+     const c=clients.find(x=>x.id===btn.dataset.clientInvoice); if(c) shareClientBillingPDF(c);
+   });
 }
 function saveClientForm(e){
  e.preventDefault();
  const name=$("clientName").value.trim(); if(!name){alert("دخل اسم الكليان");return}
- const data={id:$("clientEditId").value||("c_"+Date.now().toString(36)),name,company:$("clientCompany").value.trim(),ice:$("clientICE").value.trim(),phone:$("clientWhatsapp").value.trim()};
+ const data={id:$("clientEditId").value||("c_"+Date.now().toString(36)),name,company:$("clientCompany").value.trim(),ice:$("clientICE").value.trim(),paymentHolder:$("clientPaymentHolder").value.trim(),paymentNumber:$("clientPaymentNumber").value.trim(),phone:$("clientWhatsapp").value.trim()};
  const idx=clients.findIndex(c=>c.id===data.id);
  const duplicate=clients.findIndex(c=>c.id!==data.id && String(c.name||"").trim().toLowerCase()===name.toLowerCase());
  if(duplicate>=0){ clients[duplicate]={...clients[duplicate],...data,id:clients[duplicate].id}; }
@@ -527,8 +702,9 @@ function orderCartSummary(){
 function openOrderModal(){
  if(!cart.length){toast("السلة فارغة");return}
  const x=orderCartSummary();
- $("orderClient").value="";
- $("orderNote").value="إستخلاص عند الاستلام — Paiement à la livraison";
+  $("orderClient").value="";
+  $("orderPaymentNumber").value="";
+  $("orderNote").value="إستخلاص عند الاستلام — Paiement à la livraison";
  $("orderGrandTotal").textContent=money(x.total)+" DH";
  $("orderDue").textContent="غير مخلص";
  $("orderProfit").textContent=money(x.profit)+" DH";
@@ -586,6 +762,7 @@ async function createOrderPDF(order){
            <div style="font-size:24px;font-weight:800;margin-top:8px">${esc(order.client)}</div>
            ${order.company?`<div style="margin-top:8px"><b>Société :</b> ${esc(order.company)}</div>`:""}
            ${order.ice?`<div style="margin-top:5px"><b>ICE :</b> ${esc(order.ice)}</div>`:""}
+           ${order.paymentNumber?`<div style="margin-top:5px"><b>N° chèque / cambiale :</b> ${esc(order.paymentNumber)}</div>`:""}
            ${order.phone?`<div style="margin-top:5px"><b>Téléphone :</b> ${esc(order.phone)}</div>`:""}
          </div>
          <div style="width:240px;border:1px solid #ddd;border-radius:12px;padding:18px">
@@ -637,10 +814,85 @@ async function createOrderPDF(order){
    return {blob:pdf.output("blob"),name:`Bon_Commande_${String(order.client).replace(/[^a-z0-9_-]+/gi,"_")}_${date.replaceAll("/","-")}.pdf`};
  }catch(err){console.error(err); return null;}
 }
+async function createInvoiceRequestPDF(order){
+ try{
+   if(!window.html2canvas || !window.jspdf) throw new Error("PDF libraries unavailable");
+   let logoB64="";
+   try{
+     const r=await fetch("https://www.dropbox.com/scl/fi/g6bef6j1a3gtse98o9ktp/Picsart_26-08-12_00-00-35-616.png?rlkey=z5wm1262vccogra8t9n71stei&st=5lq7g02n&raw=1");
+     const blob=await r.blob();
+     logoB64=await new Promise(resolve=>{const fr=new FileReader();fr.onload=e=>resolve(e.target.result);fr.readAsDataURL(blob)});
+   }catch(e){console.warn("Logo invoice request load failed",e)}
+   const clientObj=clients.find(c=>String(c.name||"").trim().toLowerCase()===String(order.client||"").trim().toLowerCase())||{};
+   const company=order.company||clientObj.company||"";
+   const ice=order.ice||clientObj.ice||"";
+   const paymentName=order.paymentName||clientObj.paymentName||clientObj.chequeName||"";
+   const d=new Date(order.date);
+   const date=d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
+   const time=d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+   const rows=(order.items||[]).map(row=>{
+     const p=products.find(x=>x.id===row.id)||{};
+     const boxes=Number(row.qty)||0;
+     const units=Number(row.units??p.qty)||0;
+     const unitPrice=Number(row.unitPrice??p.price)||0;
+     const paidUnits=Number(row.paidUnits??(boxes*units))||0;
+     const freeUnits=Number(row.freeUnits??(hasPromo10Plus1(p)?Math.floor(paidUnits/10):0))||0;
+     const delivered=paidUnits+freeUnits;
+     const line=Number(row.lineTotal??(unitPrice*paidUnits))||0;
+     return `<tr><td style="padding:11px;border-bottom:1px solid #e6e8ed;text-align:left"><b>${esc(row.name||p.name||"Produit")}</b>${freeUnits?`<div style="margin-top:4px;color:#ad7b16;font-size:11px;font-weight:700">10 + 1 Gratuit · livré ${delivered} pièces</div>`:""}</td><td style="padding:11px;border-bottom:1px solid #e6e8ed;text-align:center">${boxes}</td><td style="padding:11px;border-bottom:1px solid #e6e8ed;text-align:center">${units}</td><td style="padding:11px;border-bottom:1px solid #e6e8ed;text-align:right">${money(unitPrice)} DH</td><td style="padding:11px;border-bottom:1px solid #e6e8ed;text-align:right;font-weight:800">${money(line)} DH</td></tr>`;
+   }).join("");
+   const watermark=logoB64?`<div style="position:absolute;top:57%;left:50%;transform:translate(-50%,-50%);width:520px;opacity:.10;z-index:0"><img src="${logoB64}" style="width:100%;height:auto"></div>`:"";
+   const root=document.createElement("div");
+   root.dir="ltr";
+   root.style.cssText="position:fixed;left:-10000px;top:0;width:760px;background:#fff;color:#172033;padding:42px;font-family:Arial,sans-serif;z-index:-1;box-sizing:border-box";
+   root.innerHTML=`${watermark}<div style="position:relative;z-index:1">
+     <div style="border-bottom:4px solid #c49a38;padding-bottom:18px;margin-bottom:24px">
+       <div style="font-size:16px;letter-spacing:4px;color:#b58a2a;font-weight:700">3D PEINTURES</div>
+       <div style="font-size:32px;font-weight:800;margin-top:6px">DEMANDE DE FACTURE</div>
+       <div style="font-size:14px;color:#667085;margin-top:8px">Date de la demande : ${date} · ${time}</div>
+     </div>
+     <div style="border:1px solid #dfe3e8;border-radius:13px;padding:18px;margin-bottom:22px;background:#fffdf7">
+       <div style="font-size:14px;color:#9a6b12;font-weight:800;margin-bottom:12px">INFORMATIONS DE FACTURATION</div>
+       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;font-size:15px">
+         <div><span style="color:#667085">Nom du client</span><br><b>${esc(order.client||"—")}</b></div>
+         <div><span style="color:#667085">Société</span><br><b>${esc(company||"—")}</b></div>
+         <div><span style="color:#667085">ICE</span><br><b>${esc(ice||"—")}</b></div>
+         <div><span style="color:#667085">Nom du chèque / cambiale</span><br><b>${esc(paymentName||"—")}</b></div>
+       </div>
+     </div>
+     <div style="font-size:16px;font-weight:800;margin:0 0 9px">DÉTAIL DE LA COMMANDE</div>
+     <table style="width:100%;border-collapse:collapse;font-size:14px;direction:ltr">
+       <thead><tr style="background:#172f57;color:#fff"><th style="padding:11px;text-align:left">Désignation</th><th style="padding:11px">Boîtes</th><th style="padding:11px">Unités / boîte</th><th style="padding:11px;text-align:right">Prix unitaire</th><th style="padding:11px;text-align:right">Total</th></tr></thead>
+       <tbody>${rows||`<tr><td colspan="5" style="padding:18px;text-align:center;color:#667085">Aucun produit</td></tr>`}</tbody>
+     </table>
+     <div style="margin-top:24px;margin-left:auto;width:330px;border:2px solid #c49a38;border-radius:13px;padding:16px"><div style="display:flex;justify-content:space-between;font-size:21px;font-weight:900"><span>Total commande</span><span>${money(order.total)} DH</span></div></div>
+     <div style="margin-top:30px;padding:16px;border-left:4px solid #c49a38;background:#fff9e9;font-size:16px;line-height:1.55">Nous vous prions de bien vouloir établir la facture correspondante à cette commande avec les informations de facturation indiquées ci-dessus.</div>
+     <div style="margin-top:32px;text-align:center;color:#667085;font-size:13px">Merci pour votre collaboration · 3D PEINTURES</div>
+   </div>`;
+   document.body.appendChild(root);
+   const canvas=await html2canvas(root,{scale:2,backgroundColor:"#ffffff",useCORS:true,logging:false});
+   const {jsPDF}=window.jspdf;
+   const pdf=new jsPDF({orientation:"p",unit:"mm",format:"a4"});
+   const pageW=210,pageH=297,margin=8,imgW=pageW-margin*2,imgH=canvas.height*imgW/canvas.width,pagePx=Math.floor(canvas.width*(pageH-margin*2)/imgH);
+   let yPx=0,page=0;
+   while(yPx<canvas.height){const sliceH=Math.min(pagePx,canvas.height-yPx);const slice=document.createElement("canvas");slice.width=canvas.width;slice.height=sliceH;slice.getContext("2d").drawImage(canvas,0,yPx,canvas.width,sliceH,0,0,canvas.width,sliceH);if(page>0)pdf.addPage();pdf.addImage(slice.toDataURL("image/jpeg",.92),"JPEG",margin,margin,imgW,sliceH*imgW/canvas.width);yPx+=sliceH;page++}
+   document.body.removeChild(root);
+   return {blob:pdf.output("blob"),name:`Demande_Facture_${String(order.client||"Client").replace(/[^a-z0-9_-]+/gi,"_")}_${date.replaceAll("/","-")}.pdf`};
+ }catch(err){console.error(err);return null}
+}
+async function shareInvoiceRequestPDF(order){
+ const result=await createInvoiceRequestPDF(order);
+ if(!result){toast("تعذر إنشاء ملف طلب الفاتورة");return}
+ const file=new File([result.blob],result.name,{type:"application/pdf"});
+ if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
+   try{await navigator.share({title:"Demande de facture — "+(order.client||"Client"),text:"طلب فاتورة للشركة",files:[file]});toast("تم تجهيز ملف طلب الفاتورة");return}catch(e){if(e?.name==="AbortError")return}
+ }
+ const url=URL.createObjectURL(file);const a=document.createElement("a");a.href=url;a.download=result.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);toast("تم تحميل ملف طلب الفاتورة PDF");
+}
 async function shareOrderPDF(order){
  const nativePayload={
    id:order.id,date:order.date,client:order.client,company:order.company||"",
-   ice:order.ice||"",phone:order.phone||"",whatsapp:order.phone||"",total:Number(order.total||0),
+   ice:order.ice||"",paymentNumber:order.paymentNumber||"",phone:order.phone||"",whatsapp:order.phone||"",total:Number(order.total||0),
    paid:Number(order.paid||0),due:Number(order.due||0),status:order.status||"unpaid",
    note:order.note||"إستخلاص عند الاستلام — Paiement à la livraison",
     items:order.items.map(row=>{
@@ -707,7 +959,7 @@ async function saveOrder(e){
  const order={
    id:makeId(),date:new Date().toISOString(),client,
    company:clientObj.company||clientObj.societe||"",
-   ice:clientObj.ice||"",phone:clientObj.phone||"",
+   ice:clientObj.ice||"",paymentHolder:clientObj.paymentHolder||clientObj.chequeHolder||clientObj.paymentName||clientObj.chequeName||"",paymentNumber:$('orderPaymentNumber').value.trim()||clientObj.paymentNumber||clientObj.chequeNumber||"",phone:clientObj.phone||"",
    total:x.total,paid:0,due:x.total,profit:x.profit,
    status:"unpaid",note:$('orderNote').value.trim() || "إستخلاص عند الاستلام — Paiement à la livraison",
    items:cart.map(row=>{
@@ -729,6 +981,7 @@ async function saveOrder(e){
  };
  orders.unshift(order);
  localStorage.setItem("3d_peintures_orders_v1",JSON.stringify(orders));
+ renderSalesForecast();
  cart=[];saveCart();closeOrderModal();
  toast("تسجلت الكوموند — جاري تجهيز Bon de commande PDF…");
  await shareOrderPDF(order);
@@ -752,6 +1005,7 @@ function addPayment(orderId){
  toast(order.due<=0.000001?"الكوموند تخلصات كاملة و بقات فالأرشيف":"تسجل الخلاص وباقي جزء من الكوموند");
 }
 function renderOrders(){
+ renderSalesForecast();
  const q=($("orderSearch").value||"").trim().toLowerCase();
  let sales=0,paid=0,due=0;
  orders.forEach(o=>{sales+=Number(o.total)||0;paid+=Number(o.paid)||0;due+=Math.max(0,Number(o.due ?? ((Number(o.total)||0)-(Number(o.paid)||0))))});
@@ -847,6 +1101,7 @@ function openOrderDetail(orderId){
    <div class="detail-total"><span>Total Payé</span><strong>${money(total)} DH</strong></div>
    <div class="detail-payment"><span>Déjà encaissé</span><strong>${money(paid)} DH</strong><span>Reste</span><strong>${money(due)} DH</strong></div>
    ${o.note?`<div class="detail-note">${esc(o.note)}</div>`:""}
+   ${o.paymentNumber?`<div class="detail-note"><b>رقم الشيك / الكمبيالة:</b> ${esc(o.paymentNumber)}</div>`:""}
    <button class="gold-btn full" id="detailPaymentBtn" type="button">💰 Enregistrer un paiement</button>
  `;
  $("orderDetailModal").classList.add("show");
@@ -981,8 +1236,13 @@ $("openClientFormFromOrder").onclick=()=>openClientModal($("orderClient").value.
 $("closeClientModal").onclick=closeClientModal;
 $("clientModal").onclick=e=>{if(e.target===$("clientModal"))closeClientModal()};
 $("clientForm").onsubmit=saveClientForm;
+$("clientManagerSearch").oninput=()=>{ $("clearClientManagerSearch").style.display=$("clientManagerSearch").value?"block":"none"; renderClientsManager(); };
+$("clearClientManagerSearch").onclick=()=>{ $("clientManagerSearch").value=""; $("clearClientManagerSearch").style.display="none"; renderClientsManager(); $("clientManagerSearch").focus(); };
 $("clientStatsToggle").onclick=toggleClientStats;
 $("clientStatsMonth").onchange=renderClientStats;
+$("salesForecastToggle").onclick=toggleSalesForecast;
+$("salesForecastMonth").onchange=renderSalesForecast;
+$("exportSalesForecastExcel").onclick=exportSalesForecastToExcel;
 $("clientStatsSearch").oninput=renderClientStats;
 $("exportStatsExcel").onclick=exportClientStatsToExcel;
 $("menuClients").onclick=()=>{$("actionMenu").classList.remove("show");openClientModal()};
