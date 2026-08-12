@@ -378,10 +378,73 @@ function openClientModal(prefillName=""){
   $("clientEditId").value="";
   $("clientName").value=prefillName||$("orderClient").value.trim();
   $("clientCompany").value=""; $("clientICE").value=""; $("clientWhatsapp").value="";
-  renderClientsManager();
-  $("clientModal").classList.add("show");
+   renderClientsManager();
+   renderClientStats();
+   $("clientModal").classList.add("show");
 }
 function closeClientModal(){$("clientModal").classList.remove("show")}
+function monthKey(value){
+ const d=new Date(value);
+ if(Number.isNaN(d.getTime()))return "";
+ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;
+}
+function currentMonthKey(){return monthKey(new Date())}
+function renderClientStats(){
+ const monthInput=$("clientStatsMonth"), listBox=$("clientStatsList"), summary=$("clientStatsSummary"), searchInput=$("clientStatsSearch");
+ if(!monthInput||!listBox||!summary)return;
+ if(!monthInput.value)monthInput.value=currentMonthKey();
+ const selectedMonth=monthInput.value;
+ const q=(searchInput?.value||"").trim().toLowerCase();
+ const people=new Map();
+ clients.forEach(c=>{
+   const name=String(c.name||"").trim(); if(!name)return;
+   people.set(name.toLowerCase(),{name,company:c.company||""});
+ });
+ orders.forEach(o=>{
+   const name=String(o.client||"").trim(); if(!name)return;
+   const key=name.toLowerCase(); if(!people.has(key))people.set(key,{name,company:""});
+ });
+ let rows=[...people.values()].map(person=>{
+   const matched=orders.filter(o=>monthKey(o.date)===selectedMonth&&String(o.client||"").trim().toLowerCase()===person.name.toLowerCase());
+   const total=matched.reduce((sum,o)=>sum+(Number(o.total)||0),0);
+   return {...person,count:matched.length,total};
+ });
+ const totalOrders=rows.reduce((sum,row)=>sum+row.count,0);
+ const activeClients=rows.filter(row=>row.count>0).length;
+ const totalSales=rows.reduce((sum,row)=>sum+row.total,0);
+ if(q) rows=rows.filter(r=>String(r.name).toLowerCase().includes(q)||String(r.company).toLowerCase().includes(q));
+ rows.sort((a,b)=>b.total-a.total||b.count-a.count||a.name.localeCompare(b.name,"fr"));
+ summary.innerHTML=`<span><b>${totalOrders}</b>طلبات</span><span><b>${activeClients}</b>زبناء نشيطين</span><span><b>${money(totalSales)}</b>DH</span>`;
+ listBox.innerHTML=rows.length?rows.map(row=>`<div class="client-stat-row"><div><strong>${esc(row.name)}</strong>${row.company?`<small>${esc(row.company)}</small>`:""}</div><span class="client-stat-orders">${row.count} طلب</span><span class="client-stat-total">${money(row.total)} DH</span></div>`).join(""):"<div class=\"cart-empty\">لا يوجد نتائج.</div>";
+}
+function toggleClientStats(){
+ const panel=$("clientStatsPanel"), button=$("clientStatsToggle"); if(!panel)return;
+ const visible=panel.classList.toggle("show");
+ if(visible){renderClientStats();if(button)button.textContent="📊 إخفاء الإحصائيات";}
+ else if(button)button.textContent="📊 كشف الزبناء والإحصائيات";
+}
+function exportClientStatsToExcel(){
+ const monthInput=$("clientStatsMonth"); if(!monthInput)return;
+ const selectedMonth=monthInput.value || currentMonthKey();
+ const people=new Map();
+ clients.forEach(c=>{ const name=String(c.name||"").trim(); if(name) people.set(name.toLowerCase(),{name,company:c.company||""}); });
+ orders.forEach(o=>{ const name=String(o.client||"").trim(); if(name && !people.has(name.toLowerCase())) people.set(name.toLowerCase(),{name,company:""}); });
+ const rows=[...people.values()].map(person=>{
+   const matched=orders.filter(o=>monthKey(o.date)===selectedMonth&&String(o.client||"").trim().toLowerCase()===person.name.toLowerCase());
+   const total=matched.reduce((sum,o)=>sum+(Number(o.total)||0),0);
+   return { "الزبون": person.name, "الشركة": person.company, "عدد الطلبات": matched.length, "المجموع (DH)": total };
+ }).sort((a,b)=>b["المجموع (DH)"]-a["المجموع (DH)"]);
+ try {
+   const ws = XLSX.utils.json_to_sheet(rows);
+   const wb = XLSX.utils.book_new();
+   XLSX.utils.book_append_sheet(wb, ws, "Statistiques");
+   XLSX.writeFile(wb, `Statistiques_Clients_${selectedMonth}.xlsx`);
+   toast("تم تحميل ملف Excel بنجاح");
+ } catch(err) {
+   console.error(err);
+   toast("خطأ أثناء تحميل الملف");
+ }
+}
 function renderClientsManager(){
  const box=$("clientsManagerList"); if(!box)return;
  box.innerHTML=clients.map(c=>`<div class="client-manager-row"><div><b>${esc(c.name||"")}</b><small>${esc(c.company||"")}${c.ice?` · ICE ${esc(c.ice)}`:""}${c.phone?` · WhatsApp ${esc(c.phone)}`:""}</small></div><button type="button" data-client-edit="${esc(c.id)}">Modifier</button></div>`).join("") || '<div class="cart-empty">Aucun client enregistré.</div>';
@@ -398,7 +461,8 @@ function saveClientForm(e){
  const duplicate=clients.findIndex(c=>c.id!==data.id && String(c.name||"").trim().toLowerCase()===name.toLowerCase());
  if(duplicate>=0){ clients[duplicate]={...clients[duplicate],...data,id:clients[duplicate].id}; }
  else if(idx>=0) clients[idx]=data; else clients.unshift(data);
- saveClients(); renderClientsManager(); $("orderClient").value=name; closeClientModal(); toast("تم حفظ معلومات الكليان");
+   saveClients(); renderClientsManager(); renderClientStats(); $("orderClient").value=name; closeClientModal(); toast("تم حفظ معلومات الكليان");
+
 }
 
 /* Commandes : archive, paiements et bénéfice */
@@ -866,6 +930,10 @@ $("openClientFormFromOrder").onclick=()=>openClientModal($("orderClient").value.
 $("closeClientModal").onclick=closeClientModal;
 $("clientModal").onclick=e=>{if(e.target===$("clientModal"))closeClientModal()};
 $("clientForm").onsubmit=saveClientForm;
+$("clientStatsToggle").onclick=toggleClientStats;
+$("clientStatsMonth").onchange=renderClientStats;
+$("clientStatsSearch").oninput=renderClientStats;
+$("exportStatsExcel").onclick=exportClientStatsToExcel;
 $("menuClients").onclick=()=>{$("actionMenu").classList.remove("show");openClientModal()};
 
 renderCart();

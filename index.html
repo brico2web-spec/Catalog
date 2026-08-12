@@ -224,6 +224,19 @@
       <label>WhatsApp<input id="clientWhatsapp" type="tel" placeholder="06XXXXXXXX"></label>
       <button class="gold-btn full" type="submit">✓ Enregistrer le client</button>
     </form>
+    <button class="client-stats-toggle" id="clientStatsToggle" type="button">📊 كشف الزبناء والإحصائيات</button>
+    <div class="client-stats-panel" id="clientStatsPanel">
+      <div class="client-stats-toolbar">
+        <div><b>إحصائيات الطلبات</b><small>عدد الطلبات لكل زبون حسب الشهر</small></div>
+        <input id="clientStatsMonth" type="month" aria-label="شهر الإحصائيات">
+      </div>
+      <div class="client-stats-search-box">
+        <input id="clientStatsSearch" placeholder="🔎 قلب على زبون في الإحصائيات...">
+        <button id="exportStatsExcel" class="stats-export-btn" type="button" title="تحميل الإحصائيات Excel">📊 إكسيل</button>
+      </div>
+      <div id="clientStatsSummary" class="client-stats-summary"></div>
+      <div id="clientStatsList" class="client-stats-list"></div>
+    </div>
     <div class="client-manager-title">Clients enregistrés</div>
     <div id="clientsManagerList" class="clients-manager-list"></div>
   </div>
