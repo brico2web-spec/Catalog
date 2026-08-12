@@ -925,9 +925,7 @@ function view(id){
  $("viewerStock").textContent=p.qty;
  $("stockText").textContent="unités par boîte";
 
- $("viewerImageName").textContent=p.name;
- $("viewerImageUnits").textContent=`${p.qty} unités / boîte`;
- $("viewerImagePrice").textContent=`${money(p.price)} DH`;
+ 
 
  const status=$("viewerAvailable");
  if(status){
