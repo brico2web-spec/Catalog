@@ -47,6 +47,8 @@
       <button id="menuOrders"><span class="mi orders"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></span><div><b>Gestion des commandes</b><small>الكوموندات · الخلاص · الربح</small></div></button>
       <button id="menuClients"><span class="mi clients"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span><div><b>Gestion des clients</b><small>الكليان · الشركة · ICE · واتساب</small></div></button>
       <button id="menuImportClients"><span class="mi excel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v5h4M8 12h8M8 16h8"/></svg></span><div><b>Import Excel clients</b><small>إضافة الكليان دفعة واحدة</small></div></button>
+      <div class="menu-section-title"><span>04</span> التحليل والتتبع</div>
+      <button id="menuDashboard"><span class="mi dashboard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16"/><path d="m7 15 3-4 3 2 5-7"/><path d="M17 6h1v1"/></svg></span><div><b>Dashboard commercial</b><small>المبيعات · المنتجات · أوقات الذروة</small></div></button>
     </div>
   </div>
   </div>
@@ -334,6 +336,31 @@
   </div>
 </div>
 
+<!-- Dashboard commercial -->
+<div class="modal" id="dashboardModal">
+  <div class="modal-card dashboard-modal-card">
+    <div class="modal-head">
+      <div><small class="modal-kicker">ANALYSE & PILOTAGE</small><h3>لوحة التحكم التجارية</h3></div>
+      <button class="close" id="closeDashboard" aria-label="إغلاق لوحة التحكم">×</button>
+    </div>
+    <div class="dashboard-toolbar">
+      <div><b>أداء النشاط</b><small>تحليل الطلبات المسجلة حسب الشهر</small></div>
+      <label><span>الشهر</span><input id="dashboardMonth" type="month" aria-label="شهر لوحة التحكم"></label>
+    </div>
+    <div class="dashboard-summary" id="dashboardSummary">
+      <div class="dashboard-stat"><span class="dashboard-stat-icon">▣</span><small>الطلبات</small><strong id="dashboardOrdersCount">0</strong></div>
+      <div class="dashboard-stat"><span class="dashboard-stat-icon">◈</span><small>المبيعات</small><strong id="dashboardSalesTotal">0,00 DH</strong></div>
+      <div class="dashboard-stat"><span class="dashboard-stat-icon">↗</span><small>الأكثر مبيعاً</small><strong id="dashboardTopProduct">—</strong></div>
+      <div class="dashboard-stat"><span class="dashboard-stat-icon">◷</span><small>ذروة الطلبات</small><strong id="dashboardPeakHour">—</strong></div>
+    </div>
+    <div class="dashboard-grid">
+      <section class="dashboard-chart-card"><div class="dashboard-chart-head"><div><b>أفضل المنتجات</b><small>حسب عدد الوحدات المطلوبة</small></div><span>TOP 8</span></div><div class="dashboard-chart-wrap"><canvas id="topProductsChart"></canvas></div><div class="dashboard-empty" id="topProductsEmpty">لا توجد طلبات في هذا الشهر.</div></section>
+      <section class="dashboard-chart-card"><div class="dashboard-chart-head"><div><b>أوقات الذروة</b><small>عدد الطلبات حسب الساعة</small></div><span>24H</span></div><div class="dashboard-chart-wrap"><canvas id="peakHoursChart"></canvas></div><div class="dashboard-empty" id="peakHoursEmpty">لا توجد أوقات مسجلة بعد.</div></section>
+    </div>
+    <div class="dashboard-note">ملاحظة: تعتمد الرسوم على الكوموندات المسجلة داخل التطبيق. إذا لم يتوفر وقت الطلب في البيانات القديمة، سيتم عرض الطلبات الجديدة التي تحتوي على توقيت التسجيل.</div>
+  </div>
+</div>
+
 <div class="modal" id="ordersModal">
   <div class="modal-card orders-modal-card">
     <div class="modal-head">
@@ -386,6 +413,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="app.js"></script>
 
 </body>

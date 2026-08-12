@@ -366,6 +366,7 @@ $("menuImport").onclick=()=>{$("actionMenu").classList.remove("show");$("backupI
 $("menuOrders").onclick=()=>{$("actionMenu").classList.remove("show");openOrdersModal()};
 $("menuClients").onclick=()=>{$("actionMenu").classList.remove("show");openClientModal()};
 $("menuImportClients").onclick=()=>{$("actionMenu").classList.remove("show");$("clientsExcelInput").click()};
+$("menuDashboard").onclick=()=>openDashboard();
 
 /* Sauvegarde complète : produits + photos + codes + promotions + clients + commandes + panier */
 function backupProductSnapshot(p,index){
@@ -1167,6 +1168,117 @@ function renderOrders(){
 function openOrdersModal(){renderOrders();$("ordersModal").classList.add("show")}
 function closeOrdersModal(){$("ordersModal").classList.remove("show")}
 
+/* ===== Dashboard commercial ===== */
+let topProductsChart=null;
+let peakHoursChart=null;
+function dashboardMonthLabel(key){
+ const [year,month]=String(key||currentMonthKey()).split("-").map(Number);
+ if(!year||!month)return key||"";
+ return new Date(year,month-1,1).toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
+}
+function dashboardOrdersForMonth(selectedMonth){
+ return orders.filter(order=>monthKey(order.date)===selectedMonth);
+}
+function dashboardDestroyCharts(){
+ if(topProductsChart){topProductsChart.destroy();topProductsChart=null}
+ if(peakHoursChart){peakHoursChart.destroy();peakHoursChart=null}
+}
+function renderDashboard(){
+ const monthInput=$("dashboardMonth");
+ if(!monthInput)return;
+ if(!monthInput.value)monthInput.value=currentMonthKey();
+ const selectedMonth=monthInput.value;
+ const selectedOrders=dashboardOrdersForMonth(selectedMonth);
+ const productMap=new Map();
+ const hours=Array.from({length:24},()=>0);
+ let sales=0;
+ selectedOrders.forEach(order=>{
+   sales+=Number(order.total)||0;
+   const date=new Date(order.date);
+   if(!Number.isNaN(date.getTime()))hours[date.getHours()]++;
+   (order.items||[]).forEach(row=>{
+     const product=products.find(p=>String(p.id)===String(row.id));
+     const key=String(row.id||row.code||row.name||"unknown");
+     const units=orderItemUnits(row);
+     const line=Number(row.lineTotal ?? ((Number(row.unitPrice ?? product?.price)||0)*units))||0;
+     const item=productMap.get(key)||{name:row.name||product?.name||"Produit",units:0,sales:0};
+     item.units+=units;item.sales+=line;productMap.set(key,item);
+   });
+ });
+ const topProducts=[...productMap.values()].sort((a,b)=>b.units-a.units||b.sales-a.sales).slice(0,8);
+ const peakCount=Math.max(...hours,0);
+ const peakIndexes=hours.reduce((acc,value,index)=>value===peakCount&&value>0?acc.concat(index):acc,[]);
+ const peakText=peakIndexes.length?peakIndexes.map(h=>`${String(h).padStart(2,"0")}:00`).join(" · "):"—";
+ $("dashboardOrdersCount").textContent=String(selectedOrders.length);
+ $("dashboardSalesTotal").textContent=`${money(sales)} DH`;
+ $("dashboardTopProduct").textContent=topProducts[0]?.name||"—";
+ $("dashboardPeakHour").textContent=peakText;
+ const topEmpty=$("topProductsEmpty"),peakEmpty=$("peakHoursEmpty");
+ if(topEmpty)topEmpty.style.display=topProducts.length?"none":"block";
+ if(peakEmpty)peakEmpty.style.display=peakCount>0?"none":"block";
+ dashboardDestroyCharts();
+ if(typeof Chart==="undefined"){
+   if(topEmpty){topEmpty.style.display="block";topEmpty.textContent="تعذر تحميل مكتبة الرسوم البيانية."}
+   if(peakEmpty){peakEmpty.style.display="block";peakEmpty.textContent="تعذر تحميل مكتبة الرسوم البيانية."}
+   return;
+ }
+ const gold="#f5d477",goldSoft="rgba(245,212,119,.78)",navy="#163f78",navySoft="rgba(22,63,120,.78)",grid="rgba(255,255,255,.10)",text="#dbe5f5";
+ if(topProducts.length){
+   const canvas=$("topProductsChart");
+   topProductsChart=new Chart(canvas,{
+     type:"bar",
+     data:{
+       labels:topProducts.map(item=>item.name.length>18?item.name.slice(0,18)+"…":item.name),
+       datasets:[{label:"Unités",data:topProducts.map(item=>item.units),backgroundColor:topProducts.map((_,i)=>i===0?gold:goldSoft),borderColor:gold,borderWidth:1,borderRadius:7,barThickness:18}]
+     },
+     options:{
+       indexAxis:"y",responsive:true,maintainAspectRatio:false,animation:{duration:450},
+       plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.raw} unité(s)`}}},
+       scales:{x:{beginAtZero:true,ticks:{color:text,precision:0},grid:{color:grid}},y:{ticks:{color:text,font:{size:11}},grid:{display:false}}}
+     }
+   });
+ }
+ if(peakCount>0){
+   const canvas=$("peakHoursChart");
+   const peakConfig={
+     type:"line",
+     data:{
+       labels:hours.map((_,i)=>`${String(i).padStart(2,"0")}h`),
+       datasets:[{
+         label:"Commandes",
+         data:hours,
+         borderColor:gold,
+         backgroundColor:"rgba(245,212,119,.16)",
+         pointBackgroundColor:gold,
+         pointBorderColor:"#06152f",
+         pointRadius:3,
+         pointHoverRadius:5,
+         borderWidth:2,
+         tension:.35,
+         fill:true
+       }]
+     },
+     options:{
+       responsive:true,
+       maintainAspectRatio:false,
+       animation:{duration:450},
+       plugins:{legend:{display:false}},
+       scales:{
+         x:{ticks:{color:text,maxRotation:0,autoSkip:true,maxTicksLimit:12},grid:{color:grid}},
+         y:{beginAtZero:true,ticks:{color:text,precision:0},grid:{color:grid}}
+       }
+     }
+   };
+   peakHoursChart=new Chart(canvas,peakConfig);
+ }
+}
+function openDashboard(){
+ $("actionMenu").classList.remove("show");
+ $("dashboardModal").classList.add("show");
+ requestAnimationFrame(renderDashboard);
+}
+function closeDashboard(){$("dashboardModal").classList.remove("show");dashboardDestroyCharts()}
+
 function orderItemsForDisplay(order){
  return (order.items||[]).map(row=>{
    const p=products.find(x=>x.id===row.id)||{};
@@ -1343,6 +1455,9 @@ $("closeOrders").onclick=closeOrdersModal;
 $("closeOrderDetail").onclick=closeOrderDetail;
 $("orderDetailModal").onclick=e=>{if(e.target===$("orderDetailModal"))closeOrderDetail()};
 $("ordersModal").onclick=e=>{if(e.target===$("ordersModal"))closeOrdersModal()};
+$("closeDashboard").onclick=closeDashboard;
+$("dashboardModal").onclick=e=>{if(e.target===$("dashboardModal"))closeDashboard()};
+$("dashboardMonth").onchange=renderDashboard;
 $("orderSearch").oninput=renderOrders;
 $("clearOrders").onclick=()=>{if(!orders.length)return;if(confirm("مسح جميع الطلبات؟")){orders=[];localStorage.setItem("3d_peintures_orders_v1","[]");renderOrders();toast("تم مسح الطلبات")}};
 
