@@ -1,7 +1,7 @@
 const KEY="3d_peintures_catalog_v3";
-const categories=["PRODUITS","ESSE JUPITER","DILUANT","COLLE","PEINTURE"];
+const categories=["PRODUITS","ESSENCE JUPITER","DILUANT","COLLE","PEINTURE"];
 let products=JSON.parse(localStorage.getItem(KEY)||"[]");
-let active="Produits", selectedImage="", selectedProductId=null, viewerBoxQty=0;
+let active=categories[0], selectedImage="", selectedProductId=null, viewerBoxQty=0;
 let cart=JSON.parse(localStorage.getItem("3d_peintures_cart_v4")||"[]");
 let orders=JSON.parse(localStorage.getItem("3d_peintures_orders_v1")||"[]");
 const $=id=>document.getElementById(id);
@@ -148,7 +148,11 @@ function render(){
  document.querySelectorAll(".cat").forEach(b=>b.onclick=()=>{active=b.dataset.cat;selectedProductId=null;render()});
  $("sectionTitle").textContent=active;
  const q=$("search").value.trim().toLowerCase();
- const list=products.filter(p=>p.category===active&&(!q||p.name.toLowerCase().includes(q)));
+ const list=products.filter(p=>{
+   const pCat = String(p.category||"").trim().toUpperCase();
+   const activeCat = String(active||"").trim().toUpperCase();
+   return pCat === activeCat && (!q || p.name.toLowerCase().includes(q));
+ });
  $("count").textContent=`${list.length} produit${list.length!==1?"s":""}`;
  $("grid").innerHTML=list.map(card).join("");
  $("empty").style.display=list.length?"none":"block";
@@ -268,7 +272,7 @@ Les données actuelles seront remplacées.`))return;
      localStorage.setItem("3d_peintures_cart_v4",JSON.stringify(cart));
      selectedProductId=null;
      selectedImage="";
-     active="Produits";
+     active=categories[0];
      renderCart();
      render();
      toast(`Sauvegarde restaurée : ${products.length} produit(s)`);
