@@ -240,18 +240,35 @@ $("menuDelete").onclick=()=>{
 };
 
 
-/* Sauvegarde complète : produits + informations + photos + panier */
+/* Sauvegarde complète : produits + photos + codes + promotions + clients + commandes + panier */
+function backupProductSnapshot(p,index){
+ const code=productCode(p);
+ return {
+   id:String(p?.id||`p_restore_${Date.now().toString(36)}_${index}`),
+   name:String(p?.name||"Produit").trim(),
+   code,
+   price:Number(p?.price)||0,
+   costPrice:Number(p?.costPrice)||0,
+   qty:Number(p?.qty)||0,
+   category:canonicalCategory(p?.category),
+   availability:p?.availability==="unavailable"?"unavailable":"available",
+   description:String(p?.description||"").trim(),
+   image:typeof p?.image==="string"?p.image:"",
+   promo10Plus1:hasPromo10Plus1(p)
+ };
+}
 function exportBackup(){
  const backup={
    format:"3D_PEINTURES_CATALOG_BACKUP",
-   version:1,
+   version:2,
    createdAt:new Date().toISOString(),
-   products:products,
-   cart:cart,
-   orders:orders,
-   clients:clients
+   activeCategory:active,
+   products:products.map(backupProductSnapshot),
+   cart:Array.isArray(cart)?cart:[],
+   orders:Array.isArray(orders)?orders:[],
+   clients:Array.isArray(clients)?clients:[]
  };
- const blob=new Blob([JSON.stringify(backup)],{type:"application/json"});
+ const blob=new Blob([JSON.stringify(backup)],{type:"application/json;charset=utf-8"});
  const url=URL.createObjectURL(blob);
  const a=document.createElement("a");
  const d=new Date();
@@ -259,38 +276,60 @@ function exportBackup(){
  a.href=url;
  a.download=`3D_PEINTURES_SAUVEGARDE_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.3dbackup`;
  document.body.appendChild(a);a.click();a.remove();
- setTimeout(()=>URL.revokeObjectURL(url),1000);
- toast("Sauvegarde téléchargée avec les photos");
+ setTimeout(()=>URL.revokeObjectURL(url),3000);
+ toast(`Sauvegarde téléchargée : ${products.length} produit(s) avec photos`);
 }
 
-function importBackupFile(file){
+async function importBackupFile(file){
  if(!file)return;
  const reader=new FileReader();
- reader.onload=e=>{
+ reader.onload=async e=>{
+   let previousState=null;
    try{
      const data=JSON.parse(e.target.result);
-     if(data.format!=="3D_PEINTURES_CATALOG_BACKUP" || !Array.isArray(data.products)){
-       throw new Error("Format de sauvegarde invalide");
-     }
-     if(!confirm(`Restaurer ${data.products.length} produit(s) et leurs photos ?
+     const rawProducts=Array.isArray(data)?data:data?.products;
+     if(!Array.isArray(rawProducts)) throw new Error("Format de sauvegarde invalide");
+     if(!confirm(`Restaurer ${rawProducts.length} produit(s) et leurs photos ?\n\nLes données actuelles seront remplacées.`))return;
 
-Les données actuelles seront remplacées.`))return;
-     products=data.products;
-     cart=Array.isArray(data.cart)?data.cart:[];
-     orders=Array.isArray(data.orders)?data.orders:[];
-     clients=Array.isArray(data.clients)?data.clients:[];
-     localStorage.setItem("3d_peintures_orders_v1",JSON.stringify(orders));
+     previousState={products,cart,orders,clients,active};
+     const restored=rawProducts.map((p,i)=>backupProductSnapshot(p,i));
+     const usedIds=new Set();
+     restored.forEach((p,i)=>{
+       if(usedIds.has(p.id)){p.id=`p_restore_${Date.now().toString(36)}_${i}_${Math.random().toString(36).slice(2,7)}`;}
+       usedIds.add(p.id);
+     });
+     products=restored;
+     cart=Array.isArray(data?.cart)?data.cart:[];
+     orders=Array.isArray(data?.orders)?data.orders:[];
+     clients=Array.isArray(data?.clients)?data.clients:[];
+     active=categories.includes(canonicalCategory(data?.activeCategory))?canonicalCategory(data.activeCategory):categories[0];
+
+     // Réduire automatiquement les photos uniquement si le stockage du téléphone l'exige.
+     if(!save()){
+       await compactProductsImages();
+       if(!save()) throw new Error("STORAGE_FULL");
+     }
+     try{
+       localStorage.setItem("3d_peintures_orders_v1",JSON.stringify(orders));
+       localStorage.setItem("3d_peintures_cart_v4",JSON.stringify(cart));
+       localStorage.setItem(CLIENTS_KEY,JSON.stringify(clients));
+     }catch(storageError){
+       throw new Error("STORAGE_FULL");
+     }
      saveClients();
-     save();
-     localStorage.setItem("3d_peintures_cart_v4",JSON.stringify(cart));
      selectedProductId=null;
      selectedImage="";
-     active=categories[0];
      renderCart();
      render();
-     toast(`Sauvegarde restaurée : ${products.length} produit(s)`);
+     toast(`Sauvegarde restaurée : ${products.length} produit(s), photos et informations récupérées`);
    }catch(err){
-     alert("Impossible de restaurer cette sauvegarde.\nLe fichier est invalide ou incomplet.");
+     if(previousState){
+       products=previousState.products;cart=previousState.cart;orders=previousState.orders;clients=previousState.clients;active=previousState.active;
+       renderCart();render();
+     }
+     alert(err?.message==="STORAGE_FULL"
+       ? "La sauvegarde contient trop de photos pour la mémoire du navigateur. Les photos seront compressées automatiquement ; si le problème continue, utilisez moins de photos ou videz l'ancienne sauvegarde."
+       : "Impossible de restaurer cette sauvegarde.\nLe fichier est invalide ou incomplet.");
    }finally{
      $("backupInput").value="";
    }
