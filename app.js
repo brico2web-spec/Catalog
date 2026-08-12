@@ -964,30 +964,28 @@ render();
 })();
 
 
-/* Splash Screen vidéo de démarrage */
+/* Splash Screen vidéo de démarrage — durée fixe de 5 secondes */
 (function initSplashScreen(){
  const splash=document.getElementById("splashScreen");
  const video=document.getElementById("splashVideo");
  const progress=document.getElementById("splashProgress");
- if(!splash||!video)return;
+ if(!splash)return;
  let closed=false;
+ const start=Date.now();
  const finish=()=>{
    if(closed)return;
    closed=true;
    if(progress)progress.style.width="100%";
+   document.body.classList.remove("splash-active");
    splash.classList.add("is-leaving");
    window.setTimeout(()=>splash.remove(),700);
  };
  const updateProgress=()=>{
-   if(!progress)return;
-   const value=video.duration&&Number.isFinite(video.duration)?Math.min(100,(video.currentTime/video.duration)*100):Math.min(92,Number(progress.dataset.fallback||0)+1.5);
-   progress.dataset.fallback=String(value);
+   if(!progress||closed)return;
+   const value=Math.min(96,((Date.now()-start)/5000)*100);
    progress.style.width=`${value}%`;
  };
- video.addEventListener("timeupdate",updateProgress,{passive:true});
- video.addEventListener("ended",finish,{once:true});
- video.addEventListener("error",()=>window.setTimeout(finish,900),{once:true});
- const fallbackTimer=window.setTimeout(finish,8000);
- splash.addEventListener("transitionend",()=>window.clearTimeout(fallbackTimer),{once:true});
- video.play().catch(()=>window.setTimeout(finish,2200));
+ const progressTimer=window.setInterval(updateProgress,100);
+ window.setTimeout(()=>{window.clearInterval(progressTimer);finish();},5000);
+ if(video)video.play().catch(()=>{});
 })();
