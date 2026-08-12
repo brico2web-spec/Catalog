@@ -6,6 +6,8 @@ function canonicalCategory(value){
 }
 let products=JSON.parse(localStorage.getItem(KEY)||"[]");
 let active=categories[0], selectedImage="", selectedProductId=null, viewerBoxQty=0;
+let carouselIndex=0, carouselStartX=null, carouselStartY=null, carouselMoved=false;
+let focusProductId=null;
 let cart=JSON.parse(localStorage.getItem("3d_peintures_cart_v4")||"[]");
 let orders=JSON.parse(localStorage.getItem("3d_peintures_orders_v1")||"[]");
 const $=id=>document.getElementById(id);
@@ -149,6 +151,117 @@ function esc(v){return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&l
 function money(v){return Number(v||0).toLocaleString("fr-FR",{minimumFractionDigits:2,maximumFractionDigits:2})}
 function toast(t){const x=$("toast");x.textContent=t;x.classList.add("show");setTimeout(()=>x.classList.remove("show"),1800)}
 
+function carouselCards(){return Array.from(document.querySelectorAll("#grid .flip-card"))}
+function renderCarouselDots(total){
+ const box=$("carouselDots"); if(!box)return;
+ box.innerHTML=Array.from({length:total},(_,i)=>`<button type="button" class="carousel-dot ${i===carouselIndex?"active":""}" data-carousel-dot="${i}" aria-label="المنتوج ${i+1}"></button>`).join("");
+ box.querySelectorAll("[data-carousel-dot]").forEach(dot=>dot.onclick=e=>{e.stopPropagation();carouselIndex=Number(dot.dataset.carouselDot)||0;renderCarouselPositions()});
+}
+function renderCarouselPositions(){
+ const cards=carouselCards(), total=cards.length;
+ if(!total){if($("carouselDots"))$("carouselDots").innerHTML="";return}
+ carouselIndex=((carouselIndex%total)+total)%total;
+ const stageWidth=$("carouselStage")?.clientWidth||window.innerWidth;
+ const gap=Math.min(340,Math.max(150,stageWidth*.72));
+ cards.forEach((card,index)=>{
+   let relative=index-carouselIndex;
+   if(relative>total/2)relative-=total;
+   if(relative<-total/2)relative+=total;
+   const distance=Math.abs(relative);
+   const visible=distance<=1;
+   const scale=relative===0?1:.84;
+   const x=relative*gap;
+   const tilt=relative===0?0:(relative>0?-18:18);
+   card.style.setProperty("--card-x",`${x}px`);
+   card.style.setProperty("--card-tilt",`${tilt}deg`);
+   card.style.setProperty("--card-scale",scale.toFixed(3));
+   card.style.zIndex=String(relative===0?30:20-distance);
+   card.style.opacity=visible?(relative===0?1:.72):0;
+   card.style.pointerEvents=visible?"auto":"none";
+   card.dataset.carouselRelative=String(relative);
+   card.classList.toggle("is-center",relative===0);
+   card.setAttribute("aria-hidden",relative===0?"false":"true");
+ });
+ renderCarouselDots(total);
+}
+function moveCarousel(direction){
+ const cards=carouselCards(); if(!cards.length)return;
+ carouselIndex=(carouselIndex+direction+cards.length)%cards.length;
+ cards.forEach(c=>c.classList.remove("is-flipped"));
+ const center=cards[carouselIndex]; if(center){selectedProductId=center.dataset.id;cards.forEach(c=>c.classList.toggle("selected",c===center))}
+ renderCarouselPositions();
+}
+function initProductCarousel(){
+ $("carouselPrev")?.addEventListener("click",()=>moveCarousel(-1));
+ $("carouselNext")?.addEventListener("click",()=>moveCarousel(1));
+ const stage=$("carouselStage"); if(!stage)return;
+ stage.addEventListener("pointerdown",e=>{
+   if(e.target.closest("button,input,label"))return;
+   carouselStartX=e.clientX;carouselStartY=e.clientY;carouselMoved=false;
+ });
+ stage.addEventListener("pointerup",e=>{
+   if(carouselStartX===null)return;
+   const dx=e.clientX-carouselStartX,dy=e.clientY-carouselStartY;
+   if(Math.abs(dx)>38&&Math.abs(dx)>Math.abs(dy)){moveCarousel(dx<0?1:-1);carouselMoved=true;setTimeout(()=>carouselMoved=false,180)}
+   carouselStartX=null;carouselStartY=null;
+ });
+ stage.addEventListener("pointercancel",()=>{carouselStartX=null;carouselStartY=null});
+ window.addEventListener("resize",()=>renderCarouselPositions());
+}
+
+function updateFocusCalculation(){
+ const p=products.find(x=>x.id===focusProductId); if(!p)return;
+ const boxes=Math.max(1,Math.min(999,Math.floor(Number($("focusQty")?.value)||1)));
+ const info=promoForBoxes(p,boxes);
+ $("focusQty").value=String(boxes);
+ $("focusBoxesTotal").textContent=String(info.paidBoxes);
+ $("focusUnitsTotal").textContent=String(info.paidUnits);
+ $("focusTotalPrice").textContent=money(Number(p.price||0)*info.paidUnits);
+}
+function setFocusQty(value){
+ const next=Math.max(1,Math.min(999,Math.floor(Number(value)||1)));
+ $("focusQty").value=String(next); updateFocusCalculation();
+}
+function openProductFocus(id){
+ const p=products.find(x=>x.id===id); if(!p)return;
+ focusProductId=id; selectedProductId=id;
+ const available=isAvailable(p);
+ $("focusImage").src=p.image||""; $("focusImage").alt=p.name||"";
+ $("focusCategory").textContent=p.category||"PRODUIT";
+ $("focusName").textContent=p.name||"Produit";
+ $("focusCode").textContent=productCode(p)?`Code produit : ${productCode(p)}`:"";
+ $("focusPrice").textContent=`${money(p.price)} DH / unité`;
+ const availability=$("focusAvailability"); availability.textContent=available?"● DISPONIBLE":"● NON DISPONIBLE"; availability.classList.toggle("unavailable",!available);
+ $("focusPromo").style.display=hasPromo10Plus1(p)?"block":"none";
+ $("focusBackCode").textContent=`${productCode(p)||"—"} · ${p.category||"PRODUIT"}`;
+ $("focusBackName").textContent=p.name||"Produit";
+ $("focusDescription").textContent=p.description||"Produit disponible";
+ $("focusBackPrice").textContent=`${money(p.price)} DH`;
+ $("focusBackQty").textContent=String(Number(p.qty)||0);
+ $("focusPromoNote").textContent=hasPromo10Plus1(p)?"🎁 Offre 10 + 1 : une pièce offerte dès 10 pièces payées":"";
+ $("focusPromoNote").style.display=hasPromo10Plus1(p)?"block":"none";
+ $("focusQty").value=1;
+ updateFocusCalculation();
+ $("focusCard").classList.toggle("is-unavailable",!available);
+ $("focusCard").classList.remove("is-flipped");
+ $("productFocus").classList.add("show"); $("productFocus").setAttribute("aria-hidden","false"); document.body.classList.add("focus-active");
+}
+function closeProductFocus(){
+ $("productFocus").classList.remove("show"); $("productFocus").setAttribute("aria-hidden","true"); $("focusCard").classList.remove("is-flipped"); document.body.classList.remove("focus-active"); focusProductId=null;
+}
+function toggleFocusFlip(){if(focusProductId&&$("focusCard").classList.contains("is-unavailable"))return;$("focusCard").classList.toggle("is-flipped")}
+function initProductFocus(){
+ $("focusFlipHandle").onclick=e=>{e.stopPropagation();toggleFocusFlip()};
+ $("focusBackButton").onclick=e=>{e.stopPropagation();$("focusCard").classList.remove("is-flipped")};
+ $("closeProductFocus").onclick=closeProductFocus;
+ $("productFocus").onclick=e=>{if(e.target===$("productFocus"))closeProductFocus()};
+ $("focusAdd").onclick=e=>{e.stopPropagation();const qty=Math.max(1,Number($("focusQty").value)||1);if(focusProductId){addToCart(focusProductId,qty);closeProductFocus()}};
+ $("focusQtyMinus").onclick=e=>{e.stopPropagation();setFocusQty(Number($("focusQty").value||1)-1)};
+ $("focusQtyPlus").onclick=e=>{e.stopPropagation();setFocusQty(Number($("focusQty").value||1)+1)};
+ $("focusQty").oninput=()=>{const clean=String($("focusQty").value||"").replace(/\D/g,"").slice(0,3);$("focusQty").value=clean;if(clean)updateFocusCalculation()};
+ document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("productFocus").classList.contains("show"))closeProductFocus()});
+}
+
 function render(){
  $("categories").innerHTML=categories.map(c=>`<button class="cat ${active===c?"active":""}" data-cat="${esc(c)}">${esc(c)}</button>`).join("");
  document.querySelectorAll(".cat").forEach(b=>b.onclick=()=>{active=b.dataset.cat;selectedProductId=null;render()});
@@ -165,65 +278,75 @@ function render(){
   });
   $("sectionTitle").textContent=q?`Recherche : ${q}`:active;
   $("count").textContent=`${list.length} produit${list.length!==1?"s":""}`;
- $("grid").innerHTML=list.map(card).join("");
- $("empty").style.display=list.length?"none":"block";
- const selectCard=(cardEl)=>{
-   document.querySelectorAll(".card.selected").forEach(other=>{ if(other!==cardEl) other.classList.remove("selected"); });
-   cardEl.classList.add("selected");
-   selectedProductId=cardEl.dataset.id;
- };
- document.querySelectorAll(".photo").forEach(x=>x.onclick=e=>{e.stopPropagation();selectCard(x.closest(".card"));view(x.dataset.id)});
- document.querySelectorAll(".card").forEach(x=>x.onclick=()=>selectCard(x));
- // تأثير اللمس + إطار أزرق ثابت للمنتوج المحدد
- document.querySelectorAll(".card").forEach(cardEl=>{
-   const startTouch=(e)=>{
-     selectCard(cardEl);
-     document.querySelectorAll(".card.touching").forEach(other=>{
-       if(other!==cardEl){ other.classList.remove("touching"); clearTimeout(other._touchTimer); }
-     });
-     const r=cardEl.getBoundingClientRect();
-     const point=e.touches&&e.touches[0]?e.touches[0]:e;
-     cardEl.style.setProperty("--touch-x",`${point.clientX-r.left}px`);
-     cardEl.style.setProperty("--touch-y",`${point.clientY-r.top}px`);
-     cardEl.classList.remove("touching");
-     void cardEl.offsetWidth;
-     cardEl.classList.add("touching");
-     clearTimeout(cardEl._touchTimer);
-     cardEl._touchTimer=setTimeout(()=>cardEl.classList.remove("touching"),520);
-   };
-   const endTouch=()=>{
-     clearTimeout(cardEl._touchTimer);
-     cardEl._touchTimer=setTimeout(()=>cardEl.classList.remove("touching"),180);
-   };
-   cardEl.addEventListener("pointerdown",startTouch,{passive:true});
-   cardEl.addEventListener("pointerup",endTouch,{passive:true});
-   cardEl.addEventListener("pointercancel",endTouch,{passive:true});
-   cardEl.addEventListener("pointerleave",endTouch,{passive:true});
- });
- 
-}
+  $("grid").innerHTML=list.map(card).join("");
+  $("empty").style.display=list.length?"none":"block";
+  $("catalogCarousel").style.display=list.length?"":"none";
+  if(list.length && carouselIndex>=list.length)carouselIndex=0;
+  const selectCard=(cardEl)=>{
+    document.querySelectorAll(".card.selected").forEach(other=>{ if(other!==cardEl) other.classList.remove("selected"); });
+    cardEl.classList.add("selected");
+    selectedProductId=cardEl.dataset.id;
+  };
+  document.querySelectorAll(".flip-card").forEach(cardEl=>{
+    cardEl.onclick=e=>{
+      if(carouselMoved||e.target.closest("button,input,label"))return;
+      const relative=Number(cardEl.dataset.carouselRelative||0);
+      if(relative!==0){moveCarousel(relative>0?1:-1);return;}
+      selectCard(cardEl);
+      openProductFocus(cardEl.dataset.id);
+    };
+  });
+  document.querySelectorAll("[data-flip-add]").forEach(button=>button.onclick=e=>{
+    e.preventDefault();e.stopPropagation();
+    const cardEl=button.closest(".flip-card");
+    const input=cardEl?.querySelector("[data-flip-qty]");
+    const boxes=Math.max(1,Number(input?.value)||1);
+    addToCart(button.dataset.flipAdd,boxes);
+    if(cardEl)cardEl.classList.remove("is-flipped");
+  });
+  document.querySelectorAll("[data-flip-back]").forEach(button=>button.onclick=e=>{e.preventDefault();e.stopPropagation();button.closest(".flip-card")?.classList.remove("is-flipped")});
+  document.querySelectorAll("[data-flip-qty]").forEach(input=>input.oninput=()=>{input.value=String(input.value||"").replace(/\D/g,"").slice(0,3)});
+  renderCarouselPositions();
+ }
 
 function card(p){
- const low=Number(p.qty)<=5, available=isAvailable(p);
- return `<article class="card ${selectedProductId===p.id?"selected":""}" data-id="${p.id}">
-  <div class="photo ${available?"":"is-unavailable"}" data-id="${p.id}">
-   ${p.image?`<img src="${p.image}" alt="">`:`<div class="no-photo">🎨</div>`}
-   <span class="badge">${esc(p.category)}</span>
-   ${hasPromo10Plus1(p)?`<span class="promo-badge">10 + 1<small>GRATUIT</small></span>`:""}
-   ${hasPromo10Plus1(p)?`<div class="card-promo-note">🎁 1 pièce offerte / 10</div>`:""}
-   ${available?"":`<div class="unavailable-card-overlay"><span>غير متوفر حاليا</span></div>`}
-  </div>
-   <div class="card-body">
+ const low=Number(p.qty)<=5, available=isAvailable(p), code=productCode(p)||"—";
+ return `<article class="card flip-card ${selectedProductId===p.id?"selected":""}" data-id="${esc(p.id)}">
+  <div class="flip-card-inner">
+   <div class="flip-face flip-front">
+    <div class="photo ${available?"":"is-unavailable"}">
+     ${p.image?`<img src="${p.image}" alt="${esc(p.name)}" loading="lazy" decoding="async">`:`<div class="no-photo">🎨</div>`}
+     <span class="badge">${esc(p.category)}</span>
+     ${hasPromo10Plus1(p)?`<span class="promo-badge">10 + 1<small>GRATUIT</small></span>`:""}
+     ${hasPromo10Plus1(p)?`<div class="card-promo-note">🎁 1 pièce offerte / 10</div>`:""}
+     ${available?"":`<div class="unavailable-card-overlay"><span>غير متوفر حاليا</span></div>`}
+    </div>
+    <div class="card-body">
+     <div class="flip-front-kicker">3D PEINTURES · PRODUIT</div>
+     <h3>${esc(p.name)}</h3>
+     <div class="product-code-line">Code : <b>${esc(code)}</b></div>
+     <div class="price">${money(p.price)} <small>DH / unité</small></div>
+     <div class="flip-tap-hint">↻ اضغط لقلب البطاقة</div>
+    </div>
+   </div>
+   <div class="flip-face flip-back">
+    <div class="flip-back-top"><span>INFORMATIONS PRODUIT</span><button type="button" data-flip-back aria-label="العودة إلى صورة المنتج">↩</button></div>
     <h3>${esc(p.name)}</h3>
-    <div class="product-code-line">Code : <b>${esc(productCode(p)||"—")}</b></div>
-    <div class="desc">${esc(p.description||"Produit disponible")}</div>
-   <div class="price">${money(p.price)} <small>DH</small></div>
-   <div class="stock ${low?"low":""}">${available?`Unités / boîte : ${p.qty}`:unavailableText()}</div>
+    <div class="flip-back-code">${esc(code)} · ${esc(p.category)}</div>
+    <p class="flip-back-description">${esc(p.description||"Produit disponible")}</p>
+    <div class="flip-specs">
+      <div><span>PRIX / UNITÉ</span><strong>${money(p.price)} DH</strong></div>
+      <div><span>UNITÉS / BOÎTE</span><strong>${Number(p.qty)||0}</strong></div>
+    </div>
+    ${hasPromo10Plus1(p)?`<div class="flip-promo">🎁 Offre 10 + 1 : une pièce offerte dès 10 pièces payées</div>`:""}
+    ${available?`<label class="flip-qty">NOMBRE DE BOÎTES<input type="number" min="1" max="999" value="1" inputmode="numeric" data-flip-qty></label><button type="button" class="add-cart flip-add" data-flip-add="${esc(p.id)}"><span>🛒</span> Envoyer au panier</button>`:`<div class="flip-unavailable">غير متوفر حاليا</div>`}
+    <small class="flip-back-footer">اضغط على البطاقة للعودة إلى الصورة</small>
+   </div>
   </div>
  </article>`;
 }
 
-/* menu */
+/* Menu administration — accès direct, sans code PIN */
 $("menuBtn").onclick=e=>{e.stopPropagation();$("actionMenu").classList.toggle("show")};
 document.addEventListener("click",e=>{if(!$("actionMenu").contains(e.target)&&e.target!==$("menuBtn"))$("actionMenu").classList.remove("show")});
 $("menuAdd").onclick=()=>{$("actionMenu").classList.remove("show");openForm()};
@@ -238,7 +361,11 @@ $("menuDelete").onclick=()=>{
  const p=products.find(x=>x.id===selectedProductId);
  if(p&&confirm(`Supprimer "${p.name}" ?`)){products=products.filter(x=>x.id!==selectedProductId);selectedProductId=null;save();render();toast("Produit supprimé")}
 };
-
+$("menuExport").onclick=()=>{$("actionMenu").classList.remove("show");exportBackup()};
+$("menuImport").onclick=()=>{$("actionMenu").classList.remove("show");$("backupInput").click()};
+$("menuOrders").onclick=()=>{$("actionMenu").classList.remove("show");openOrdersModal()};
+$("menuClients").onclick=()=>{$("actionMenu").classList.remove("show");openClientModal()};
+$("menuImportClients").onclick=()=>{$("actionMenu").classList.remove("show");$("clientsExcelInput").click()};
 
 /* Sauvegarde complète : produits + photos + codes + promotions + clients + commandes + panier */
 function backupProductSnapshot(p,index){
@@ -337,14 +464,6 @@ async function importBackupFile(file){
  reader.readAsText(file);
 }
 
-$("menuExport").onclick=()=>{
- $("actionMenu").classList.remove("show");
- exportBackup();
-};
-$("menuImport").onclick=()=>{
- $("actionMenu").classList.remove("show");
- $("backupInput").click();
-};
 $("backupInput").onchange=e=>importBackupFile(e.target.files[0]);
 
 
@@ -414,10 +533,6 @@ function importClientsExcel(file){
   };
   reader.readAsArrayBuffer(file);
 }
-$("menuImportClients").onclick=()=>{
-  $("actionMenu").classList.remove("show");
-  $("clientsExcelInput").click();
-};
 $("clientsExcelInput").onchange=e=>importClientsExcel(e.target.files[0]);
 renderClientList();
 
@@ -1224,7 +1339,6 @@ $("sendOrderSave").onclick=openOrderModal;
 $("closeOrder").onclick=closeOrderModal;
 $("orderModal").onclick=e=>{if(e.target===$("orderModal"))closeOrderModal()};
 $("orderForm").onsubmit=saveOrder;
-$("menuOrders").onclick=()=>{$("actionMenu").classList.remove("show");openOrdersModal()};
 $("closeOrders").onclick=closeOrdersModal;
 $("closeOrderDetail").onclick=closeOrderDetail;
 $("orderDetailModal").onclick=e=>{if(e.target===$("orderDetailModal"))closeOrderDetail()};
@@ -1245,10 +1359,11 @@ $("salesForecastMonth").onchange=renderSalesForecast;
 $("exportSalesForecastExcel").onclick=exportSalesForecastToExcel;
 $("clientStatsSearch").oninput=renderClientStats;
 $("exportStatsExcel").onclick=exportClientStatsToExcel;
-$("menuClients").onclick=()=>{$("actionMenu").classList.remove("show");openClientModal()};
 $("productSearch").oninput=()=>{render();$("clearProductSearch").style.display=$("productSearch").value?"block":"none"};
 $("clearProductSearch").onclick=()=>{$("productSearch").value="";$("clearProductSearch").style.display="none";render();$("productSearch").focus()};
 
+initProductCarousel();
+initProductFocus();
 renderCart();
 render();
 
