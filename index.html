@@ -37,12 +37,12 @@
 <!-- Slider Hero -->
 <section class="slider-wrap" id="sliderWrap">
   <div class="slider-track" id="sliderTrack">
-  <div class="slide"><img src="https://www.dropbox.com/scl/fi/gx5tuosf79vqhs98yuutb/1756840450762.jpg?rlkey=9oqt2wtm8a8mm5u0u8ddku7ea&st=ief7a2fa&raw=1" alt="" loading="lazy" onerror="this.closest('.slide').style.display='none'"></div>
-  <div class="slide"><img src="https://www.dropbox.com/scl/fi/hd8a7hm8pchewtlyckiw3/1756840750812.jpg?rlkey=lbxkbroefg619sifchx0zsa71&st=4ods8mdf&raw=1" alt="" loading="lazy" onerror="this.closest('.slide').style.display='none'"></div>
-  <div class="slide"><img src="https://www.dropbox.com/scl/fi/3zzip58s3rsma6g1q5hd9/1756840843705.jpg?rlkey=anpviwlav0v66fiybeil0cidw&st=wj0qum0n&raw=1" alt="" loading="lazy" onerror="this.closest('.slide').style.display='none'"></div>
-  <div class="slide"><img src="https://www.dropbox.com/scl/fi/ex2e5m5qh8fe83ewor162/1756841104410.jpg?rlkey=kjlmzrv6ce9dpvktw4tncbfz8&st=nizo4xkd&raw=1" alt="" loading="lazy" onerror="this.closest('.slide').style.display='none'"></div>
-  <div class="slide"><img src="https://www.dropbox.com/scl/fi/nz6xas8zqqx87k2rmygbu/1756843269625.jpg?rlkey=hqsz3dxyueyjn0nueocjm5q0o&st=v9ve440t&raw=1" alt="" loading="lazy" onerror="this.closest('.slide').style.display='none'"></div>
-  <div class="slide"><img src="https://www.dropbox.com/scl/fi/biunoh75py0lcj52esfil/1756844475853.jpg?rlkey=5kh7je2h7ggtdrrkampzskn42&st=sfq33ltz&raw=1" alt="" loading="lazy" onerror="this.closest('.slide').style.display='none'"></div>
+    <div class="slide"><img src="https://www.dropbox.com/scl/fi/kxrnmtqs8tppm05pobquf/4d0f6520-95e5-11f1-bc8d-7d83266a267a.png?rlkey=jmkupsvj904dfhbn2z4mp1bm3&st=horvwjd5&raw=1" alt="Image slider 1" loading="lazy" decoding="async" onerror="this.closest('.slide').style.display='none'"></div>
+    <div class="slide"><img src="https://www.dropbox.com/scl/fi/h4yc8ru2s8g3rurlc75s7/37807c20-95e6-11f1-bc8d-7d83266a267a.webp?rlkey=1yuyj1i3fk9veyksu0jstea9u&st=xhpy64pe&raw=1" alt="Image slider 2" loading="lazy" decoding="async" onerror="this.closest('.slide').style.display='none'"></div>
+    <div class="slide"><img src="https://www.dropbox.com/scl/fi/2tpah5d27cxipxhd4mdsk/1786493253130.png?rlkey=uabywbiypu93gjgdtb7j9qigo&st=i8oyl0wt&raw=1" alt="Image slider 3" loading="lazy" decoding="async" onerror="this.closest('.slide').style.display='none'"></div>
+    <div class="slide"><img src="https://www.dropbox.com/scl/fi/xhqttiys45w1617ehqvr7/a4f6f980-95e3-11f1-bc8d-7d83266a267a.webp?rlkey=wrkyr64aw4jmkwo4qh23290rl&st=5eey1pee&raw=1" alt="Image slider 4" loading="lazy" decoding="async" onerror="this.closest('.slide').style.display='none'"></div>
+    <div class="slide"><img src="https://www.dropbox.com/scl/fi/xf4wrmsy94xqn022kqpsn/bf655f90-95e4-11f1-bc8d-7d83266a267a.webp?rlkey=jnrbjxh1hbf7ukmivu7qvgxx2&st=kodl8e91&raw=1" alt="Image slider 5" loading="lazy" decoding="async" onerror="this.closest('.slide').style.display='none'"></div>
+    <div class="slide"><img src="https://www.dropbox.com/scl/fi/qmyg9cnhmm6xcv3sk2wjh/c383f310-95e5-11f1-bc8d-7d83266a267a.webp?rlkey=roif0tu87r98g7zezkxodluvr&st=s8esc5j3&raw=1" alt="Image slider 6" loading="lazy" decoding="async" onerror="this.closest('.slide').style.display='none'"></div>
   </div>
 </section>
 <section class="toolbar">
@@ -79,6 +79,7 @@
         <span id="viewerCategory"></span>
         <span class="available-dot" id="viewerAvailable">● DISPONIBLE</span>
       </div>
+      <span class="viewer-promo-badge" id="viewerPromoBadge">10 + 1 GRATUIT</span>
 
       <button type="button" class="viewer-nav viewer-prev" id="viewerPrev" aria-label="المنتوج السابق">‹</button>
       <button type="button" class="viewer-nav viewer-next" id="viewerNext" aria-label="المنتوج التالي">›</button>
@@ -168,6 +169,13 @@
           <option value="available">Disponible</option>
           <option value="unavailable">Non disponible</option>
         </select>
+      </label>
+      <label class="promotion-toggle">
+        <input id="promo10Plus1" type="checkbox">
+        <span>
+          <b>Activer l’offre 10+1 Gratuit</b>
+          <small>À chaque 10 boîtes achetées, 1 boîte supplémentaire est offerte.</small>
+        </span>
       </label>
       <label>Description<textarea id="description" rows="3" placeholder="Description courte..."></textarea></label>
       <button class="gold-btn full" type="submit">Enregistrer le produit</button>
@@ -279,5 +287,7 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="app.js"></script>
+
 </body>
+
 </html>

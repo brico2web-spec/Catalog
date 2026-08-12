@@ -13,6 +13,18 @@ function compressImage(file,maxSide=1000,quality=.78){return new Promise((resolv
 function saveCart(){localStorage.setItem("3d_peintures_cart_v4",JSON.stringify(cart));renderCart()}
 function isAvailable(p){ return p && p.availability !== "unavailable"; }
 function unavailableText(){ return "غير متوفر حاليا حالياً — هاد المنتوج غير متوفر حالياً"; }
+function hasPromo10Plus1(p){ return !!(p && (p.promo10Plus1===true || p.promo10Plus1==="true")); }
+function promoForBoxes(p, boxes){
+ const paidBoxes=Math.max(0,Math.floor(Number(boxes)||0));
+ const unitsPerBox=Math.max(0,Math.floor(Number(p?.qty)||0));
+ const paidUnits=paidBoxes*unitsPerBox;
+ const freeUnits=hasPromo10Plus1(p)?Math.floor(paidUnits/10):0;
+ return {enabled:hasPromo10Plus1(p),paidBoxes,unitsPerBox,paidUnits,freeUnits,deliveredUnits:paidUnits+freeUnits};
+}
+function promoLabel(p, boxes){
+ const info=promoForBoxes(p,boxes);
+ return info.enabled?`10 + 1 Gratuit · +${info.freeUnits} pièce(s) offerte(s) dès ${info.paidUnits} pièce(s)`:"";
+}
 
 function compressDataUrl(data,maxSide=900,quality=.68){
  return new Promise((resolve,reject)=>{
@@ -48,10 +60,14 @@ function renderCart(){
  let total=0;
  box.innerHTML=cart.map(row=>{
    const p=products.find(x=>x.id===row.id); if(!p || !isAvailable(p))return "";
-   const line=p.price*Number(p.qty||1)*row.qty; total+=line;
+   const info=promoForBoxes(p,row.qty);
+   const line=Number(p.price||0)*info.paidUnits; total+=line;
+   const promoNote=info.enabled
+     ? `<span class="cart-promo-note">🎁 10 + 1 Gratuit · +${info.freeUnits} pièce(s) offerte(s)</span><span class="cart-delivery-note">📦 Livré : ${info.deliveredUnits} pièce(s)</span>`
+     : "";
    return `<div class="cart-row">
      ${p.image?`<img src="${p.image}" alt="">`:`<div></div>`}
-     <div><h4>${esc(p.name)}</h4><small>${money(p.price)} DH / unité · ${p.qty} unités / boîte</small>
+     <div><h4>${esc(p.name)}</h4><small>${money(p.price)} DH / unité · ${p.qty} unités / boîte</small>${promoNote}
        <div class="cart-qty"><button data-minus="${p.id}">−</button><span>${row.qty} boîte${row.qty!==1?"s":""}</span><button data-plus="${p.id}">+</button></div>
      </div><strong>${money(line)} DH</strong>
    </div>`;
@@ -85,14 +101,16 @@ function buildOrderMessage(){
  cart.forEach((row,i)=>{
    const p=products.find(x=>x.id===row.id); if(!p)return;
    const boxes=Number(row.qty)||1;
-   const units=Number(p.qty)||1;
+   const info=promoForBoxes(p,boxes);
+   const units=info.unitsPerBox||1;
    const unit=Number(p.price)||0;
-   const line=unit*units*boxes;
+   const line=unit*info.paidUnits;
    total+=line;
 
    lines.push(`🔹 PRODUIT ${i+1}`);
    lines.push(`🧴 ${p.name}`);
-   lines.push(`📦 ${boxes} boîte(s) × ${units} unités`);
+   lines.push(`📦 ${boxes} boîte(s) × ${info.paidUnits} pièces payées`);
+   if(info.enabled) lines.push(`🎁 Offre 10 + 1 : +${info.freeUnits} pièce(s) gratuite(s) — total livré ${info.deliveredUnits} pièces`);
    lines.push(`💵 ${money(unit)} DH / unité`);
    lines.push(`💰 Sous-total : ${money(line)} DH`);
    lines.push("");
@@ -176,6 +194,8 @@ function card(p){
   <div class="photo ${available?"":"is-unavailable"}" data-id="${p.id}">
    ${p.image?`<img src="${p.image}" alt="">`:`<div class="no-photo">🎨</div>`}
    <span class="badge">${esc(p.category)}</span>
+   ${hasPromo10Plus1(p)?`<span class="promo-badge">10 + 1<small>GRATUIT</small></span>`:""}
+   ${hasPromo10Plus1(p)?`<div class="card-promo-note">🎁 1 pièce offerte / 10</div>`:""}
    ${available?"":`<div class="unavailable-card-overlay"><span>غير متوفر حاليا</span></div>`}
   </div>
   <div class="card-body">
@@ -404,7 +424,7 @@ async function createOrderPDF(order){
    // Pre-load logo as base64 so html2canvas can render it offline
    let logoB64 = "";
    try{
-     const r = await fetch("https://www.dropbox.com/scl/fi/xw1zrjilt00hydjh1bc6m/1756847562213.jpg?rlkey=hfxxdkzfb6c2av6op4qibeu8e&st=yv1m9vxd&raw=1");
+     const r = await fetch("https://www.dropbox.com/scl/fi/g6bef6j1a3gtse98o9ktp/Picsart_26-08-12_00-00-35-616.png?rlkey=z5wm1262vccogra8t9n71stei&st=5lq7g02n&raw=1");
      const blob = await r.blob();
      logoB64 = await new Promise(res=>{ const fr=new FileReader(); fr.onload=e=>res(e.target.result); fr.readAsDataURL(blob); });
    }catch(e){ console.warn("Logo load failed",e); }
@@ -415,30 +435,66 @@ async function createOrderPDF(order){
    const d=new Date(order.date);
    const date=d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
    const time=d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
-   const rows=order.items.map(row=>{
-     const p=products.find(x=>x.id===row.id); if(!p)return "";
-     const boxes=Number(row.qty)||0, units=Number(p.qty)||0, line=Number(p.price||0)*units*boxes;
-     return `<tr><td style="padding:12px;border-bottom:1px solid #ddd;text-align:right">${esc(p.name)}</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:center">${boxes}</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:center">${units}</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:right">${money(p.price)} DH</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:right;font-weight:700">${money(line)} DH</td></tr>`;
-   }).join("");
+    const rows=order.items.map(row=>{
+      const p=products.find(x=>x.id===row.id)||{};
+      const boxes=Number(row.qty)||0;
+      const units=Number(row.units ?? p.qty)||0;
+      const unitPrice=Number(row.unitPrice ?? p.price)||0;
+      const paidUnits=Number(row.paidUnits ?? (boxes*units))||0;
+      const freeUnits=Number(row.freeUnits ?? (hasPromo10Plus1(p)?Math.floor(paidUnits/10):0))||0;
+      const deliveredUnits=paidUnits+freeUnits;
+      const line=Number(row.lineTotal ?? (unitPrice*paidUnits))||0;
+      const promoNote=freeUnits>0?`<div style="margin-top:4px;color:#d92d20;font-size:11px;font-weight:800">🎁 10 + 1 GRATUIT · +${freeUnits} pièce(s) offerte(s) · livré : ${deliveredUnits}</div>`:"";
+      return `<tr><td style="padding:12px;border-bottom:1px solid #ddd;text-align:left"><div>${esc(row.name||p.name||"Produit")}</div>${promoNote}</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:center">${boxes}</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:center">${units}</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:right">${money(unitPrice)} DH</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:right;font-weight:700">${money(line)} DH</td></tr>`;
+    }).join("");
 
-   const logoHtml = logoB64
-     ? `<div style="margin-top:40px;text-align:center"><img src="${logoB64}" style="width:180px;max-width:55%;height:auto;opacity:.18;filter:grayscale(1)"></div>`
-     : `<div style="margin-top:40px;text-align:center;font-size:22px;letter-spacing:6px;font-weight:900;color:#ddd;opacity:.35">3D PEINTURES</div>`;
+   const watermarkHtml = logoB64
+     ? `<div style="position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);width:620px;opacity:0.18;z-index:0;pointer-events:none;"><img src="${logoB64}" style="width:100%;height:auto;filter:none;"></div>`
+     : `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:80px;font-weight:900;color:#ddd;opacity:0.15;z-index:0;pointer-events:none;white-space:nowrap;transform:translate(-50%,-50%) rotate(-30deg);">3D PEINTURES</div>`;
 
-   root.innerHTML=`<div style="border-bottom:4px solid #12386f;padding-bottom:18px;margin-bottom:25px">
-<div style="font-size:16px;letter-spacing:4px;color:#b58a2a;font-weight:700">3D PEINTURES</div>
-<div style="font-size:34px;font-weight:800;margin-top:6px">BON DE COMMANDE</div>
-<div style="font-size:14px;color:#667085;margin-top:8px">${date} à ${time}</div></div>
-<div style="display:flex;justify-content:space-between;gap:25px;margin-bottom:25px;direction:ltr">
-<div style="flex:1;border:1px solid #ddd;border-radius:12px;padding:18px"><div style="color:#777">CLIENT</div><div style="font-size:24px;font-weight:800;margin-top:8px">${esc(order.client)}</div>
-${order.company?`<div style="margin-top:8px"><b>Société :</b> ${esc(order.company)}</div>`:""}${order.ice?`<div style="margin-top:5px"><b>ICE :</b> ${esc(order.ice)}</div>`:""}${order.phone?`<div style="margin-top:5px"><b>Téléphone :</b> ${esc(order.phone)}</div>`:""}</div>
-<div style="width:240px;border:1px solid #ddd;border-radius:12px;padding:18px"><div style="color:#777">DATE</div><div style="font-size:20px;font-weight:700;margin-top:8px">${date} · ${time}</div></div></div>
-<table style="width:100%;border-collapse:collapse;font-size:16px;direction:ltr"><thead><tr style="background:#12386f;color:#fff"><th style="padding:12px;text-align:left">Désignation</th><th style="padding:12px">Boîtes</th><th style="padding:12px">Unités / boîte</th><th style="padding:12px;text-align:right">Prix unitaire</th><th style="padding:12px;text-align:right">Total</th></tr></thead><tbody>${rows}</tbody></table>
-<div style="margin-top:25px;margin-left:auto;width:360px;border:2px solid #12386f;border-radius:14px;padding:18px;direction:ltr"><div style="display:flex;justify-content:space-between;font-size:24px;font-weight:900"><span>Total Payé</span><span>${money(order.total)} DH</span></div></div>
-<div style="margin-top:38px;text-align:center;font-weight:900;color:#ff0000;font-size:30px;line-height:1.25">إستخلاص عند الاستلام</div>
-<div style="text-align:center;font-weight:900;color:#ff0000;font-size:24px;line-height:1.25">Paiement à la livraison</div>
-<div style="margin-top:28px;text-align:center;color:#777;font-size:14px">Merci pour votre confiance · 3D PEINTURES</div>
-${logoHtml}`;
+   root.innerHTML=`
+     ${watermarkHtml}
+     <div style="position:relative;z-index:1;">
+       <div style="border-bottom:4px solid #12386f;padding-bottom:18px;margin-bottom:25px">
+         <div style="font-size:16px;letter-spacing:4px;color:#b58a2a;font-weight:700">3D PEINTURES</div>
+         <div style="font-size:34px;font-weight:800;margin-top:6px">BON DE COMMANDE</div>
+         <div style="font-size:14px;color:#667085;margin-top:8px">${date} à ${time}</div>
+       </div>
+       <div style="display:flex;justify-content:space-between;gap:25px;margin-bottom:25px;direction:ltr">
+         <div style="flex:1;border:1px solid #ddd;border-radius:12px;padding:18px">
+           <div style="color:#777">CLIENT</div>
+           <div style="font-size:24px;font-weight:800;margin-top:8px">${esc(order.client)}</div>
+           ${order.company?`<div style="margin-top:8px"><b>Société :</b> ${esc(order.company)}</div>`:""}
+           ${order.ice?`<div style="margin-top:5px"><b>ICE :</b> ${esc(order.ice)}</div>`:""}
+           ${order.phone?`<div style="margin-top:5px"><b>Téléphone :</b> ${esc(order.phone)}</div>`:""}
+         </div>
+         <div style="width:240px;border:1px solid #ddd;border-radius:12px;padding:18px">
+           <div style="color:#777">DATE</div>
+           <div style="font-size:20px;font-weight:700;margin-top:8px">${date} · ${time}</div>
+         </div>
+       </div>
+       <table style="width:100%;border-collapse:collapse;font-size:16px;direction:ltr">
+         <thead>
+           <tr style="background:#12386f;color:#fff">
+             <th style="padding:12px;text-align:left">Désignation</th>
+             <th style="padding:12px">Boîtes</th>
+             <th style="padding:12px">Unités / boîte</th>
+             <th style="padding:12px;text-align:right">Prix unitaire</th>
+             <th style="padding:12px;text-align:right">Total</th>
+           </tr>
+         </thead>
+         <tbody>${rows}</tbody>
+       </table>
+       <div style="margin-top:25px;margin-left:auto;width:360px;border:2px solid #12386f;border-radius:14px;padding:18px;direction:ltr">
+         <div style="display:flex;justify-content:space-between;font-size:24px;font-weight:900">
+           <span>Total Payé</span>
+           <span>${money(order.total)} DH</span>
+         </div>
+       </div>
+       <div style="margin-top:38px;text-align:center;font-weight:900;color:#ff0000;font-size:30px;line-height:1.25">إستخلاص عند الاستلام</div>
+       <div style="text-align:center;font-weight:900;color:#ff0000;font-size:24px;line-height:1.25">Paiement à la livraison</div>
+       <div style="margin-top:28px;text-align:center;color:#777;font-size:14px">Merci pour votre confiance · 3D PEINTURES</div>
+     </div>`;
 
    document.body.appendChild(root);
    const canvas=await html2canvas(root,{scale:2,backgroundColor:"#ffffff",useCORS:true,logging:false});
@@ -467,11 +523,14 @@ async function shareOrderPDF(order){
    ice:order.ice||"",phone:order.phone||"",whatsapp:order.phone||"",total:Number(order.total||0),
    paid:Number(order.paid||0),due:Number(order.due||0),status:order.status||"unpaid",
    note:order.note||"إستخلاص عند الاستلام — Paiement à la livraison",
-   items:order.items.map(row=>{
-     const p=products.find(x=>x.id===row.id)||{};
-     const boxes=Number(row.qty)||0, units=Number(p.qty)||0;
-     return {name:p.name||"",boxes,units,unitPrice:Number(p.price||0),lineTotal:Number(p.price||0)*units*boxes};
-   })
+    items:order.items.map(row=>{
+      const p=products.find(x=>x.id===row.id)||{};
+      const boxes=Number(row.qty)||0, units=Number(row.units ?? p.qty)||0;
+      const unitPrice=Number(row.unitPrice ?? p.price)||0;
+      const paidUnits=Number(row.paidUnits ?? (boxes*units))||0;
+      const freeUnits=Number(row.freeUnits ?? (hasPromo10Plus1(p)?Math.floor(paidUnits/10):0))||0;
+      return {name:row.name||p.name||"",boxes,units,paidUnits,freeUnits,deliveredUnits:paidUnits+freeUnits,unitPrice,lineTotal:Number(row.lineTotal ?? (unitPrice*paidUnits))||0,promotion:freeUnits>0?"10 + 1 Gratuit":""};
+    })
  };
  // Android native PDF: works offline inside the APK and shares the real PDF file.
  if(window.Android && typeof window.Android.createOrderPdf==="function"){
@@ -501,10 +560,14 @@ async function shareOrderPDF(order){
    if(order.ice)     lines.push("📋 ICE : "+order.ice);
    lines.push("");
    (order.items||[]).forEach(it=>{
-     const p=products.find(x=>x.id===(it.id||""))||{name:it.name||"",price:it.unitPrice||0,qty:it.units||0};
-     const boxes=Number(it.qty||it.boxes||0), units=Number(it.units||p.qty||0), price=Number(it.unitPrice||p.price||0);
-     const total=boxes*units*price;
-     lines.push(`🔹 ${p.name||it.name} — ${boxes} boîte(s) × ${units} u = *${money(total)} DH*`);
+      const p=products.find(x=>x.id===(it.id||""))||{name:it.name||"",price:it.unitPrice||0,qty:it.units||0};
+      const boxes=Number(it.qty||it.boxes||0), units=Number(it.units||p.qty||0), price=Number(it.unitPrice||p.price||0);
+      const paidUnits=Number(it.paidUnits ?? (boxes*units))||0;
+      const freeUnits=Number(it.freeUnits)||0;
+      const deliveredUnits=paidUnits+freeUnits;
+      const total=paidUnits*price;
+      lines.push(`🔹 ${p.name||it.name} — ${boxes} boîte(s) × ${paidUnits} pièces payées = *${money(total)} DH*`);
+      if(freeUnits>0) lines.push(`🎁 Offre 10 + 1 : +${freeUnits} pièce(s) gratuite(s) · total livré : ${deliveredUnits} pièces`);
    });
    lines.push("","💰 *Total Payé : "+money(order.total)+" DH*","","إستخلاص عند الاستلام — Paiement à la livraison");
    const msg=encodeURIComponent(lines.join("\n"));
@@ -529,14 +592,19 @@ async function saveOrder(e){
    status:"unpaid",note:$('orderNote').value.trim() || "إستخلاص عند الاستلام — Paiement à la livraison",
    items:cart.map(row=>{
      const p=products.find(x=>x.id===row.id)||{};
-     const boxes=Number(row.qty)||0, units=Number(p.qty)||0, unitPrice=Number(p.price)||0;
-     return {
-       id:row.id, qty:boxes,
-       name:p.name||"",
-       units,
-       unitPrice,
-       lineTotal:unitPrice*units*boxes
-     };
+       const boxes=Number(row.qty)||0, units=Number(p.qty)||0, unitPrice=Number(p.price)||0;
+       const promo=promoForBoxes(p,boxes);
+       return {
+         id:row.id, qty:boxes,
+         name:p.name||"",
+         units,
+         paidUnits:promo.paidUnits,
+         freeUnits:promo.freeUnits,
+         deliveredUnits:promo.deliveredUnits,
+         promotion:promo.freeUnits>0?"10 + 1 Gratuit":"",
+         unitPrice,
+         lineTotal:unitPrice*promo.paidUnits
+       };
    })
  };
  orders.unshift(order);
@@ -619,8 +687,10 @@ function orderItemsForDisplay(order){
    const units=Number(row.units ?? p.qty)||0;
    const unitPrice=Number(row.unitPrice ?? p.price)||0;
    const name=row.name || p.name || "Produit";
-   const lineTotal=Number(row.lineTotal ?? (unitPrice*units*boxes)) || 0;
-   return {name,boxes,units,unitPrice,lineTotal};
+   const paidUnits=Number(row.paidUnits ?? (units*boxes)) || 0;
+   const freeUnits=Number(row.freeUnits ?? (hasPromo10Plus1(p)?Math.floor(paidUnits/10):0)) || 0;
+   const lineTotal=Number(row.lineTotal ?? (unitPrice*paidUnits)) || 0;
+   return {name,boxes,units,paidUnits,freeUnits,deliveredUnits:paidUnits+freeUnits,unitPrice,lineTotal,promotion:freeUnits>0?"10 + 1 Gratuit":""};
  });
 }
 function openOrderDetail(orderId){
@@ -649,7 +719,7 @@ function openOrderDetail(orderId){
      <div class="detail-products-head"><span>Produit</span><span>Boîtes</span><span>Unités/boîte</span><span>Prix</span><span>Total</span></div>
      ${items.length?items.map(it=>`
        <div class="detail-product-row">
-         <strong>${esc(it.name)}</strong>
+         <strong>${esc(it.name)}${it.freeUnits>0?`<small class="detail-promo-note">🎁 +${it.freeUnits} gratuit · livré ${it.deliveredUnits}</small>`:""}</strong>
          <span>${it.boxes}</span>
          <span>${it.units}</span>
          <span>${money(it.unitPrice)} DH</span>
@@ -677,6 +747,7 @@ function openForm(p=null){
  $("formModal").classList.add("show");$("modalTitle").textContent=p?"Modifier le produit":"Nouveau produit";
  $("editId").value=p?.id||"";$("name").value=p?.name||"";$("price").value=p?.price??"";$("costPrice").value=p?.costPrice??0;$("qty").value=p?.qty??"";
  $("category").value=p?.category||active;$("availability").value=p?.availability==="unavailable"?"unavailable":"available";$("description").value=p?.description||"";selectedImage=p?.image||"";
+ $("promo10Plus1").checked=hasPromo10Plus1(p);
  if(selectedImage){$("preview").src=selectedImage;$("photoPicker").classList.add("has-image")}else{$("preview").src="";$("photoPicker").classList.remove("has-image")}
 }
 function closeForm(){$("formModal").classList.remove("show")}
@@ -690,7 +761,7 @@ $("imageInput").onchange=async e=>{
 $("productForm").onsubmit=async e=>{
  e.preventDefault();
  const id=$("editId").value||makeId();
- const data={id,name:$("name").value.trim(),price:Number($("price").value),costPrice:Number($("costPrice").value)||0,qty:Number($("qty").value),category:$("category").value,availability:$("availability").value,description:$("description").value.trim(),image:selectedImage};
+ const data={id,name:$("name").value.trim(),price:Number($("price").value),costPrice:Number($("costPrice").value)||0,qty:Number($("qty").value),category:$("category").value,availability:$("availability").value,description:$("description").value.trim(),image:selectedImage,promo10Plus1:$("promo10Plus1").checked};
  const i=products.findIndex(p=>p.id===id);
  const old=i>=0?products[i]:null;
  if(i>=0) products[i]=data; else products.unshift(data);
@@ -724,6 +795,7 @@ function view(id){
  $("viewerImage").src=p.image||"";
  $("viewerName").textContent=p.name;
  $("viewerCategory").textContent=p.category;
+ const badge=$("viewerPromoBadge"); if(badge) badge.style.display=hasPromo10Plus1(p)?"block":"none";
  $("viewerDescription").textContent=available?(p.description||"Produit disponible"):unavailableText();
  $("viewerPrice2").textContent=`${money(p.price)} DH`;
  $("viewerStock").textContent=p.qty;
@@ -793,7 +865,7 @@ $("menuClients").onclick=()=>{$("actionMenu").classList.remove("show");openClien
 renderCart();
 render();
 
-/* ===== SLIDER — auto only, no arrows, no dots ===== */
+/* ===== SLIDER — auto only, no arrows, no dots, no zoom ===== */
 (function(){
   const wrap  = document.getElementById('sliderWrap');
   const track = document.getElementById('sliderTrack');
@@ -801,18 +873,7 @@ render();
   const slides = Array.from(track.querySelectorAll('.slide'));
   const total = slides.length;
   if(total === 0) return;
-  let current = 0, autoTimer;
-
-  // Ken Burns variants per slide
-  const kbAnims = ['kenBurns','kenBurns2','kenBurns3','kenBurns','kenBurns3','kenBurns2'];
-
-  function applyKB(slide, idx){
-    const img = slide.querySelector('img');
-    if(!img) return;
-    img.style.animation = 'none';
-    void img.offsetWidth;
-    img.style.animation = kbAnims[idx % kbAnims.length] + ' 6.5s ease-out forwards';
-  }
+  let current = 0;
 
   function goTo(n){
     const prev = current;
@@ -821,14 +882,9 @@ render();
     slides[prev].classList.remove('active');
     slides[prev].classList.add('prev');
     setTimeout(()=> slides[prev].classList.remove('prev'), 900);
-    applyKB(slides[current], current);
     slides[current].classList.add('active');
   }
 
-  // Init first slide
   slides[0].classList.add('active');
-  applyKB(slides[0], 0);
-
-  // Auto every 4s
-  autoTimer = setInterval(()=> goTo(current + 1), 4000);
+  setInterval(()=> goTo(current + 1), 4000);
 })();
