@@ -1,5 +1,9 @@
 const KEY="3d_peintures_catalog_v3";
 const categories=["PRODUITS","ESSENCE JUPITER","DILUANT","COLLE","PEINTURE"];
+function canonicalCategory(value){
+ const normalized=String(value||"").trim().toUpperCase();
+ return categories.find(c=>c.toUpperCase()===normalized)||categories[0];
+}
 let products=JSON.parse(localStorage.getItem(KEY)||"[]");
 let active=categories[0], selectedImage="", selectedProductId=null, viewerBoxQty=0;
 let cart=JSON.parse(localStorage.getItem("3d_peintures_cart_v4")||"[]");
@@ -147,11 +151,11 @@ function render(){
  $("categories").innerHTML=categories.map(c=>`<button class="cat ${active===c?"active":""}" data-cat="${esc(c)}">${esc(c)}</button>`).join("");
  document.querySelectorAll(".cat").forEach(b=>b.onclick=()=>{active=b.dataset.cat;selectedProductId=null;render()});
  $("sectionTitle").textContent=active;
- const q=$("search").value.trim().toLowerCase();
+ const q="";
  const list=products.filter(p=>{
    const pCat = String(p.category||"").trim().toUpperCase();
    const activeCat = String(active||"").trim().toUpperCase();
-   return pCat === activeCat && (!q || p.name.toLowerCase().includes(q));
+   return pCat === activeCat;
  });
  $("count").textContent=`${list.length} produit${list.length!==1?"s":""}`;
  $("grid").innerHTML=list.map(card).join("");
@@ -637,12 +641,11 @@ function addPayment(orderId){
 }
 function renderOrders(){
  const q=($("orderSearch").value||"").trim().toLowerCase();
- let sales=0,paid=0,due=0,profit=0;
- orders.forEach(o=>{sales+=Number(o.total)||0;paid+=Number(o.paid)||0;due+=Math.max(0,Number(o.due ?? ((Number(o.total)||0)-(Number(o.paid)||0))));profit+=Number(o.profit)||0});
+ let sales=0,paid=0,due=0;
+ orders.forEach(o=>{sales+=Number(o.total)||0;paid+=Number(o.paid)||0;due+=Math.max(0,Number(o.due ?? ((Number(o.total)||0)-(Number(o.paid)||0))))});
  $("statSales").textContent=money(sales)+" DH";
  $("statPaid").textContent=money(paid)+" DH";
  $("statDue").textContent=money(due)+" DH";
- $("statProfit").textContent=money(profit)+" DH";
  const list=orders.filter(o=>!q||String(o.client||"").toLowerCase().includes(q));
  $("ordersEmpty").style.display=list.length?"none":"block";
  $("ordersList").innerHTML=list.map(o=>{
@@ -665,7 +668,6 @@ function renderOrders(){
        <b>${money(total)} DH</b>
        <span>خلص: ${money(paid)} DH</span>
        <span class="${due>0?"due":""}">باقي: ${money(due)} DH</span>
-       <span class="profit">ربح: ${money(o.profit)} DH</span>
        ${due>0?`<button class="payment-btn" data-order-pay="${o.id}">💰 تسجيل الخلاص</button>`:`<span class="paid-label">✓ مخلصة</span>`}
      </div>
      <button class="order-delete" data-order-delete="${o.id}" title="حذف">×</button>
@@ -750,7 +752,7 @@ function closeOrderDetail(){
 function openForm(p=null){
  $("formModal").classList.add("show");$("modalTitle").textContent=p?"Modifier le produit":"Nouveau produit";
  $("editId").value=p?.id||"";$("name").value=p?.name||"";$("price").value=p?.price??"";$("costPrice").value=p?.costPrice??0;$("qty").value=p?.qty??"";
- $("category").value=p?.category||active;$("availability").value=p?.availability==="unavailable"?"unavailable":"available";$("description").value=p?.description||"";selectedImage=p?.image||"";
+ $("category").value=p?canonicalCategory(p.category):canonicalCategory(active);$("availability").value=p?.availability==="unavailable"?"unavailable":"available";$("description").value=p?.description||"";selectedImage=p?.image||"";
  $("promo10Plus1").checked=hasPromo10Plus1(p);
  if(selectedImage){$("preview").src=selectedImage;$("photoPicker").classList.add("has-image")}else{$("preview").src="";$("photoPicker").classList.remove("has-image")}
 }
@@ -765,15 +767,16 @@ $("imageInput").onchange=async e=>{
 $("productForm").onsubmit=async e=>{
  e.preventDefault();
  const id=$("editId").value||makeId();
- const data={id,name:$("name").value.trim(),price:Number($("price").value),costPrice:Number($("costPrice").value)||0,qty:Number($("qty").value),category:$("category").value,availability:$("availability").value,description:$("description").value.trim(),image:selectedImage,promo10Plus1:$("promo10Plus1").checked};
  const i=products.findIndex(p=>p.id===id);
  const old=i>=0?products[i]:null;
+ const keepCategory=old?canonicalCategory(old.category||active):canonicalCategory($("category").value||active);
+ const data={id,name:$("name").value.trim(),price:Number($("price").value),costPrice:Number($("costPrice").value)||0,qty:Number($("qty").value),category:keepCategory,availability:$("availability").value,description:$("description").value.trim(),image:selectedImage,promo10Plus1:$("promo10Plus1").checked};
  if(i>=0) products[i]=data; else products.unshift(data);
  if(!save()){
    await compactProductsImages();
    if(!save()){ if(i>=0) products[i]=old; else products=products.filter(p=>p.id!==id); return; }
  }
- selectedProductId=id;active=data.category;closeForm();render();toast(i>=0?"Produit modifié":"Produit ajouté");e.target.reset();selectedImage="";
+ selectedProductId=id;active=keepCategory;closeForm();render();toast(i>=0?"Produit modifié":"Produit ajouté");e.target.reset();selectedImage="";
 };
 
 /* viewer */
@@ -841,7 +844,6 @@ $("viewerPlus").onclick=()=>{
 };
 $("closeViewer").onclick=()=>$("viewer").classList.remove("show");
 $("viewer").onclick=e=>{if(e.target===$("viewer"))$("viewer").classList.remove("show")};
-$("search").oninput=render;
 $("cartBtn").onclick=openCart;
 $("closeCart").onclick=closeCart;
 $("cartOverlay").onclick=closeCart;
