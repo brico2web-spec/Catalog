@@ -302,6 +302,12 @@
       <label>ICE<input id="clientICE" placeholder="ICE"></label>
       <label>Titulaire du chèque / cambiale<input id="clientPaymentHolder" placeholder="اسم صاحب الشيك أو الكمبيالة"></label>
       <label>Numéro du chèque / cambiale<input id="clientPaymentNumber" placeholder="رقم الشيك أو الكمبيالة"></label>
+      <label>Type de paiement
+        <select id="clientPaymentType">
+          <option value="cheque">Chèque</option>
+          <option value="lettre_de_change">Lettre de change / Cambiale</option>
+        </select>
+      </label>
       <label>WhatsApp<input id="clientWhatsapp" type="tel" placeholder="06XXXXXXXX"></label>
       <button class="gold-btn full" type="submit">✓ Enregistrer le client</button>
     </form>

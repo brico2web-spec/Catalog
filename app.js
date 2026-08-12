@@ -486,6 +486,12 @@ function clientField(row, names){
   }
   return "";
 }
+function paymentTypeValue(value){
+  const raw=String(value||"").trim().toLowerCase();
+  if(["lettre_de_change","lettre de change","cambiale","cambial","كمبيالة","الكمبيالة"].includes(raw))return "lettre_de_change";
+  return "cheque";
+}
+function paymentTypeLabel(value){return paymentTypeValue(value)==="lettre_de_change"?"Lettre de change / Cambiale":"Chèque"}
 function renderClientList(){
   const dl=$("clientsList"); if(!dl)return;
   const unique=[...new Set(clients.map(c=>c.name).filter(Boolean))];
@@ -515,6 +521,7 @@ function importClientsExcel(file){
           ice:clientField(r,["ICE","Identifiant fiscal"]),
           paymentHolder:clientField(r,["Titulaire du chèque","Titulaire cheque","Propriétaire chèque","Nom du chèque","Cheque holder","Payment holder"]),
           paymentNumber:clientField(r,["Numéro du chèque","Numero cheque","N° chèque","Num cheque","Numéro cambiale","Cheque number","Payment number"]),
+          paymentType:paymentTypeValue(clientField(r,["Type de paiement","Type paiement","Payment type","Mode de paiement","Mode paiement","Type cheque","Type chèque"])),
           importedAt:new Date().toISOString()
         });
       });
@@ -546,7 +553,7 @@ function openClientModal(prefillName=""){
   const existing=clients.find(c=>String(c.name||"").trim().toLowerCase()===String(initialName||"").trim().toLowerCase());
   $("clientName").value=initialName;
   if($("clientManagerSearch")){ $("clientManagerSearch").value=""; $("clearClientManagerSearch").style.display="none"; }
-  $("clientCompany").value=existing?.company||""; $("clientICE").value=existing?.ice||""; $("clientPaymentHolder").value=existing?.paymentHolder||existing?.chequeHolder||existing?.paymentName||""; $("clientPaymentNumber").value=existing?.paymentNumber||existing?.chequeNumber||""; $("clientWhatsapp").value=existing?.phone||"";
+  $("clientCompany").value=existing?.company||""; $("clientICE").value=existing?.ice||""; $("clientPaymentHolder").value=existing?.paymentHolder||existing?.chequeHolder||existing?.paymentName||""; $("clientPaymentNumber").value=existing?.paymentNumber||existing?.chequeNumber||""; $("clientPaymentType").value=paymentTypeValue(existing?.paymentType||existing?.paymentMode||existing?.modePaiement); $("clientWhatsapp").value=existing?.phone||"";
    renderClientsManager();
    renderClientStats();
    $("clientModal").classList.add("show");
@@ -749,6 +756,7 @@ async function createClientBillingPDF(client){
          <div style="padding-bottom:13px;border-bottom:1px solid #e5e7eb"><span style="display:block;color:#667085;font-size:12px;margin-bottom:6px">ICE</span><b>${esc(client.ice||"—")}</b></div>
          <div style="padding-bottom:13px;border-bottom:1px solid #e5e7eb"><span style="display:block;color:#667085;font-size:12px;margin-bottom:6px">TITULAIRE DU CHÈQUE / CAMBIALE</span><b>${esc(client.paymentHolder||client.chequeHolder||client.paymentName||"—")}</b></div>
          <div style="padding-bottom:13px;border-bottom:1px solid #e5e7eb"><span style="display:block;color:#667085;font-size:12px;margin-bottom:6px">NUMÉRO DU CHÈQUE / CAMBIALE</span><b>${esc(client.paymentNumber||client.chequeNumber||"—")}</b></div>
+         <div style="padding-bottom:13px;border-bottom:1px solid #e5e7eb"><span style="display:block;color:#667085;font-size:12px;margin-bottom:6px">TYPE DE PAIEMENT</span><b>${esc(paymentTypeLabel(client.paymentType||client.paymentMode||client.modePaiement))}</b></div>
          <div style="padding-bottom:13px;border-bottom:1px solid #e5e7eb"><span style="display:block;color:#667085;font-size:12px;margin-bottom:6px">DATE D'ENVOI</span><b>${date}</b></div>
        </div>
      </div>
@@ -783,10 +791,10 @@ function renderClientsManager(){
    if(!query)return true;
    return [c.name,c.company,c.ice,c.paymentHolder,c.paymentNumber,c.paymentName,c.chequeHolder,c.chequeNumber,c.chequeName,c.cambiale].some(value=>normalizeClientSearch(value).includes(query));
  });
- box.innerHTML=visibleClients.map(c=>`<div class="client-manager-row"><div><b>${esc(c.name||"")}</b><small>${esc(c.company||"")}${c.ice?` · ICE ${esc(c.ice)}`:""}${(c.paymentHolder||c.paymentName)?` · صاحب: ${esc(c.paymentHolder||c.paymentName)}`:""}${c.paymentNumber?` · رقم: ${esc(c.paymentNumber)}`:""}${c.phone?` · WhatsApp ${esc(c.phone)}`:""}</small></div><div class="client-manager-actions"><button type="button" data-client-invoice="${esc(c.id)}">📄 Infos facturation</button><button type="button" data-client-edit="${esc(c.id)}">Modifier</button></div></div>`).join("") || `<div class="cart-empty">${query?"ما لقيتش زبون مطابق للبحث.":"Aucun client enregistré."}</div>`;
+ box.innerHTML=visibleClients.map(c=>`<div class="client-manager-row"><div><b>${esc(c.name||"")}</b><small>${esc(c.company||"")}${c.ice?` · ICE ${esc(c.ice)}`:""}${(c.paymentHolder||c.paymentName)?` · صاحب: ${esc(c.paymentHolder||c.paymentName)}`:""}${c.paymentNumber?` · رقم: ${esc(c.paymentNumber)}`:""}${c.paymentType?` · ${esc(paymentTypeLabel(c.paymentType))}`:""}${c.phone?` · WhatsApp ${esc(c.phone)}`:""}</small></div><div class="client-manager-actions"><button type="button" data-client-invoice="${esc(c.id)}">📄 Infos facturation</button><button type="button" data-client-edit="${esc(c.id)}">Modifier</button></div></div>`).join("") || `<div class="cart-empty">${query?"ما لقيتش زبون مطابق للبحث.":"Aucun client enregistré."}</div>`;
    box.querySelectorAll("[data-client-edit]").forEach(btn=>btn.onclick=()=>{
      const c=clients.find(x=>x.id===btn.dataset.clientEdit); if(!c)return;
-     $("clientEditId").value=c.id; $("clientName").value=c.name||""; $("clientCompany").value=c.company||""; $("clientICE").value=c.ice||""; $("clientPaymentHolder").value=c.paymentHolder||c.chequeHolder||c.paymentName||""; $("clientPaymentNumber").value=c.paymentNumber||c.chequeNumber||""; $("clientWhatsapp").value=c.phone||"";
+      $("clientEditId").value=c.id; $("clientName").value=c.name||""; $("clientCompany").value=c.company||""; $("clientICE").value=c.ice||""; $("clientPaymentHolder").value=c.paymentHolder||c.chequeHolder||c.paymentName||""; $("clientPaymentNumber").value=c.paymentNumber||c.chequeNumber||""; $("clientPaymentType").value=paymentTypeValue(c.paymentType||c.paymentMode||c.modePaiement); $("clientWhatsapp").value=c.phone||"";
    });
    box.querySelectorAll("[data-client-invoice]").forEach(btn=>btn.onclick=()=>{
      const c=clients.find(x=>x.id===btn.dataset.clientInvoice); if(c) shareClientBillingPDF(c);
@@ -795,7 +803,7 @@ function renderClientsManager(){
 function saveClientForm(e){
  e.preventDefault();
  const name=$("clientName").value.trim(); if(!name){alert("دخل اسم الكليان");return}
- const data={id:$("clientEditId").value||("c_"+Date.now().toString(36)),name,company:$("clientCompany").value.trim(),ice:$("clientICE").value.trim(),paymentHolder:$("clientPaymentHolder").value.trim(),paymentNumber:$("clientPaymentNumber").value.trim(),phone:$("clientWhatsapp").value.trim()};
+  const data={id:$("clientEditId").value||("c_"+Date.now().toString(36)),name,company:$("clientCompany").value.trim(),ice:$("clientICE").value.trim(),paymentHolder:$("clientPaymentHolder").value.trim(),paymentNumber:$("clientPaymentNumber").value.trim(),paymentType:paymentTypeValue($("clientPaymentType").value),phone:$("clientWhatsapp").value.trim()};
  const idx=clients.findIndex(c=>c.id===data.id);
  const duplicate=clients.findIndex(c=>c.id!==data.id && String(c.name||"").trim().toLowerCase()===name.toLowerCase());
  if(duplicate>=0){ clients[duplicate]={...clients[duplicate],...data,id:clients[duplicate].id}; }
@@ -879,6 +887,7 @@ async function createOrderPDF(order){
            ${order.company?`<div style="margin-top:8px"><b>Société :</b> ${esc(order.company)}</div>`:""}
            ${order.ice?`<div style="margin-top:5px"><b>ICE :</b> ${esc(order.ice)}</div>`:""}
            ${order.paymentNumber?`<div style="margin-top:5px"><b>N° chèque / cambiale :</b> ${esc(order.paymentNumber)}</div>`:""}
+           ${order.paymentType?`<div style="margin-top:5px"><b>Type de paiement :</b> ${esc(paymentTypeLabel(order.paymentType))}</div>`:""}
            ${order.phone?`<div style="margin-top:5px"><b>Téléphone :</b> ${esc(order.phone)}</div>`:""}
          </div>
          <div style="width:240px;border:1px solid #ddd;border-radius:12px;padding:18px">
@@ -1008,7 +1017,7 @@ async function shareInvoiceRequestPDF(order){
 async function shareOrderPDF(order){
  const nativePayload={
    id:order.id,date:order.date,client:order.client,company:order.company||"",
-   ice:order.ice||"",paymentNumber:order.paymentNumber||"",phone:order.phone||"",whatsapp:order.phone||"",total:Number(order.total||0),
+   ice:order.ice||"",paymentNumber:order.paymentNumber||"",paymentType:paymentTypeValue(order.paymentType),phone:order.phone||"",whatsapp:order.phone||"",total:Number(order.total||0),
    paid:Number(order.paid||0),due:Number(order.due||0),status:order.status||"unpaid",
    note:order.note||"إستخلاص عند الاستلام — Paiement à la livraison",
     items:order.items.map(row=>{
@@ -1057,6 +1066,7 @@ async function shareOrderPDF(order){
       lines.push(`🔹 ${p.name||it.name} — ${boxes} boîte(s) × ${paidUnits} pièces payées = *${money(total)} DH*`);
       if(freeUnits>0) lines.push(`🎁 Offre 10 + 1 : +${freeUnits} pièce(s) gratuite(s) · total livré : ${deliveredUnits} pièces`);
    });
+   if(order.paymentType) lines.push("💳 Type de paiement : "+paymentTypeLabel(order.paymentType));
    lines.push("","💰 *Total Payé : "+money(order.total)+" DH*","","إستخلاص عند الاستلام — Paiement à la livraison");
    const msg=encodeURIComponent(lines.join("\n"));
    const waUrl=phone ? `https://wa.me/${phone}?text=${msg}` : `https://wa.me/?text=${msg}`;
@@ -1075,7 +1085,7 @@ async function saveOrder(e){
  const order={
    id:makeId(),date:new Date().toISOString(),client,
    company:clientObj.company||clientObj.societe||"",
-   ice:clientObj.ice||"",paymentHolder:clientObj.paymentHolder||clientObj.chequeHolder||clientObj.paymentName||clientObj.chequeName||"",paymentNumber:$('orderPaymentNumber').value.trim()||clientObj.paymentNumber||clientObj.chequeNumber||"",phone:clientObj.phone||"",
+   ice:clientObj.ice||"",paymentHolder:clientObj.paymentHolder||clientObj.chequeHolder||clientObj.paymentName||clientObj.chequeName||"",paymentNumber:$('orderPaymentNumber').value.trim()||clientObj.paymentNumber||clientObj.chequeNumber||"",paymentType:paymentTypeValue(clientObj.paymentType||clientObj.paymentMode||clientObj.modePaiement),phone:clientObj.phone||"",
    total:x.total,paid:0,due:x.total,profit:x.profit,
    status:"unpaid",note:$('orderNote').value.trim() || "إستخلاص عند الاستلام — Paiement à la livraison",
    items:cart.map(row=>{
