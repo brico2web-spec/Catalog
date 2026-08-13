@@ -431,7 +431,7 @@ function exportFullArchiveExcel(){
   
   const productRows=safeWrap(()=>products.map((p,i)=>{const row=backupProductSnapshot(p,i);return {"المعرف":row.id,"كود المنتج":row.code,"اسم المنتج":row.name,"القسم":row.category,"الثمن (DH)":row.price,"ثمن التكلفة (DH)":row.costPrice,"الوحدات في العلبة":row.qty,"التوفر":row.availability==="unavailable"?"غير متوفر":"متوفر","عرض 10+1":row.promo10Plus1?"نعم":"لا","الوصف":row.description,"الصورة (Data URL)":row.image};}));
   const clientRows=safeWrap(()=>clients.map(c=>({"المعرف":c.id||"","اسم الزبون":c.name||"","الهاتف":c.phone||"","الشركة":c.company||c.societe||"","المدينة":c.city||"","العنوان":c.address||"","ICE":c.ice||"","صاحب الشيك/الكمبيالة":c.paymentHolder||c.paymentName||c.chequeName||"","رقم الشيك/الكمبيالة":c.paymentNumber||c.chequeNumber||"","نوع الأداء":paymentTypeLabel(c.paymentType),"تاريخ الإضافة":c.importedAt||c.createdAt||""})));
-  const orderRows=safeWrap(()=>orders.map(o=>{ensureOrderDeadline(o);const state=recalculateOrderPaymentState(o);const deadline=deadlineState(o);return {"المعرف":o.id||"","التاريخ":o.date||"","الزبون":o.client||"","الشركة":o.company||"","ICE":o.ice||"","الهاتف":o.phone||"","الإجمالي (DH)":Number(o.total)||0,"المخلص (DH)":Number(state.paid)||0,"الباقي (DH)":Number(state.due)||0,"الحالة":o.status||"unpaid","مدة الأداء (يوم)":deadline.term,"تاريخ الاستحقاق":o.dueDate||"","صاحب الشيك/الكمبيالة":o.paymentHolder||o.paymentName||"","رقم الشيك/الكمبيالة":o.paymentNumber||"","نوع الأداء":paymentTypeLabel(o.paymentType),"الملاحظة":o.note||"","عدد العناصر":Array.isArray(o.items)?o.items.length:0};}));
+  const orderRows=safeWrap(()=>orders.map(o=>{ensureOrderDeadline(o);const state=recalculateOrderPaymentState(o);const deadline=deadlineState(o);return {"المعرف":o.id||"","التاريخ":o.date||"","الزبون":o.client||"","الشركة":o.company||"","ICE":o.ice||"","الهاتف":o.phone||"","الإجمالي (DH)":Number(o.total)||0,"المخلص (DH)":Number(state.paid)||0,"الباقي (DH)":Number(state.due)||0,"الحالة":o.status||"unpaid","مدة الأداء (يوم)":deadline.term,"وضع الأجل":deadline.termKey==="cod"?"إستخلاص عند الإستلام / Paiement à la livraison":(deadline.termKey==="test_1m"?"تجربة دقيقة":"أيام"),"مدة الأداء (دقيقة)":deadline.termKey==="test_1m"?(Number(o.paymentTermMinutes)||1):"","تاريخ الاستحقاق":o.dueDate||"","صاحب الشيك/الكمبيالة":o.paymentHolder||o.paymentName||"","رقم الشيك/الكمبيالة":o.paymentNumber||"","نوع الأداء":paymentTypeLabel(o.paymentType),"الملاحظة":o.note||"","عدد العناصر":Array.isArray(o.items)?o.items.length:0};}));
   
   const paymentRows=[];
   safeWrap(()=>{orders.forEach(o=>{ensureOrderDeadline(o);getPaymentHistory(o).forEach((p,index)=>paymentRows.push({"معرف القسط":p.id||`payment_${index+1}`,"معرف الكوموند":o.id||"","الزبون":o.client||"","رقم القسط":index+1,"مبلغ القسط (DH)":Number(p.amount)||0,"تاريخ وتوقيت الأداء":p.date||"","نوع الأداء":paymentTypeLabel(p.type||o.paymentType),"صاحب الشيك/الكمبيالة":p.holder||o.paymentHolder||"","رقم الشيك/الكمبيالة":p.number||o.paymentNumber||"","مدة الكوموند (يوم)":Number(o.paymentTermDays)||15,"تاريخ الاستحقاق":o.dueDate||""}));});});
@@ -478,7 +478,7 @@ function exportOrdersAndAccountsExcel(){
     const state=recalculateOrderPaymentState(o), deadline=deadlineState(o), clientObj=(Array.isArray(clients)?clients:[]).find(c=>String(c.name||"").trim().toLowerCase()===String(o.client||"").trim().toLowerCase())||{};
     const account=accountFor(o.client,clientObj), total=safeNumber(o.total), due=safeNumber(state.due), paid=safeNumber(state.paid), date=safeDate(o.date);
     account.orders+=1;account.sales+=total;account.paid+=paid;account.due+=due;if(deadline.overdue&&due>0)account.overdue+=due;if(date&&(!account.lastOrder||date>account.lastOrder))account.lastOrder=date;
-    orderRows.push({"معرف الكوموند":safeCell(o.id),"التاريخ":date,"الزبون":safeCell(o.client),"الشركة":safeCell(o.company||clientObj.company||clientObj.societe),"ICE":safeCell(o.ice||clientObj.ice),"الهاتف":safeCell(o.phone||clientObj.phone),"الإجمالي (DH)":total,"المخلص (DH)":paid,"الباقي (DH)":due,"الحالة":safeCell(o.status||"unpaid"),"مدة الأداء (يوم)":deadline.term,"تاريخ الاستحقاق":safeDate(o.dueDate),"متأخر؟":deadline.overdue&&due>0?"نعم":"لا","نوع الأداء":safeCell(paymentTypeLabel(o.paymentType)),"رقم الشيك/الكمبيالة":safeCell(o.paymentNumber),"الملاحظة":safeCell(o.note)});
+    orderRows.push({"معرف الكوموند":safeCell(o.id),"التاريخ":date,"الزبون":safeCell(o.client),"الشركة":safeCell(o.company||clientObj.company||clientObj.societe),"ICE":safeCell(o.ice||clientObj.ice),"الهاتف":safeCell(o.phone||clientObj.phone),"الإجمالي (DH)":total,"المخلص (DH)":paid,"الباقي (DH)":due,"الحالة":safeCell(o.status||"unpaid"),"مدة الأداء (يوم)":deadline.term,"وضع الأجل":deadline.termKey==="cod"?"إستخلاص عند الإستلام / Paiement à la livraison":(deadline.termKey==="test_1m"?"تجربة دقيقة":"أيام"),"مدة الأداء (دقيقة)":deadline.termKey==="test_1m"?(Number(o.paymentTermMinutes)||1):"","تاريخ الاستحقاق":safeDate(o.dueDate),"متأخر؟":deadline.overdue&&due>0?"نعم":"لا","نوع الأداء":safeCell(paymentTypeLabel(o.paymentType)),"رقم الشيك/الكمبيالة":safeCell(o.paymentNumber),"الملاحظة":safeCell(o.note)});
     getPaymentHistory(o).forEach((p,paymentIndex)=>paymentRows.push({"معرف القسط":safeCell(p.id||`payment_${orderIndex+1}_${paymentIndex+1}`),"معرف الكوموند":safeCell(o.id),"الزبون":safeCell(o.client),"رقم القسط":paymentIndex+1,"مبلغ القسط (DH)":safeNumber(p.amount),"تاريخ وتوقيت الأداء":safeDate(p.date),"نوع الأداء":safeCell(paymentTypeLabel(p.type||o.paymentType)),"صاحب الشيك/الكمبيالة":safeCell(p.holder||o.paymentHolder),"رقم الشيك/الكمبيالة":safeCell(p.number||o.paymentNumber)}));
     (Array.isArray(o.items)?o.items:[]).forEach((item,itemIndex)=>itemRows.push({"معرف الكوموند":safeCell(o.id),"رقم السطر":itemIndex+1,"معرف المنتج":safeCell(item.id),"كود المنتج":safeCell(item.code),"اسم المنتج":safeCell(item.name),"عدد العلب":safeNumber(item.boxes??item.qty),"عدد الوحدات":safeNumber(item.units),"الوحدات المجانية":safeNumber(item.freeUnits),"ثمن الوحدة (DH)":safeNumber(item.unitPrice??item.price),"المجموع (DH)":safeNumber(item.lineTotal??item.total)}));
    }catch(error){console.warn("Order skipped during light export",orderIndex,error);errors.push(`الكوموند ${orderIndex+1}`)}
@@ -647,9 +647,13 @@ function importFullArchiveExcel(file){
    const importedOrders=[];const orderMap=new Map();
    orderRows.forEach((r,i)=>{
     const id=String(r["المعرف"]||r["معرف الكوموند"]||r["معرف الطلب"]||`o_excel_${Date.now().toString(36)}_${i}`);
-    const term=[15,30].includes(excelNum(r["مدة الأداء (يوم)"],15))?excelNum(r["مدة الأداء (يوم)"],15):15;
-    const order={id,date:excelDate(r["التاريخ"]),client:String(r["الزبون"]||""),company:String(r["الشركة"]||""),ice:String(r["ICE"]||""),phone:String(r["الهاتف"]||""),total:excelNum(r["الإجمالي (DH)"]),paid:0,due:0,profit:0,status:"unpaid",paymentTermDays:term,dueDate:excelDate(r["تاريخ الاستحقاق"],null),paymentHolder:String(r["صاحب الشيك/الكمبيالة"]||""),paymentNumber:String(r["رقم الشيك/الكمبيالة"]||""),paymentType:paymentTypeValue(r["نوع الأداء"]),note:String(r["الملاحظة"]||""),payments:[],items:[]};
-    if(!order.dueDate)order.dueDate=new Date(new Date(order.date).getTime()+term*86400000).toISOString();
+    const termLabel=String(r["وضع الأجل"]||r["مدة الأداء (يوم)"]||"").trim().toLowerCase();
+    const isCodTerm=termLabel.includes("استلام")||termLabel.includes("livraison")||termLabel.includes("cod");
+    const isTestTerm=!isCodTerm&&(termLabel.includes("تجربة")||termLabel.includes("test")||Number(r["مدة الأداء (دقيقة)"])===1);
+    const term=isCodTerm||isTestTerm?0:([15,30].includes(excelNum(r["مدة الأداء (يوم)"],15))?excelNum(r["مدة الأداء (يوم)"],15):15);
+    const termMinutes=isTestTerm?Math.max(1,excelNum(r["مدة الأداء (دقيقة)"],1)):null;
+    const order={id,date:excelDate(r["التاريخ"]),client:String(r["الزبون"]||""),company:String(r["الشركة"]||""),ice:String(r["ICE"]||""),phone:String(r["الهاتف"]||""),total:excelNum(r["الإجمالي (DH)"]),paid:0,due:0,profit:0,status:"unpaid",paymentTermDays:term,paymentTermMode:isCodTerm?"cod":(isTestTerm?"test_1m":"days"),paymentTermMinutes:termMinutes,dueDate:isCodTerm?"":excelDate(r["تاريخ الاستحقاق"],null),paymentHolder:String(r["صاحب الشيك/الكمبيالة"]||""),paymentNumber:String(r["رقم الشيك/الكمبيالة"]||""),paymentType:paymentTypeValue(r["نوع الأداء"]),note:String(r["الملاحظة"]||""),payments:[],items:[]};
+    if(!order.dueDate&&!isCodTerm)order.dueDate=new Date(new Date(order.date).getTime()+(isTestTerm?termMinutes*60000:term*86400000)).toISOString();
     importedOrders.push(order);orderMap.set(id,order);
    });
    const restoredClients=hasClients?importedClients:clients;
@@ -699,10 +703,16 @@ function clientField(row, names){
 }
 function paymentTypeValue(value){
   const raw=String(value||"").trim().toLowerCase();
+  if(["cash","espèce","espèces","espece","especes","نقدا","نقداً","نقدا"].includes(raw))return "cash";
   if(["lettre_de_change","lettre de change","cambiale","cambial","كمبيالة","الكمبيالة"].includes(raw))return "lettre_de_change";
   return "cheque";
 }
-function paymentTypeLabel(value){return paymentTypeValue(value)==="lettre_de_change"?"Lettre de change / Cambiale":"Chèque"}
+function paymentTypeLabel(value){
+  const type=paymentTypeValue(value);
+  if(type==="cash")return "نقداً / Espèces";
+  if(type==="lettre_de_change")return "كمبيالة / Cambiale";
+  return "شيك / Chèque";
+}
 function renderClientList(){
   const dl=$("clientsList"); if(!dl)return;
   const unique=[...new Set(clients.map(c=>c.name).filter(Boolean))];
@@ -1039,6 +1049,7 @@ function openOrderModal(){
  const x=orderCartSummary();
   $("orderClient").value="";
   $("orderPaymentNumber").value="";
+  if($("orderPaymentType"))$("orderPaymentType").value="cash";
   $("orderPaymentTerm").value="15";
   $("orderNote").value="إستخلاص عند الاستلام — Paiement à la livraison";
  $("orderGrandTotal").textContent=money(x.total)+" DH";
@@ -1067,6 +1078,7 @@ async function createOrderPDF(order){
    const d=new Date(order.date);
    const date=d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
    const time=d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+    const productSubtotal=(Array.isArray(order.items)?order.items:[]).reduce((sum,row)=>{const p=products.find(x=>x.id===row.id)||{};const boxes=Number(row.qty)||0;const units=Number(row.units??p.qty)||0;const unitPrice=Number(row.unitPrice??p.price)||0;const paidUnits=Number(row.paidUnits??(boxes*units))||0;return sum+Number(row.lineTotal??(unitPrice*paidUnits))||sum},0);
     const rows=order.items.map(row=>{
       const p=products.find(x=>x.id===row.id)||{};
       const boxes=Number(row.qty)||0;
@@ -1077,11 +1089,16 @@ async function createOrderPDF(order){
       const deliveredUnits=paidUnits+freeUnits;
       const line=Number(row.lineTotal ?? (unitPrice*paidUnits))||0;
       const promoNote=freeUnits>0?`<div style="margin-top:4px;color:#d92d20;font-size:11px;font-weight:800">🎁 10 + 1 GRATUIT · +${freeUnits} pièce(s) offerte(s) · livré : ${deliveredUnits}</div>`:"";
-      return `<tr><td style="padding:12px;border-bottom:1px solid #ddd;text-align:left"><div>${esc(row.name||p.name||"Produit")}</div>${promoNote}</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:center">${boxes}</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:center">${units}</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:right">${money(unitPrice)} DH</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:right;font-weight:700">${money(line)} DH</td></tr>`;
+      return `<tr><td style="padding:8px;border-bottom:1px solid #ddd;text-align:left"><div>${esc(row.name||p.name||"Produit")}</div>${promoNote}</td><td style="padding:8px;border-bottom:1px solid #ddd;text-align:center">${boxes}</td><td style="padding:8px;border-bottom:1px solid #ddd;text-align:center">${units}</td><td style="padding:8px;border-bottom:1px solid #ddd;text-align:right">${money(unitPrice)} DH</td><td style="padding:8px;border-bottom:1px solid #ddd;text-align:right;font-weight:700">${money(line)} DH</td></tr>`;
     }).join("");
     const paymentHistory=getPaymentHistory(order);
     const paidTotal=paymentTotal(order);
-    const paymentRows=paymentHistory.length?paymentHistory.map((p,index)=>`<tr><td style="padding:8px;border-bottom:1px solid #eadfc2">${index+1}</td><td style="padding:8px;border-bottom:1px solid #eadfc2">${formatPaymentDate(p.date)}</td><td style="padding:8px;border-bottom:1px solid #eadfc2;text-align:right;font-weight:800">${money(p.amount)} DH</td></tr>`).join(""):"<tr><td colspan=\"3\" style=\"padding:10px;color:#777;text-align:center\">Aucun acompte enregistré</td></tr>";
+    const scheduleState=deadlineState(order);
+    const scheduleHtml=paymentScheduleHtml(order,scheduleState);
+    const isCodOrder=scheduleState.termKey==="cod";
+    const paymentRows=paymentHistory.length?paymentHistory.map(p=>`<tr><td style="padding:8px;border-bottom:1px solid #eadfc2">${formatPaymentDate(p.date)}</td><td style="padding:8px;border-bottom:1px solid #eadfc2;text-align:right;font-weight:400;color:#d00000">${money(p.amount)} DH</td></tr>`).join(""):"<tr><td colspan=\"2\" style=\"padding:10px;color:#d00000;text-align:center;font-weight:400\">Aucun acompte enregistré</td></tr>";
+    const orderSummaryHtml=isCodOrder?"":`<div style="margin-top:25px;margin-left:auto;width:360px;border:2px solid #12386f;border-radius:14px;padding:18px;direction:ltr"><div style="display:flex;justify-content:space-between;font-size:15px;font-weight:400;color:#d00000"><span>Total commande</span><span>${money(order.total)} DH</span></div><div style="display:flex;justify-content:space-between;margin-top:6px;font-size:14px;font-weight:400;color:#d00000"><span>Total des acomptes</span><b>${money(paidTotal)} DH</b></div><div style="display:flex;justify-content:space-between;margin-top:5px;font-size:14px;color:#d00000;font-weight:400"><span>Total - acomptes</span><b>${money(Math.max(0,Number(order.total||0)-paidTotal))} DH</b></div><div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:9px;border-top:2px solid #e8a0a0;font-size:25px;color:#d00000;font-weight:900"><span>Reste à payer</span><b>${money(Math.max(0,Number(order.total||0)-paidTotal))} DH</b></div></div>`;
+    const paymentHistoryHtml=isCodOrder?"":`<div style="margin-top:22px;border:1px solid #eadfc2;border-radius:12px;padding:12px;background:#fffdf7;direction:ltr"><div style="font-size:13px;font-weight:400;color:#d00000;margin-bottom:8px">HISTORIQUE DES ACOMPTES</div>         <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:#d00000;text-align:left;font-weight:400"><th style="padding:8px">Date et heure</th><th style="padding:8px;text-align:right">Montant</th></tr></thead><tbody>${paymentRows}</tbody></table></div>`;
 
    const watermarkHtml = logoB64
      ? `<div style="position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);width:620px;opacity:0.18;z-index:0;pointer-events:none;"><img src="${logoB64}" style="width:100%;height:auto;filter:none;"></div>`
@@ -1090,52 +1107,42 @@ async function createOrderPDF(order){
    root.innerHTML=`
      ${watermarkHtml}
      <div style="position:relative;z-index:1;">
-       <div style="border-bottom:4px solid #12386f;padding-bottom:18px;margin-bottom:25px">
-         <div style="font-size:16px;letter-spacing:4px;color:#b58a2a;font-weight:700">3D PEINTURES</div>
-         <div style="font-size:34px;font-weight:800;margin-top:6px">BON DE COMMANDE</div>
-         <div style="font-size:14px;color:#667085;margin-top:8px">${date} à ${time}</div>
+       <div style="border-bottom:3px solid #12386f;padding-bottom:12px;margin-bottom:17px">
+         <div style="font-size:13px;letter-spacing:3px;color:#b58a2a;font-weight:700">3D PEINTURES</div>
+         <div style="font-size:25px;font-weight:800;margin-top:4px;letter-spacing:.2px">BON DE COMMANDE</div>
+         <div style="font-size:11px;color:#667085;margin-top:5px">${date} à ${time}</div>
        </div>
-       <div style="display:flex;justify-content:space-between;gap:25px;margin-bottom:25px;direction:ltr">
-         <div style="flex:1;border:1px solid #ddd;border-radius:12px;padding:18px">
-           <div style="color:#777">CLIENT</div>
-           <div style="font-size:24px;font-weight:800;margin-top:8px">${esc(order.client)}</div>
-           ${order.company?`<div style="margin-top:8px"><b>Société :</b> ${esc(order.company)}</div>`:""}
-           ${order.ice?`<div style="margin-top:5px"><b>ICE :</b> ${esc(order.ice)}</div>`:""}
-           ${order.paymentNumber?`<div style="margin-top:5px"><b>N° chèque / cambiale :</b> ${esc(order.paymentNumber)}</div>`:""}
-           ${order.paymentType?`<div style="margin-top:5px"><b>Type de paiement :</b> ${esc(paymentTypeLabel(order.paymentType))}</div>`:""}
-           ${order.phone?`<div style="margin-top:5px"><b>Téléphone :</b> ${esc(order.phone)}</div>`:""}
+       <div style="display:flex;justify-content:space-between;gap:16px;margin-bottom:17px;direction:ltr">
+         <div style="flex:1;border:1px solid #ddd;border-radius:9px;padding:12px">
+           <div style="color:#777;font-size:10px;letter-spacing:.5px">CLIENT</div>
+           <div style="font-size:18px;font-weight:800;margin-top:5px">${esc(order.client)}</div>
+           ${order.company?`<div style="margin-top:5px;font-size:11px"><b>Société :</b> ${esc(order.company)}</div>`:""}
+           ${order.ice?`<div style="margin-top:4px;font-size:11px"><b>ICE :</b> ${esc(order.ice)}</div>`:""}
+           ${order.paymentNumber?`<div style="margin-top:4px;font-size:11px"><b>N° chèque / cambiale :</b> ${esc(order.paymentNumber)}</div>`:""}
+           ${order.paymentType?`<div style="margin-top:4px;font-size:11px"><b>Type de paiement :</b> ${esc(paymentTypeLabel(order.paymentType))}</div>`:""}
+           ${order.phone?`<div style="margin-top:4px;font-size:11px"><b>Téléphone :</b> ${esc(order.phone)}</div>`:""}
          </div>
-         <div style="width:240px;border:1px solid #ddd;border-radius:12px;padding:18px">
-           <div style="color:#777">DATE</div>
-           <div style="font-size:20px;font-weight:700;margin-top:8px">${date} · ${time}</div>
+         <div style="width:180px;border:1px solid #ddd;border-radius:9px;padding:12px">
+           <div style="color:#777;font-size:10px;letter-spacing:.5px">DATE</div>
+           <div style="font-size:14px;font-weight:700;margin-top:5px">${date} · ${time}</div>
          </div>
        </div>
-       <table style="width:100%;border-collapse:collapse;font-size:16px;direction:ltr">
+       <table style="width:100%;border-collapse:collapse;font-size:12px;direction:ltr">
          <thead>
            <tr style="background:#12386f;color:#fff">
-             <th style="padding:12px;text-align:left">Désignation</th>
-             <th style="padding:12px">Boîtes</th>
-             <th style="padding:12px">Unités / boîte</th>
-             <th style="padding:12px;text-align:right">Prix unitaire</th>
-             <th style="padding:12px;text-align:right">Total</th>
+             <th style="padding:8px;text-align:left">Désignation</th>
+             <th style="padding:8px">Boîtes</th>
+             <th style="padding:8px">Unités / boîte</th>
+             <th style="padding:8px;text-align:right">Prix unitaire</th>
+             <th style="padding:8px;text-align:right">Total</th>
            </tr>
          </thead>
          <tbody>${rows}</tbody>
        </table>
-       <div style="margin-top:25px;margin-left:auto;width:360px;border:2px solid #12386f;border-radius:14px;padding:18px;direction:ltr">
-         <div style="display:flex;justify-content:space-between;font-size:24px;font-weight:900">
-           <span>Total commande</span>
-           <span>${money(order.total)} DH</span>
-         </div>
-         <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:15px"><span>Total des acomptes</span><b>${money(paidTotal)} DH</b></div>
-         <div style="display:flex;justify-content:space-between;margin-top:5px;font-size:15px;color:#b42318"><span>Reste à payer</span><b>${money(Math.max(0,Number(order.total||0)-paidTotal))} DH</b></div>
-       </div>
-       <div style="margin-top:22px;border:1px solid #eadfc2;border-radius:12px;padding:12px;background:#fffdf7;direction:ltr">
-         <div style="font-size:16px;font-weight:900;color:#7a5a16;margin-bottom:8px">HISTORIQUE DES ACOMPTES</div>
-         <table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:#667085;text-align:left"><th style="padding:8px">N°</th><th style="padding:8px">Date et heure</th><th style="padding:8px;text-align:right">Montant</th></tr></thead><tbody>${paymentRows}</tbody></table>
-       </div>
-       <div style="margin-top:38px;text-align:center;font-weight:900;color:#ff0000;font-size:30px;line-height:1.25">إستخلاص عند الاستلام</div>
-       <div style="text-align:center;font-weight:900;color:#ff0000;font-size:24px;line-height:1.25">Paiement à la livraison</div>
+       ${orderSummaryHtml}
+       ${paymentHistoryHtml}
+       ${isCodOrder?`<div style="margin:14px 0 0 auto;width:280px;border:1px solid #d9ad4d;border-radius:9px;padding:10px 12px;direction:ltr;background:#fffdf7"><div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#172033"><span>Total produits</span><b>${money(productSubtotal)} DH</b></div><div style="font-size:10px;color:#667085;margin-top:3px;text-align:right">مجموع أثمان المنتجات</div></div>`:""}
+       <div style="margin-top:20px">${scheduleHtml}</div>
        <div style="margin-top:28px;text-align:center;color:#777;font-size:14px">Merci pour votre confiance · 3D PEINTURES</div>
      </div>`;
 
@@ -1176,6 +1183,8 @@ async function createInvoiceRequestPDF(order){
    const d=new Date(order.date);
    const date=d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
    const time=d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+   const scheduleState=deadlineState(order);
+   const scheduleHtml=paymentScheduleHtml(order,scheduleState);
    const rows=(order.items||[]).map(row=>{
      const p=products.find(x=>x.id===row.id)||{};
      const boxes=Number(row.qty)||0;
@@ -1206,6 +1215,7 @@ async function createInvoiceRequestPDF(order){
          <div><span style="color:#667085">Nom du chèque / cambiale</span><br><b>${esc(paymentName||"—")}</b></div>
        </div>
      </div>
+     <div style="margin:0 0 22px">${scheduleHtml}</div>
      <div style="font-size:16px;font-weight:800;margin:0 0 9px">DÉTAIL DE LA COMMANDE</div>
      <table style="width:100%;border-collapse:collapse;font-size:14px;direction:ltr">
        <thead><tr style="background:#172f57;color:#fff"><th style="padding:11px;text-align:left">Désignation</th><th style="padding:11px">Boîtes</th><th style="padding:11px">Unités / boîte</th><th style="padding:11px;text-align:right">Prix unitaire</th><th style="padding:11px;text-align:right">Total</th></tr></thead>
@@ -1235,12 +1245,13 @@ async function shareInvoiceRequestPDF(order){
  }
  const url=URL.createObjectURL(file);const a=document.createElement("a");a.href=url;a.download=result.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);toast("تم تحميل ملف طلب الفاتورة PDF");
 }
-async function shareOrderPDF(order){
+ async function shareOrderPDF(order){
+ const scheduleText=paymentScheduleText(order);
  const nativePayload={
    id:order.id,date:order.date,client:order.client,company:order.company||"",
    ice:order.ice||"",paymentNumber:order.paymentNumber||"",paymentType:paymentTypeValue(order.paymentType),phone:order.phone||"",whatsapp:order.phone||"",total:Number(order.total||0),
    paid:paymentTotal(order),due:Math.max(0,Number(order.total||0)-paymentTotal(order)),status:order.status||"unpaid",payments:getPaymentHistory(order).map(p=>({amount:Number(p.amount)||0,date:p.date,type:p.type||""})),
-   note:order.note||"إستخلاص عند الاستلام — Paiement à la livraison",
+   note:scheduleText,paymentTermDays:Number(order.paymentTermDays)||0,paymentTermMode:order.paymentTermMode||"days",paymentTermMinutes:Number(order.paymentTermMinutes)||null,dueDate:order.dueDate||"",
     items:order.items.map(row=>{
       const p=products.find(x=>x.id===row.id)||{};
       const boxes=Number(row.qty)||0, units=Number(row.units ?? p.qty)||0;
@@ -1288,7 +1299,7 @@ async function shareOrderPDF(order){
       if(freeUnits>0) lines.push(`🎁 Offre 10 + 1 : +${freeUnits} pièce(s) gratuite(s) · total livré : ${deliveredUnits} pièces`);
    });
    if(order.paymentType) lines.push("💳 Type de paiement : "+paymentTypeLabel(order.paymentType));
-   lines.push("","💰 *Total Payé : "+money(order.total)+" DH*","","إستخلاص عند الاستلام — Paiement à la livraison");
+   lines.push("","💰 *Total Payé : "+money(order.total)+" DH*","",...scheduleText.split("\n"));
    const msg=encodeURIComponent(lines.join("\n"));
    const waUrl=phone ? `https://wa.me/${phone}?text=${msg}` : `https://wa.me/?text=${msg}`;
    setTimeout(()=>window.open(waUrl,"_blank"),600);
@@ -1304,14 +1315,18 @@ async function saveOrder(e){
  if(!client){toast("دخل اسم الكليان");return}
  const clientObj=clients.find(c=>String(c.name||"").trim().toLowerCase()===client.toLowerCase())||{};
  const orderDate=new Date();
- const selectedTerm=[15,30].includes(Number($("orderPaymentTerm").value))?Number($("orderPaymentTerm").value):15;
+ const selectedTermValue=String($("orderPaymentTerm").value||"15");
+ const isCodTerm=selectedTermValue==="cod";
+ const isTestTerm=selectedTermValue==="test_1m";
+ const selectedTerm=isCodTerm?0:(isTestTerm?0.0006944444444444445:([15,30].includes(Number(selectedTermValue))?Number(selectedTermValue):15));
+ const fallbackTermNote=isCodTerm?"إستخلاص عند الإستلام / Paiement à la livraison":isTestTerm?"تجربة دقيقة واحدة / Test 1 minute":`مدة الاستخلاص: ${selectedTerm} يوماً / Durée de règlement : ${selectedTerm} jours`;
  const order={
    id:makeId(),date:orderDate.toISOString(),client,
    company:clientObj.company||clientObj.societe||"",
-   ice:clientObj.ice||"",paymentHolder:clientObj.paymentHolder||clientObj.chequeHolder||clientObj.paymentName||clientObj.chequeName||"",paymentNumber:$('orderPaymentNumber').value.trim()||clientObj.paymentNumber||clientObj.chequeNumber||"",paymentType:paymentTypeValue(clientObj.paymentType||clientObj.paymentMode||clientObj.modePaiement),phone:clientObj.phone||"",
+   ice:clientObj.ice||"",paymentHolder:clientObj.paymentHolder||clientObj.chequeHolder||clientObj.paymentName||clientObj.chequeName||"",paymentNumber:$('orderPaymentNumber').value.trim()||clientObj.paymentNumber||clientObj.chequeNumber||"",paymentType:paymentTypeValue($("orderPaymentType")?.value||clientObj.paymentType||clientObj.paymentMode||clientObj.modePaiement),phone:clientObj.phone||"",
    total:x.total,paid:0,due:x.total,profit:x.profit,
-   paymentTermDays:selectedTerm,dueDate:new Date(orderDate.getTime()+selectedTerm*86400000).toISOString(),
-   status:"unpaid",payments:[],note:$('orderNote').value.trim() || "إستخلاص عند الاستلام — Paiement à la livraison",
+   paymentTermDays:isCodTerm||isTestTerm?0:selectedTerm,paymentTermMode:isCodTerm?"cod":(isTestTerm?"test_1m":"days"),paymentTermMinutes:isTestTerm?1:null,dueDate:isCodTerm?"":new Date(orderDate.getTime()+selectedTerm*86400000).toISOString(),
+   status:"unpaid",payments:[],note:$('orderNote').value.trim() || fallbackTermNote,
    items:cart.map(row=>{
      const p=products.find(x=>x.id===row.id)||{};
        const boxes=Number(row.qty)||0, units=Number(p.qty)||0, unitPrice=Number(p.price)||0;
@@ -1404,25 +1419,43 @@ function savePaymentForm(e){
  toast(order.due<=0.000001?"الكوموند تخلصات كاملة":`تسجل القسط: ${money(amount)} DH`);
 }
 function ensureOrderDeadline(order){
- const term=Number(order?.paymentTermDays)===30?30:15;
+ const mode=String(order?.paymentTermMode||"");
+ const isCodTerm=mode==="cod";
+ const isTestTerm=mode==="test_1m";
+ const term=isCodTerm||isTestTerm?0:(Number(order?.paymentTermDays)===30?30:15);
+ const durationMs=isTestTerm?Math.max(1,Number(order?.paymentTermMinutes)||1)*60000:term*86400000;
  const base=new Date(order?.date||Date.now());
- if(!order.dueDate||Number.isNaN(new Date(order.dueDate).getTime()))order.dueDate=new Date(base.getTime()+term*86400000).toISOString();
+ if(!isCodTerm&&(!order.dueDate||Number.isNaN(new Date(order.dueDate).getTime())))order.dueDate=new Date(base.getTime()+durationMs).toISOString();
+ if(isCodTerm)order.dueDate="";
  order.paymentTermDays=term;
+ if(isTestTerm){order.paymentTermMode="test_1m";order.paymentTermMinutes=Math.max(1,Number(order?.paymentTermMinutes)||1)}
+ else if(isCodTerm){order.paymentTermMode="cod";order.paymentTermMinutes=null}
+ else {order.paymentTermMode="days";order.paymentTermMinutes=null}
  return order;
 }
 function deadlineState(order){
  ensureOrderDeadline(order);
- const dueDate=new Date(order.dueDate);
+ const isCodTerm=order.paymentTermMode==="cod";
+ const isTestTerm=order.paymentTermMode==="test_1m";
+ const dueDate=isCodTerm?null:new Date(order.dueDate);
  const due=paymentTotal(order);
  const remaining=Math.max(0,Number(order.total||0)-due);
- const ms=dueDate.getTime()-Date.now();
- return {dueDate,remaining,daysLeft:Math.ceil(ms/86400000),overdue:ms<0&&remaining>0,term:order.paymentTermDays};
+ const ms=dueDate?dueDate.getTime()-Date.now():0;
+ return {dueDate,remaining,daysLeft:isCodTerm?0:Math.ceil(ms/86400000),minutesLeft:isCodTerm?0:Math.ceil(ms/60000),overdue:!isCodTerm&&ms<0&&remaining>0,term:isCodTerm?"عند الاستلام":(isTestTerm?"تجريبي":order.paymentTermDays),termKey:isCodTerm?"cod":(isTestTerm?"test_1m":"days")};
 }
 function deadlineText(state){
- const date=state.dueDate.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
- if(state.overdue)return `انتهت مدة الاستخلاص في ${date}`;
+ const date=state.dueDate?state.dueDate.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"}):"—";
+ if(state.termKey==="cod")return "إستخلاص عند الإستلام / Paiement à la livraison";
+ if(state.overdue)return state.termKey==="test_1m"?`انتهت مدة التجربة في ${date}`:`انتهت مدة الاستخلاص في ${date}`;
+ if(state.termKey==="test_1m")return `تجربة · الاستحقاق بعد ${Math.max(1,state.minutesLeft)} دقيقة`;
  if(state.daysLeft<=0)return `تاريخ الاستحقاق اليوم · ${date}`;
- return `أجل ${state.term} يوم · الاستحقاق ${date}`;
+ return `أجل ${state.term} يوم / ${state.term} jours · الاستحقاق ${date}`;
+}
+function collectionTerms(order,state=deadlineState(order)){
+ const date=state.dueDate?state.dueDate.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"}):"—";
+ if(state.termKey==="cod")return {redText:"إستخلاص عند الإستلام / Paiement à la livraison",dateText:"تاريخ الاستخلاص: عند الاستلام / Date de règlement : à la livraison"};
+ if(state.termKey==="test_1m")return {redText:"مدة الاستخلاص: تجربة دقيقة واحدة / Durée de règlement : test 1 minute",dateText:`تاريخ الاستخلاص: ${date} / Date de règlement : ${date}`};
+ return {redText:`مدة الاستخلاص: ${state.term} يوماً / Durée de règlement : ${state.term} jours`,dateText:`تاريخ الاستخلاص: ${date} / Date de règlement : ${date}`};
 }
 function overdueReminderRows(){
  return orders.map(order=>{recalculateOrderPaymentState(order);const state=deadlineState(order);return {order,state,due:Math.max(0,Number(order.total||0)-paymentTotal(order))};}).filter(row=>row.due>0&&row.state.overdue).sort((a,b)=>new Date(a.state.dueDate)-new Date(b.state.dueDate));
@@ -1432,47 +1465,29 @@ function buildDueReminderText(rows,total){
  const now=new Date();
  const date=now.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
  const lines=[
-  "تذكير ودي بتسوية المبلغ المتبقي — RAPPEL AMIABLE DE RÈGLEMENT",
+  "رسالة من مسؤول الحسابات بالشركة — MESSAGE DU RESPONSABLE COMPTABLE",
   `التاريخ / Date : ${date}`,
   "",
   "زبناؤنا الكرام،",
-  `نحيطكم علماً بأن مجموع المبالغ المتبقية في الكوموندات التي تجاوزت آخر أجل للاستخلاص هو ${money(total)} DH. نرجو منكم، بكل احترام، إتمام أداء المبلغ بأكمله خلال الزيارة القادمة. ستجدون أسفله كشفاً دقيقاً لكل كوموند ولكل قسط مسجل.`,
+  `هذا تذكير صادر عن مسؤول الحسابات بالشركة بخصوص مجموع المبالغ المتبقية في الكوموندات التي تجاوزت آخر أجل للاستخلاص، وقيمته ${money(total)} DH. المرجو تسوية المبلغ خلال الزيارة القادمة. ستجدون أسفله كشفاً دقيقاً لكل كوموند ولكل دفعة مسجلة.`,
   "",
   "Chers clients,",
-  `Nous vous informons que le total des soldes des commandes ayant dépassé leur date limite de règlement s'élève à ${money(total)} DH. Nous vous prions de bien vouloir régulariser intégralement ce montant lors de notre prochaine visite. Vous trouverez ci-dessous le détail précis de chaque commande et de chaque versement enregistré.`,
+  `Ce message est un rappel envoyé par le responsable comptable de la société concernant les soldes des commandes ayant dépassé leur date limite de règlement, pour un montant total de ${money(total)} DH. Nous vous remercions de régulariser ce montant lors de notre prochaine visite. Vous trouverez ci-dessous le détail précis de chaque commande et de chaque paiement enregistré.`,
   "",
   "━━━━━━━━━━━━━━━━━━━━━━━━",
-  "تفاصيل الدين والأقساط / DÉTAILS DES SOLDES ET VERSEMENTS",
+  "تفاصيل الكوموند والدفعات / DÉTAILS DES COMMANDES ET PAIEMENTS",
   "━━━━━━━━━━━━━━━━━━━━━━━━"
  ];
  rows.forEach((row,index)=>{
   const order=row.order||{};
   recalculateOrderPaymentState(order);
-  const history=getPaymentHistory(order);
-  const totalOrder=Number(order.total)||0;
-  const paidOrder=paymentTotal(order);
-  const dueOrder=Math.max(0,totalOrder-paidOrder);
-  const dueDate=row.state.dueDate.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
-  lines.push("",`【${index+1}】 ${order.client||"Client"}`);
-  lines.push(`الكوموند / Commande : ${order.id||"—"}`);
-  if(order.company)lines.push(`الشركة / Société : ${order.company}`);
-  lines.push(`إجمالي الكوموند / Total commande : ${money(totalOrder)} DH`);
-  lines.push(`مجموع الأقساط المؤداة / Total versé : ${money(paidOrder)} DH`);
-  lines.push(`المبلغ المتبقي / Solde restant : ${money(dueOrder)} DH`);
-  lines.push(`آخر أجل / Échéance : ${dueDate} — أجل ${row.state.term} يوم(s)`);
-  lines.push(`عدد الأقساط المسجلة / Nombre de versements : ${history.length}`);
-  lines.push("الأقساط المسجلة / Versements enregistrés :");
-  if(!history.length){
-   lines.push("  • لم يتم تسجيل أي قسط بعد / Aucun versement enregistré");
-  }else{
-   history.forEach((payment,paymentIndex)=>{
-    const type=payment.type?` — ${paymentTypeLabel(payment.type)}`:"";
-    lines.push(`  • القسط ${paymentIndex+1} / Versement ${paymentIndex+1} : ${money(payment.amount)} DH — ${formatPaymentDate(payment.date)}${type}`);
-   });
-  }
-  lines.push(`  ▶ الباقي لهذه الكوموند / Solde de cette commande : ${money(dueOrder)} DH`);
+  const dueOrder=Math.max(0,Number(order.total||0)-paymentTotal(order));
+  const expiredDate=row.state.dueDate.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
+  lines.push("",`الزبون / Client : ${order.client||"Client"}`);
+  lines.push(`الباقي / Reste à payer : ${money(dueOrder)} DH`);
+  lines.push(`تاريخ انتهاء أجل الاستحقاق / Date d'échéance expirée : ${expiredDate}`);
  });
- lines.push("","━━━━━━━━━━━━━━━━━━━━━━━━",`المجموع النهائي المتبقي / TOTAL GÉNÉRAL À RÉGLER : ${money(total)} DH`,"━━━━━━━━━━━━━━━━━━━━━━━━","","نرجو منكم إتمام المبلغ بأكمله في الزيارة القادمة. شكراً لتعاونكم وتفهمكم.","Nous vous prions de régler l'intégralité du montant lors de notre prochaine visite. Merci pour votre collaboration et votre compréhension.","","3D PEINTURES");
+  lines.push("","━━━━━━━━━━━━━━━━━━━━━━━━",`المجموع النهائي المتبقي / TOTAL GÉNÉRAL À RÉGLER : ${money(total)} DH`,"━━━━━━━━━━━━━━━━━━━━━━━━","","هذا تذكير من مسؤول الحسابات بالشركة، وشكراً لتعاونكم.","Ce message est un rappel du responsable comptable de la société. Merci pour votre collaboration.","","مسؤول الحسابات بالشركة / Le responsable comptable de la société","3D PEINTURES");
  return lines.join("\n");
 }
 async function createDueReminderPDF(rows=overdueReminderRows()){
@@ -1490,28 +1505,29 @@ async function createDueReminderPDF(rows=overdueReminderRows()){
   const root=document.createElement("div");
   root.dir="ltr";
   root.style.cssText="position:fixed;left:-10000px;top:0;width:760px;background:#fff;color:#172033;padding:42px;font-family:Arial,'Noto Naskh Arabic',sans-serif;z-index:-1;box-sizing:border-box";
-  const detailRows=rows.map((row,index)=>{
-   const d=row.state.dueDate.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
-   return `<tr><td style="padding:11px;border-bottom:1px solid #eadfc2;text-align:center">${index+1}</td><td style="padding:11px;border-bottom:1px solid #eadfc2;text-align:left"><b>${esc(row.order.client||"Client")}</b><div style="font-size:11px;color:#667085;margin-top:3px">Commande / الكوموند : ${esc(row.order.id||"—")}</div></td><td style="padding:11px;border-bottom:1px solid #eadfc2;text-align:center">${d}</td><td style="padding:11px;border-bottom:1px solid #eadfc2;text-align:right;color:#b42318;font-weight:900">${money(row.due)} DH</td></tr>`;
+  const detailRows=rows.map(row=>{
+   const expiredDate=row.state.dueDate.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
+   const due=Math.max(0,Number(row.order.total||0)-paymentTotal(row.order));
+   return `<tr><td style="padding:9px;border-bottom:1px solid #eadfc2;text-align:left;vertical-align:top"><b style="font-size:12px;color:#d00000">${esc(row.order.client||"Client")}</b></td><td style="padding:9px;border-bottom:1px solid #eadfc2;text-align:right;vertical-align:top;color:#d00000;font-size:12px;font-weight:400">الباقي / Reste à payer : ${money(due)} DH<br>تاريخ انتهاء أجل الاستحقاق / Date d'échéance expirée : ${expiredDate}</td></tr>`;
   }).join("");
   const watermark=logoB64?`<div style="position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);width:560px;opacity:.08;z-index:0"><img src="${logoB64}" style="width:100%;height:auto"></div>`:"";
   root.innerHTML=`${watermark}<div style="position:relative;z-index:1">
    <div style="border-bottom:4px solid #12386f;padding-bottom:18px;margin-bottom:24px;display:flex;justify-content:space-between;gap:20px;align-items:flex-start">
     <div><div style="font-size:16px;letter-spacing:4px;color:#b58a2a;font-weight:700">3D PEINTURES</div><div style="font-size:30px;font-weight:900;margin-top:6px">RAPPEL DE RÈGLEMENT</div><div style="font-size:14px;color:#667085;margin-top:7px">${date}</div></div>
-    <div style="text-align:right;direction:rtl;font-size:14px;color:#667085;line-height:1.65"><b style="color:#12386f;font-size:18px">تذكير بالاستخلاص</b><br>رسالة ودية ومحترفة</div>
+    <div style="text-align:right;direction:rtl;font-size:14px;color:#667085;line-height:1.65"><b style="color:#12386f;font-size:18px">رسالة من مسؤول الحسابات</b><br>مسؤول الحسابات بالشركة</div>
    </div>
    <div style="border:1px solid #dfe3e8;border-radius:14px;padding:20px;background:#fffdf7;margin-bottom:22px;line-height:1.7">
     <div style="direction:rtl;text-align:right;font-size:17px;font-weight:700">زبناؤنا الكرام،</div>
-    <div style="direction:rtl;text-align:right;margin-top:7px;font-size:15px">نحيطكم علماً بأن مجموع المبالغ المتبقية التي تجاوزت آخر أجل للاستخلاص هو <b style="color:#b42318">${money(total)} DH</b>. نرجو منكم، بكل احترام، إتمام أداء المبلغ بأكمله خلال الزيارة القادمة.</div>
+    <div style="direction:rtl;text-align:right;margin-top:7px;font-size:15px">هذا تذكير صادر عن مسؤول الحسابات بالشركة بخصوص مجموع المبالغ المتبقية التي تجاوزت آخر أجل للاستخلاص، وقيمتها <b style="color:#b42318">${money(total)} DH</b>. المرجو تسوية المبلغ خلال الزيارة القادمة.</div>
     <div style="border-top:1px solid #eadfc2;margin:15px 0"></div>
     <div style="font-size:17px;font-weight:700">Chers clients,</div>
-    <div style="margin-top:7px;font-size:15px">Nous vous informons que le total des soldes ayant dépassé leur date limite de règlement s'élève à <b style="color:#b42318">${money(total)} DH</b>. Nous vous prions de bien vouloir régulariser intégralement ce montant lors de notre prochaine visite.</div>
+    <div style="margin-top:7px;font-size:15px">Ce message est un rappel envoyé par le responsable comptable de la société concernant le total des soldes ayant dépassé leur date limite de règlement, soit <b style="color:#b42318">${money(total)} DH</b>. Nous vous remercions de régulariser ce montant lors de notre prochaine visite.</div>
    </div>
    <div style="font-size:17px;font-weight:900;color:#12386f;margin-bottom:9px">DÉTAILS DES SOLDES · تفاصيل المبالغ المتبقية</div>
-   <table style="width:100%;border-collapse:collapse;font-size:14px;direction:ltr"><thead><tr style="background:#12386f;color:#fff"><th style="padding:11px">N°</th><th style="padding:11px;text-align:left">Client / الزبون</th><th style="padding:11px">Échéance / آخر أجل</th><th style="padding:11px;text-align:right">Solde dû / الباقي</th></tr></thead><tbody>${detailRows}</tbody></table>
+   <table style="width:100%;border-collapse:collapse;font-size:13px;direction:ltr"><thead><tr style="background:#12386f;color:#fff"><th style="padding:9px;text-align:left">Client / الزبون</th><th style="padding:9px;text-align:right">الباقي وتاريخ انتهاء الأجل / Reste et échéance expirée</th></tr></thead><tbody>${detailRows}</tbody></table>
    <div style="margin:24px 0 0 auto;width:330px;border:2px solid #b58a2a;border-radius:14px;padding:16px;background:#fffdf7"><div style="font-size:14px;color:#667085">TOTAL À RÉGLER · مجموع الباقي</div><div style="font-size:28px;font-weight:900;color:#b42318;margin-top:7px;text-align:right">${money(total)} DH</div></div>
-   <div style="margin-top:28px;text-align:center;color:#667085;font-size:13px;line-height:1.6">هذا تذكير ودي وليس إشعاراً قانونياً.<br>Ceci est un rappel amiable et non une mise en demeure.</div>
-   <div style="margin-top:18px;text-align:center;font-weight:900;color:#12386f;font-size:15px">شكراً لتعاونكم · Merci pour votre collaboration</div>
+   <div style="margin-top:28px;text-align:center;color:#667085;font-size:13px;line-height:1.6">هذا تذكير من مسؤول الحسابات بالشركة.<br>Ce message est un rappel du responsable comptable de la société.</div>
+   <div style="margin-top:18px;text-align:center;font-weight:900;color:#12386f;font-size:15px">مسؤول الحسابات بالشركة · Le responsable comptable de la société</div>
   </div>`;
   document.body.appendChild(root);
   const canvas=await html2canvas(root,{scale:2,backgroundColor:"#ffffff",useCORS:true,logging:false});
@@ -1542,7 +1558,7 @@ async function shareDueReminderPDF(){
 }
 function renderDueAlerts(){
  const bar=$("dueAlertBar"); if(!bar)return;
- const alerts=orders.map(order=>({order,state:deadlineState(order)})).filter(x=>x.state.remaining>0&&(x.state.overdue||x.state.daysLeft<=3)).sort((a,b)=>Number(b.state.overdue)-Number(a.state.overdue)||a.state.daysLeft-b.state.daysLeft);
+  const alerts=orders.map(order=>({order,state:deadlineState(order)})).filter(x=>x.state.termKey!=="cod"&&x.state.remaining>0&&(x.state.overdue||x.state.daysLeft<=3)).sort((a,b)=>Number(b.state.overdue)-Number(a.state.overdue)||a.state.daysLeft-b.state.daysLeft);
  if(!alerts.length){bar.hidden=true;bar.className="due-alert-bar";bar.innerHTML="";return}
  const expired=alerts.some(x=>x.state.overdue);
  const first=alerts[0];
@@ -1931,7 +1947,7 @@ $("clearProductSearch").onclick=()=>{$("productSearch").value="";$("clearProduct
  renderCart();
  render();
  renderDueAlerts();
- setInterval(renderDueAlerts,60000);
+  setInterval(renderDueAlerts,5000);
 
 /* ===== SLIDER — auto only, no arrows, no dots, no zoom ===== */
 (function(){
@@ -1983,3 +1999,29 @@ $("clearProductSearch").onclick=()=>{$("productSearch").value="";$("clearProduct
  window.setTimeout(()=>{window.clearInterval(progressTimer);finish();},5000);
  if(video)video.play().catch(()=>{});
 })();
+
+
+function paymentScheduleData(order,state=deadlineState(order)){
+ const history=getPaymentHistory(order);
+ const totalOrder=Math.max(0,Number(order?.total)||0);
+ const paidOrder=paymentTotal(order);
+ const dueOrder=Math.max(0,totalOrder-paidOrder);
+ const isCredit=state.termKey==="days"&&[15,30].includes(Number(order?.paymentTermDays));
+ return {history,totalOrder,paidOrder,dueOrder,isCredit,isTest:state.termKey==="test_1m"};
+}
+function paymentScheduleText(order,state=deadlineState(order)){
+ const data=paymentScheduleData(order,state);
+ if(data.isTest)return `تجربة دقيقة واحدة / Test 1 minute\nالباقي / Reste à payer : ${money(data.dueOrder)} DH`;
+ if(!data.isCredit)return "إستخلاص عند الإستلام / Paiement à la livraison";
+ const lines=data.history.length?data.history.map((payment,index)=>`${index+1}. ${formatPaymentDate(payment.date)} — ${money(payment.amount)} DH`):["لم تسجل أي دفعة / Aucun paiement enregistré"];
+ return ["تواريخ الدفعات / Dates des paiements",...lines,`الباقي / Reste à payer : ${money(data.dueOrder)} DH`].join("\n");
+}
+function paymentScheduleHtml(order,state=deadlineState(order),style="card"){
+ const data=paymentScheduleData(order,state);
+ const summary=`<div style="font-size:13px;font-weight:400;color:#d00000;line-height:1.55;text-align:left"><div>مجموع البون / Total commande : ${money(data.totalOrder)} DH</div><div>عدد الأقساط / Nombre des acomptes : ${data.history.length}</div><div>مجموع الأقساط / Total des acomptes : ${money(data.paidOrder)} DH</div><div>المجموع ناقص الأقساط / Total - acomptes : ${money(data.dueOrder)} DH</div></div>`;
+ const remainder=`<div style="margin-top:10px;padding-top:9px;border-top:2px solid #e8a0a0;text-align:center;font-weight:900;font-size:25px;color:#d00000">الباقي / Reste à payer : ${money(data.dueOrder)} DH</div>`;
+ if(data.isTest)return `<div style="border:3px solid #d00000;border-radius:12px;padding:14px 18px;background:#fff5f5;color:#d00000;line-height:1.45"><div style="text-align:center;font-size:13px;font-weight:400;margin-bottom:7px">تجربة دقيقة واحدة / Test 1 minute</div>${summary}${remainder}</div>`;
+  if(!data.isCredit)return `<div style="text-align:center;font-weight:800;color:#d00000;font-size:16px;line-height:1.25;border:2px solid #d00000;border-radius:9px;padding:9px 12px;background:#fff5f5">إستخلاص عند الإستلام / Paiement à la livraison</div>`;
+ const rows=data.history.length?data.history.map((payment,index)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid #f1dada;color:#d00000;font-size:13px;font-weight:400"><span>${index+1}. ${esc(formatPaymentDate(payment.date))}</span><span>${money(payment.amount)} DH</span></div>`).join(""):`<div style="color:#d00000;font-size:13px;font-weight:400">لم تسجل أي دفعة / Aucun paiement enregistré</div>`;
+ return `<div style="border:3px solid #d00000;border-radius:12px;padding:14px 18px;background:#fff5f5;color:#d00000;line-height:1.45"><div style="text-align:center;font-size:13px;font-weight:400;margin-bottom:7px">تواريخ الدفعات / Dates des paiements</div>${summary}<div style="margin-top:7px;font-size:13px;color:#d00000;font-weight:400">${rows}</div>${remainder}</div>`;
+}

@@ -54,8 +54,6 @@
   </div>
 </header>
 
-<div id="dueAlertBar" class="due-alert-bar" role="status" aria-live="polite" hidden></div>
-
 <!-- Slider Hero -->
 <section class="slider-wrap" id="sliderWrap">
   <div class="slider-track" id="sliderTrack">
@@ -276,12 +274,20 @@
       <label>رقم الشيك / الكمبيالة (اختياري)
         <input id="orderPaymentNumber" placeholder="مثلاً: CH-2026-001">
       </label>
+      <label>طريقة الأداء
+        <select id="orderPaymentType">
+          <option value="cash">نقداً / Espèces</option>
+          <option value="cheque">شيك / Chèque</option>
+          <option value="lettre_de_change">كمبيالة / Cambiale</option>
+        </select>
+      </label>
       <label>مدة الاستخلاص
         <select id="orderPaymentTerm">
-          <option value="15">15 يوماً</option>
-          <option value="30">30 يوماً</option>
+          <option value="cod">إستخلاص عند الإستلام / Paiement à la livraison</option>
+          <option value="15">15 يوماً / 15 jours</option>
+          <option value="30">30 يوماً / 30 jours</option>
         </select>
-        <small class="field-hint">تُستعمل للتنبيه الداخلي فقط ولا تظهر في ملف PDF.</small>
+        <small class="field-hint">يظهر نوع ومدة الاستخلاص وتاريخها بوضوح داخل ملف PDF.</small>
       </label>
       <div class="order-total-preview">
         <span>Total commande</span><strong id="orderGrandTotal">0,00 DH</strong>
@@ -457,6 +463,8 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="app.js"></script>
 
+<!-- إشعارات آجال الاستخلاص تظهر أسفل محتوى الصفحة -->
+<div id="dueAlertBar" class="due-alert-bar" role="status" aria-live="polite" hidden></div>
 </body>
 
 </html>
