@@ -366,6 +366,9 @@ $("menuImport").onclick=()=>{$("actionMenu").classList.remove("show");$("backupI
 $("menuOrders").onclick=()=>{$("actionMenu").classList.remove("show");openOrdersModal()};
 $("menuClients").onclick=()=>{$("actionMenu").classList.remove("show");openClientModal()};
 $("menuImportClients").onclick=()=>{$("actionMenu").classList.remove("show");$("clientsExcelInput").click()};
+$("menuExportAllExcel").onclick=()=>{$("actionMenu").classList.remove("show");exportFullArchiveExcel()};
+$("menuImportAllExcel").onclick=()=>{$("actionMenu").classList.remove("show");$("allExcelRestoreInput").click()};
+$("allExcelRestoreInput").onchange=e=>importFullArchiveExcel(e.target.files[0]);
 $("menuDashboard").onclick=()=>openDashboard();
 
 /* Sauvegarde complète : produits + photos + codes + promotions + clients + commandes + panier */
@@ -406,6 +409,41 @@ function exportBackup(){
  document.body.appendChild(a);a.click();a.remove();
  setTimeout(()=>URL.revokeObjectURL(url),3000);
  toast(`Sauvegarde téléchargée : ${products.length} produit(s) avec photos`);
+}
+
+function excelSheet(rows, widths){
+ const data=rows&&rows.length?rows:[{"ملاحظة":"لا توجد بيانات"}];
+ const ws=XLSX.utils.json_to_sheet(data);
+ if(widths)ws["!cols"]=widths.map(w=>({wch:w}));
+ const ref=XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(0,data.length),c:Math.max(0,(widths?.length||Object.keys(data[0]||{}).length)-1)}});
+ ws["!autofilter"]={ref};
+ ws["!freeze"]={xSplit:0,ySplit:1,topLeftCell:"A2",activePane:"bottomLeft",state:"frozen"};
+ return ws;
+}
+function exportFullArchiveExcel(){
+ try{
+  if(typeof XLSX==="undefined")throw new Error("Excel library not loaded");
+  const productRows=products.map((p,i)=>{const row=backupProductSnapshot(p,i);return {"المعرف":row.id,"كود المنتج":row.code,"اسم المنتج":row.name,"القسم":row.category,"الثمن (DH)":row.price,"ثمن التكلفة (DH)":row.costPrice,"الوحدات في العلبة":row.qty,"التوفر":row.availability==="unavailable"?"غير متوفر":"متوفر","عرض 10+1":row.promo10Plus1?"نعم":"لا","الوصف":row.description,"الصورة (Data URL)":row.image};});
+  const clientRows=clients.map(c=>({"المعرف":c.id||"","اسم الزبون":c.name||"","الهاتف":c.phone||"","الشركة":c.company||c.societe||"","المدينة":c.city||"","العنوان":c.address||"","ICE":c.ice||"","صاحب الشيك/الكمبيالة":c.paymentHolder||c.paymentName||c.chequeName||"","رقم الشيك/الكمبيالة":c.paymentNumber||c.chequeNumber||"","نوع الأداء":paymentTypeLabel(c.paymentType),"تاريخ الإضافة":c.importedAt||c.createdAt||""}));
+  const orderRows=orders.map(o=>{ensureOrderDeadline(o);const state=recalculateOrderPaymentState(o);const deadline=deadlineState(o);return {"المعرف":o.id||"","التاريخ":o.date||"","الزبون":o.client||"","الشركة":o.company||"","ICE":o.ice||"","الهاتف":o.phone||"","الإجمالي (DH)":Number(o.total)||0,"المخلص (DH)":Number(state.paid)||0,"الباقي (DH)":Number(state.due)||0,"الحالة":o.status||"unpaid","مدة الأداء (يوم)":deadline.term,"تاريخ الاستحقاق":o.dueDate||"","صاحب الشيك/الكمبيالة":o.paymentHolder||o.paymentName||"","رقم الشيك/الكمبيالة":o.paymentNumber||"","نوع الأداء":paymentTypeLabel(o.paymentType),"الملاحظة":o.note||"","عدد العناصر":Array.isArray(o.items)?o.items.length:0};});
+  const paymentRows=[];
+  orders.forEach(o=>{ensureOrderDeadline(o);getPaymentHistory(o).forEach((p,index)=>paymentRows.push({"معرف القسط":p.id||`payment_${index+1}`,"معرف الكوموند":o.id||"","الزبون":o.client||"","رقم القسط":index+1,"مبلغ القسط (DH)":Number(p.amount)||0,"تاريخ وتوقيت الأداء":p.date||"","نوع الأداء":paymentTypeLabel(p.type||o.paymentType),"صاحب الشيك/الكمبيالة":p.holder||o.paymentHolder||"","رقم الشيك/الكمبيالة":p.number||o.paymentNumber||"","مدة الكوموند (يوم)":Number(o.paymentTermDays)||15,"تاريخ الاستحقاق":o.dueDate||""}));});
+  const itemRows=[];
+  orders.forEach(o=>(Array.isArray(o.items)?o.items:[]).forEach((item,index)=>itemRows.push({"معرف الكوموند":o.id||"","رقم السطر":index+1,"معرف المنتج":item.id||"","كود المنتج":item.code||"","اسم المنتج":item.name||"","عدد العلب":Number(item.boxes??item.qty)||0,"عدد الوحدات":Number(item.units)||0,"الوحدات المجانية":Number(item.freeUnits)||0,"ثمن الوحدة (DH)":Number(item.unitPrice??item.price)||0,"المجموع (DH)":Number(item.lineTotal??item.total)||0,"بيانات السطر":JSON.stringify(item)})));
+  const cartRows=(Array.isArray(cart)?cart:[]).map((item,index)=>({"رقم السطر":index+1,"معرف المنتج":item.id||"","عدد العلب":Number(item.qty)||0}));
+  const summaryRows=[{"المعلومة":"نوع الملف","القيمة":"3D_PEINTURES_FULL_ARCHIVE"},{"المعلومة":"الإصدار","القيمة":3},{"المعلومة":"تاريخ التصدير","القيمة":new Date().toISOString()},{"المعلومة":"القسم النشط","القيمة":active||""},{"المعلومة":"عدد المنتجات","القيمة":products.length},{"المعلومة":"عدد الزبناء","القيمة":clients.length},{"المعلومة":"عدد الكوموندات","القيمة":orders.length},{"المعلومة":"عدد الأقساط","القيمة":paymentRows.length},{"المعلومة":"الصور محفوظة داخل ورقة المنتجات","القيمة":"نعم — Data URL"}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,excelSheet(summaryRows,[34,60]),"ملخص");
+  XLSX.utils.book_append_sheet(wb,excelSheet(productRows,[24,18,28,18,14,18,16,16,12,36,64]),"Products");
+  XLSX.utils.book_append_sheet(wb,excelSheet(clientRows,[24,24,18,24,18,30,20,28,24,24,24]),"Clients");
+  XLSX.utils.book_append_sheet(wb,excelSheet(orderRows,[28,24,24,24,18,18,16,16,16,14,18,24,28,24,22,40,14]),"Orders");
+  XLSX.utils.book_append_sheet(wb,excelSheet(paymentRows,[28,28,24,12,18,26,24,28,24,18,24]),"Installments");
+  XLSX.utils.book_append_sheet(wb,excelSheet(itemRows,[28,12,28,18,28,14,14,16,18,16,60]),"Order Items");
+  XLSX.utils.book_append_sheet(wb,excelSheet(cartRows,[12,28,14]),"Cart");
+  const d=new Date(),pad=n=>String(n).padStart(2,"0");
+  XLSX.writeFile(wb,`3D_PEINTURES_ARCHIVE_COMPLET_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.xlsx`);
+  toast(`تم تحميل الأرشيف الكامل: ${products.length} منتوج · ${orders.length} كوموند`);
+ }catch(err){console.error(err);toast("خطأ أثناء إنشاء أرشيف Excel الشامل")}
 }
 
 async function importBackupFile(file){
@@ -468,6 +506,71 @@ async function importBackupFile(file){
 $("backupInput").onchange=e=>importBackupFile(e.target.files[0]);
 
 
+function excelRows(wb,name){
+ const actual=wb.SheetNames.find(s=>s===name)||wb.SheetNames.find(s=>String(s).toLowerCase()===String(name).toLowerCase());
+ return actual?XLSX.utils.sheet_to_json(wb.Sheets[actual],{defval:""}):[];
+}
+function excelNum(value,fallback=0){
+ if(typeof value==="number")return Number.isFinite(value)?value:fallback;
+ const n=Number(String(value??"").trim().replace(/\s/g,"").replace(",","."));
+ return Number.isFinite(n)?n:fallback;
+}
+function excelDate(value,fallback){
+ if(value instanceof Date&&!Number.isNaN(value.getTime()))return value.toISOString();
+ const d=new Date(value);return Number.isNaN(d.getTime())?(fallback===null?null:(fallback||new Date().toISOString())):d.toISOString();
+}
+function importFullArchiveExcel(file){
+ if(!file)return;
+ const reader=new FileReader();
+ reader.onload=async e=>{
+  let previousState=null;
+  try{
+   if(typeof XLSX==="undefined")throw new Error("Excel library not loaded");
+   const wb=XLSX.read(e.target.result,{type:"array",cellDates:true});
+   const productRows=excelRows(wb,"Products").filter(r=>String(r["المعرف"]||r["اسم المنتج"]||r["كود المنتج"]||"").trim());
+   const clientRows=excelRows(wb,"Clients").filter(r=>String(r["المعرف"]||r["اسم الزبون"]||"").trim());
+   const orderRows=excelRows(wb,"Orders").filter(r=>String(r["المعرف"]||r["الزبون"]||"").trim());
+   if(!productRows.length&&!clientRows.length&&!orderRows.length)throw new Error("ARCHIVE_EMPTY");
+   if(!confirm(`استرجاع الأرشيف الكامل؟\n\n${productRows.length} منتوج · ${clientRows.length} كليان · ${orderRows.length} كوموند\n\nسيتم تعويض البيانات الحالية.`))return;
+   previousState={products,cart,orders,clients,active};
+   const restoredProducts=productRows.map((r,i)=>({
+    id:String(r["المعرف"]||`p_excel_${Date.now().toString(36)}_${i}`),name:String(r["اسم المنتج"]||"Produit").trim(),code:normalizeProductCode(r["كود المنتج"]),price:excelNum(r["الثمن (DH)"]),costPrice:excelNum(r["ثمن التكلفة (DH)"]),qty:Math.max(0,Math.floor(excelNum(r["الوحدات في العلبة"]))),category:canonicalCategory(r["القسم"]),availability:String(r["التوفر"]||"").trim()==="غير متوفر"?"unavailable":"available",promo10Plus1:["نعم","yes","true","1"].includes(String(r["عرض 10+1"]||"").trim().toLowerCase()),description:String(r["الوصف"]||""),image:typeof r["الصورة (Data URL)"]==="string"?r["الصورة (Data URL)"]:""
+   }));
+   const productIds=new Set();restoredProducts.forEach((p,i)=>{if(!p.id||productIds.has(p.id))p.id=`p_excel_${Date.now().toString(36)}_${i}_${Math.random().toString(36).slice(2,7)}`;productIds.add(p.id)});
+   const restoredClients=clientRows.map((r,i)=>({id:String(r["المعرف"]||`c_excel_${Date.now().toString(36)}_${i}`),name:String(r["اسم الزبون"]||"").trim(),phone:String(r["الهاتف"]||""),company:String(r["الشركة"]||""),city:String(r["المدينة"]||""),address:String(r["العنوان"]||""),ice:String(r["ICE"]||""),paymentHolder:String(r["صاحب الشيك/الكمبيالة"]||""),paymentNumber:String(r["رقم الشيك/الكمبيالة"]||""),paymentType:paymentTypeValue(r["نوع الأداء"]),importedAt:excelDate(r["تاريخ الإضافة"],new Date().toISOString())})).filter(c=>c.name);
+   const restoredOrders=[];const orderMap=new Map();
+   orderRows.forEach((r,i)=>{
+    const id=String(r["المعرف"]||`o_excel_${Date.now().toString(36)}_${i}`);
+    const term=[15,30].includes(excelNum(r["مدة الأداء (يوم)"],15))?excelNum(r["مدة الأداء (يوم)"],15):15;
+    const order={id,date:excelDate(r["التاريخ"]),client:String(r["الزبون"]||""),company:String(r["الشركة"]||""),ice:String(r["ICE"]||""),phone:String(r["الهاتف"]||""),total:excelNum(r["الإجمالي (DH)"]),paid:0,due:0,profit:0,status:"unpaid",paymentTermDays:term,dueDate:excelDate(r["تاريخ الاستحقاق"],null),paymentHolder:String(r["صاحب الشيك/الكمبيالة"]||""),paymentNumber:String(r["رقم الشيك/الكمبيالة"]||""),paymentType:paymentTypeValue(r["نوع الأداء"]),note:String(r["الملاحظة"]||""),payments:[],items:[]};
+    if(!order.dueDate)order.dueDate=new Date(new Date(order.date).getTime()+term*86400000).toISOString();
+    restoredOrders.push(order);orderMap.set(id,order);
+   });
+   excelRows(wb,"Order Items").forEach((r)=>{
+    const order=orderMap.get(String(r["معرف الكوموند"]||""));if(!order)return;
+    let item=null;try{item=JSON.parse(String(r["بيانات السطر"]||""))}catch(err){}
+    order.items.push(item&&typeof item==="object"?item:{id:String(r["معرف المنتج"]||""),code:String(r["كود المنتج"]||""),name:String(r["اسم المنتج"]||""),boxes:excelNum(r["عدد العلب"]),qty:excelNum(r["عدد العلب"]),units:excelNum(r["عدد الوحدات"]),freeUnits:excelNum(r["الوحدات المجانية"]),unitPrice:excelNum(r["ثمن الوحدة (DH)"]),lineTotal:excelNum(r["المجموع (DH)"])});
+   });
+   excelRows(wb,"Installments").forEach((r)=>{
+    const order=orderMap.get(String(r["معرف الكوموند"]||""));if(!order)return;
+    order.payments.push({id:String(r["معرف القسط"]||makeId()),amount:excelNum(r["مبلغ القسط (DH)"]),date:excelDate(r["تاريخ وتوقيت الأداء"]),type:paymentTypeValue(r["نوع الأداء"]),holder:String(r["صاحب الشيك/الكمبيالة"]||""),number:String(r["رقم الشيك/الكمبيالة"]||"")});
+   });
+   restoredOrders.forEach(o=>recalculateOrderPaymentState(o));
+   const restoredCart=excelRows(wb,"Cart").map(r=>({id:String(r["معرف المنتج"]||""),qty:Math.max(1,Math.floor(excelNum(r["عدد العلب"],1)))})).filter(r=>productIds.has(r.id));
+   const summary=excelRows(wb,"ملخص");const summaryMap=new Map(summary.map(r=>[String(r["المعلومة"]||""),r["القيمة"]]));
+   const restoredActive=canonicalCategory(summaryMap.get("القسم النشط")||categories[0]);
+   products=restoredProducts;clients=restoredClients;orders=restoredOrders;cart=restoredCart;active=restoredActive;
+   if(!save()){await compactProductsImages();if(!save())throw new Error("STORAGE_FULL")}
+   localStorage.setItem("3d_peintures_orders_v1",JSON.stringify(orders));localStorage.setItem("3d_peintures_cart_v4",JSON.stringify(cart));saveClients();
+   selectedProductId=null;selectedImage="";renderCart();render();renderDueAlerts();
+   toast(`تم استرجاع الأرشيف: ${products.length} منتوج · ${orders.length} كوموند`);
+  }catch(err){
+   if(previousState){products=previousState.products;cart=previousState.cart;orders=previousState.orders;clients=previousState.clients;active=previousState.active;renderCart();render();renderDueAlerts()}
+   alert(err?.message==="STORAGE_FULL"?"الصور كثيرة على ذاكرة المتصفح. جرب ملفاً أقل حجماً.":err?.message==="ARCHIVE_EMPTY"?"هذا الملف لا يحتوي على أوراق أرشيف 3D PEINTURES.":"تعذر استرجاع أرشيف Excel. تأكد من استعمال الملف الذي تم تصديره من التطبيق.");
+  }finally{$("allExcelRestoreInput").value=""}
+ };
+ reader.readAsArrayBuffer(file);
+}
 
 /* Import clients Excel */
 const CLIENTS_KEY="3d_peintures_clients_v1";
@@ -828,6 +931,7 @@ function openOrderModal(){
  const x=orderCartSummary();
   $("orderClient").value="";
   $("orderPaymentNumber").value="";
+  $("orderPaymentTerm").value="15";
   $("orderNote").value="إستخلاص عند الاستلام — Paiement à la livraison";
  $("orderGrandTotal").textContent=money(x.total)+" DH";
  $("orderDue").textContent="غير مخلص";
@@ -867,6 +971,9 @@ async function createOrderPDF(order){
       const promoNote=freeUnits>0?`<div style="margin-top:4px;color:#d92d20;font-size:11px;font-weight:800">🎁 10 + 1 GRATUIT · +${freeUnits} pièce(s) offerte(s) · livré : ${deliveredUnits}</div>`:"";
       return `<tr><td style="padding:12px;border-bottom:1px solid #ddd;text-align:left"><div>${esc(row.name||p.name||"Produit")}</div>${promoNote}</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:center">${boxes}</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:center">${units}</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:right">${money(unitPrice)} DH</td><td style="padding:12px;border-bottom:1px solid #ddd;text-align:right;font-weight:700">${money(line)} DH</td></tr>`;
     }).join("");
+    const paymentHistory=getPaymentHistory(order);
+    const paidTotal=paymentTotal(order);
+    const paymentRows=paymentHistory.length?paymentHistory.map((p,index)=>`<tr><td style="padding:8px;border-bottom:1px solid #eadfc2">${index+1}</td><td style="padding:8px;border-bottom:1px solid #eadfc2">${formatPaymentDate(p.date)}</td><td style="padding:8px;border-bottom:1px solid #eadfc2;text-align:right;font-weight:800">${money(p.amount)} DH</td></tr>`).join(""):"<tr><td colspan=\"3\" style=\"padding:10px;color:#777;text-align:center\">Aucun acompte enregistré</td></tr>";
 
    const watermarkHtml = logoB64
      ? `<div style="position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);width:620px;opacity:0.18;z-index:0;pointer-events:none;"><img src="${logoB64}" style="width:100%;height:auto;filter:none;"></div>`
@@ -909,9 +1016,15 @@ async function createOrderPDF(order){
        </table>
        <div style="margin-top:25px;margin-left:auto;width:360px;border:2px solid #12386f;border-radius:14px;padding:18px;direction:ltr">
          <div style="display:flex;justify-content:space-between;font-size:24px;font-weight:900">
-           <span>Total Payé</span>
+           <span>Total commande</span>
            <span>${money(order.total)} DH</span>
          </div>
+         <div style="display:flex;justify-content:space-between;margin-top:8px;font-size:15px"><span>Total des acomptes</span><b>${money(paidTotal)} DH</b></div>
+         <div style="display:flex;justify-content:space-between;margin-top:5px;font-size:15px;color:#b42318"><span>Reste à payer</span><b>${money(Math.max(0,Number(order.total||0)-paidTotal))} DH</b></div>
+       </div>
+       <div style="margin-top:22px;border:1px solid #eadfc2;border-radius:12px;padding:12px;background:#fffdf7;direction:ltr">
+         <div style="font-size:16px;font-weight:900;color:#7a5a16;margin-bottom:8px">HISTORIQUE DES ACOMPTES</div>
+         <table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="color:#667085;text-align:left"><th style="padding:8px">N°</th><th style="padding:8px">Date et heure</th><th style="padding:8px;text-align:right">Montant</th></tr></thead><tbody>${paymentRows}</tbody></table>
        </div>
        <div style="margin-top:38px;text-align:center;font-weight:900;color:#ff0000;font-size:30px;line-height:1.25">إستخلاص عند الاستلام</div>
        <div style="text-align:center;font-weight:900;color:#ff0000;font-size:24px;line-height:1.25">Paiement à la livraison</div>
@@ -1018,7 +1131,7 @@ async function shareOrderPDF(order){
  const nativePayload={
    id:order.id,date:order.date,client:order.client,company:order.company||"",
    ice:order.ice||"",paymentNumber:order.paymentNumber||"",paymentType:paymentTypeValue(order.paymentType),phone:order.phone||"",whatsapp:order.phone||"",total:Number(order.total||0),
-   paid:Number(order.paid||0),due:Number(order.due||0),status:order.status||"unpaid",
+   paid:paymentTotal(order),due:Math.max(0,Number(order.total||0)-paymentTotal(order)),status:order.status||"unpaid",payments:getPaymentHistory(order).map(p=>({amount:Number(p.amount)||0,date:p.date,type:p.type||""})),
    note:order.note||"إستخلاص عند الاستلام — Paiement à la livraison",
     items:order.items.map(row=>{
       const p=products.find(x=>x.id===row.id)||{};
@@ -1082,12 +1195,15 @@ async function saveOrder(e){
  const client=$("orderClient").value.trim();
  if(!client){toast("دخل اسم الكليان");return}
  const clientObj=clients.find(c=>String(c.name||"").trim().toLowerCase()===client.toLowerCase())||{};
+ const orderDate=new Date();
+ const selectedTerm=[15,30].includes(Number($("orderPaymentTerm").value))?Number($("orderPaymentTerm").value):15;
  const order={
-   id:makeId(),date:new Date().toISOString(),client,
+   id:makeId(),date:orderDate.toISOString(),client,
    company:clientObj.company||clientObj.societe||"",
    ice:clientObj.ice||"",paymentHolder:clientObj.paymentHolder||clientObj.chequeHolder||clientObj.paymentName||clientObj.chequeName||"",paymentNumber:$('orderPaymentNumber').value.trim()||clientObj.paymentNumber||clientObj.chequeNumber||"",paymentType:paymentTypeValue(clientObj.paymentType||clientObj.paymentMode||clientObj.modePaiement),phone:clientObj.phone||"",
    total:x.total,paid:0,due:x.total,profit:x.profit,
-   status:"unpaid",note:$('orderNote').value.trim() || "إستخلاص عند الاستلام — Paiement à la livraison",
+   paymentTermDays:selectedTerm,dueDate:new Date(orderDate.getTime()+selectedTerm*86400000).toISOString(),
+   status:"unpaid",payments:[],note:$('orderNote').value.trim() || "إستخلاص عند الاستلام — Paiement à la livraison",
    items:cart.map(row=>{
      const p=products.find(x=>x.id===row.id)||{};
        const boxes=Number(row.qty)||0, units=Number(p.qty)||0, unitPrice=Number(p.price)||0;
@@ -1112,29 +1228,204 @@ async function saveOrder(e){
  toast("تسجلت الكوموند — جاري تجهيز Bon de commande PDF…");
  await shareOrderPDF(order);
 }
-function addPayment(orderId){
- const order=orders.find(o=>o.id===orderId);
- if(!order)return;
- const remaining=Math.max(0,Number(order.total||0)-Number(order.paid||0));
+let activePaymentOrderId="";
+function getPaymentHistory(order){
+ const history=Array.isArray(order?.payments)?order.payments.filter(p=>Number(p?.amount)>0):[];
+ if(history.length)return history;
+ const legacy=Number(order?.paid)||0;
+ if(legacy>0)return [{id:"legacy",amount:legacy,date:order.updatedAt||order.date,legacy:true}];
+ return [];
+}
+function paymentTotal(order){return getPaymentHistory(order).reduce((sum,p)=>sum+(Number(p.amount)||0),0)}
+function recalculateOrderPaymentState(order){
+ const paid=paymentTotal(order);
+ order.paid=paid;
+ order.due=Math.max(0,Number(order.total||0)-paid);
+ order.status=order.due<=0.000001?"paid":paid>0?"partial":"unpaid";
+ return {paid:order.paid,due:order.due};
+}
+function formatPaymentDate(value){
+ const d=new Date(value); if(Number.isNaN(d.getTime()))return "—";
+ return `${d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"})} · ${d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}`;
+}
+function updatePaymentPreview(){
+ const order=orders.find(o=>String(o.id)===String(activePaymentOrderId)); if(!order)return;
+ const before=Math.max(0,Number(order.total||0)-paymentTotal(order));
+ const entered=Math.max(0,Number(String($("paymentAmount")?.value||0).replace(",","."))||0);
+ const accepted=Math.min(entered,before);
+ $("paymentBeforeDue").textContent=money(before)+" DH";
+ $("paymentAfterTotal").textContent=money(paymentTotal(order)+accepted)+" DH";
+ $("paymentAfterDue").textContent=money(Math.max(0,before-accepted))+" DH";
+}
+function openPaymentModal(orderId){
+ const order=orders.find(o=>String(o.id)===String(orderId)); if(!order)return;
+ recalculateOrderPaymentState(order);
+ const remaining=Math.max(0,Number(order.total||0)-paymentTotal(order));
  if(remaining<=0){toast("هاد الكوموند مخلصة كاملة");return}
- const raw=prompt(`الكوموند: ${order.client}\nالمجموع: ${money(order.total)} DH\nمخلص دابا: ${money(order.paid||0)} DH\nالباقي: ${money(remaining)} DH\n\nدخل شحال خلص الكليان دابا (DH):`, String(remaining));
- if(raw===null)return;
- const amount=Number(String(raw).replace(',','.'));
+ activePaymentOrderId=order.id;
+ $("paymentContext").textContent=`${order.client||"Client"} · Total ${money(order.total)} DH`;
+ $("paymentNow").textContent=formatPaymentDate(new Date());
+ $("paymentAmount").value="";
+ $("paymentAmount").max=String(remaining);
+ updatePaymentPreview();
+ $("paymentModal").classList.add("show");
+ setTimeout(()=>$("paymentAmount")?.focus(),80);
+}
+function closePaymentModal(){activePaymentOrderId="";$("paymentModal").classList.remove("show")}
+function addPayment(orderId){openPaymentModal(orderId)}
+function savePaymentForm(e){
+ e.preventDefault();
+ const order=orders.find(o=>String(o.id)===String(activePaymentOrderId)); if(!order)return;
+ const amount=Number(String($("paymentAmount").value||"").replace(",","."));
+ const remaining=Math.max(0,Number(order.total||0)-paymentTotal(order));
  if(!Number.isFinite(amount)||amount<=0){alert("دخل مبلغ صحيح.");return}
- const added=Math.min(amount,remaining);
- order.paid=Number(order.paid||0)+added;
- order.due=Math.max(0,Number(order.total||0)-order.paid);
- order.status=order.due<=0.000001?"paid":"partial";
+ if(amount>remaining+0.000001){alert(`المبلغ أكبر من الباقي: ${money(remaining)} DH`);return}
+ if(!Array.isArray(order.payments)){
+   order.payments=[];
+   const legacy=Number(order.paid)||0;
+   if(legacy>0)order.payments.push({id:"legacy",amount:legacy,date:order.updatedAt||order.date,legacy:true});
+ }
+ order.payments.push({id:makeId(),amount,date:new Date().toISOString(),type:order.paymentType||"cheque"});
+ recalculateOrderPaymentState(order);
  order.updatedAt=new Date().toISOString();
  localStorage.setItem("3d_peintures_orders_v1",JSON.stringify(orders));
+ const orderId=order.id;
+ closePaymentModal();
  renderOrders();
- toast(order.due<=0.000001?"الكوموند تخلصات كاملة و بقات فالأرشيف":"تسجل الخلاص وباقي جزء من الكوموند");
+ if($("orderDetailModal")?.classList.contains("show"))openOrderDetail(orderId);
+ toast(order.due<=0.000001?"الكوموند تخلصات كاملة":`تسجل القسط: ${money(amount)} DH`);
+}
+function ensureOrderDeadline(order){
+ const term=Number(order?.paymentTermDays)===30?30:15;
+ const base=new Date(order?.date||Date.now());
+ if(!order.dueDate||Number.isNaN(new Date(order.dueDate).getTime()))order.dueDate=new Date(base.getTime()+term*86400000).toISOString();
+ order.paymentTermDays=term;
+ return order;
+}
+function deadlineState(order){
+ ensureOrderDeadline(order);
+ const dueDate=new Date(order.dueDate);
+ const due=paymentTotal(order);
+ const remaining=Math.max(0,Number(order.total||0)-due);
+ const ms=dueDate.getTime()-Date.now();
+ return {dueDate,remaining,daysLeft:Math.ceil(ms/86400000),overdue:ms<0&&remaining>0,term:order.paymentTermDays};
+}
+function deadlineText(state){
+ const date=state.dueDate.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
+ if(state.overdue)return `انتهت مدة الاستخلاص في ${date}`;
+ if(state.daysLeft<=0)return `تاريخ الاستحقاق اليوم · ${date}`;
+ return `أجل ${state.term} يوم · الاستحقاق ${date}`;
+}
+function overdueReminderRows(){
+ return orders.map(order=>{recalculateOrderPaymentState(order);const state=deadlineState(order);return {order,state,due:Math.max(0,Number(order.total||0)-paymentTotal(order))};}).filter(row=>row.due>0&&row.state.overdue).sort((a,b)=>new Date(a.state.dueDate)-new Date(b.state.dueDate));
+}
+function dueReminderTotal(rows){return rows.reduce((sum,row)=>sum+row.due,0)}
+function buildDueReminderText(rows,total){
+ const now=new Date();
+ const date=now.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
+ const lines=[
+  "تذكير ودي بتسوية المبلغ المتبقي — RAPPEL AMIABLE DE RÈGLEMENT",
+  `التاريخ / Date : ${date}`,
+  "",
+  "زبناؤنا الكرام،",
+  `نحيطكم علماً بأن مجموع المبالغ المتبقية التي تجاوزت آخر أجل للاستخلاص هو ${money(total)} DH. نرجو منكم، بكل احترام، إتمام أداء المبلغ بأكمله خلال الزيارة القادمة.`,
+  "",
+  "Chers clients,",
+  `Nous vous informons que le total des soldes ayant dépassé leur date limite de règlement s'élève à ${money(total)} DH. Nous vous prions de bien vouloir régulariser intégralement ce montant lors de notre prochaine visite.`,
+  "",
+  "التفاصيل / Détails :"
+ ];
+ rows.forEach((row,index)=>{
+  const dueDate=row.state.dueDate.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
+  lines.push(`${index+1}. ${row.order.client||"Client"} — ${money(row.due)} DH — آخر أجل / Échéance : ${dueDate}`);
+ });
+ lines.push("","شكراً لتعاونكم وتفهمكم. / Nous vous remercions pour votre collaboration et votre compréhension.","3D PEINTURES");
+ return lines.join("\n");
+}
+async function createDueReminderPDF(rows=overdueReminderRows()){
+ try{
+  if(!rows.length){toast("لا توجد كوموندات تجاوزت أجل الاستخلاص");return null}
+  if(!window.html2canvas||!window.jspdf)throw new Error("PDF libraries unavailable");
+  const total=dueReminderTotal(rows), message=buildDueReminderText(rows,total), now=new Date();
+  const date=now.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
+  let logoB64="";
+  try{
+   const r=await fetch("https://www.dropbox.com/scl/fi/g6bef6j1a3gtse98o9ktp/Picsart_26-08-12_00-00-35-616.png?rlkey=z5wm1262vccogra8t9n71stei&st=5lq7g02n&raw=1");
+   const blob=await r.blob();
+   logoB64=await new Promise(resolve=>{const fr=new FileReader();fr.onload=e=>resolve(e.target.result);fr.onerror=()=>resolve("");fr.readAsDataURL(blob)});
+  }catch(err){console.warn("Logo reminder load failed",err)}
+  const root=document.createElement("div");
+  root.dir="ltr";
+  root.style.cssText="position:fixed;left:-10000px;top:0;width:760px;background:#fff;color:#172033;padding:42px;font-family:Arial,'Noto Naskh Arabic',sans-serif;z-index:-1;box-sizing:border-box";
+  const detailRows=rows.map((row,index)=>{
+   const d=row.state.dueDate.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
+   return `<tr><td style="padding:11px;border-bottom:1px solid #eadfc2;text-align:center">${index+1}</td><td style="padding:11px;border-bottom:1px solid #eadfc2;text-align:left"><b>${esc(row.order.client||"Client")}</b><div style="font-size:11px;color:#667085;margin-top:3px">Commande / الكوموند : ${esc(row.order.id||"—")}</div></td><td style="padding:11px;border-bottom:1px solid #eadfc2;text-align:center">${d}</td><td style="padding:11px;border-bottom:1px solid #eadfc2;text-align:right;color:#b42318;font-weight:900">${money(row.due)} DH</td></tr>`;
+  }).join("");
+  const watermark=logoB64?`<div style="position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);width:560px;opacity:.08;z-index:0"><img src="${logoB64}" style="width:100%;height:auto"></div>`:"";
+  root.innerHTML=`${watermark}<div style="position:relative;z-index:1">
+   <div style="border-bottom:4px solid #12386f;padding-bottom:18px;margin-bottom:24px;display:flex;justify-content:space-between;gap:20px;align-items:flex-start">
+    <div><div style="font-size:16px;letter-spacing:4px;color:#b58a2a;font-weight:700">3D PEINTURES</div><div style="font-size:30px;font-weight:900;margin-top:6px">RAPPEL DE RÈGLEMENT</div><div style="font-size:14px;color:#667085;margin-top:7px">${date}</div></div>
+    <div style="text-align:right;direction:rtl;font-size:14px;color:#667085;line-height:1.65"><b style="color:#12386f;font-size:18px">تذكير بالاستخلاص</b><br>رسالة ودية ومحترفة</div>
+   </div>
+   <div style="border:1px solid #dfe3e8;border-radius:14px;padding:20px;background:#fffdf7;margin-bottom:22px;line-height:1.7">
+    <div style="direction:rtl;text-align:right;font-size:17px;font-weight:700">زبناؤنا الكرام،</div>
+    <div style="direction:rtl;text-align:right;margin-top:7px;font-size:15px">نحيطكم علماً بأن مجموع المبالغ المتبقية التي تجاوزت آخر أجل للاستخلاص هو <b style="color:#b42318">${money(total)} DH</b>. نرجو منكم، بكل احترام، إتمام أداء المبلغ بأكمله خلال الزيارة القادمة.</div>
+    <div style="border-top:1px solid #eadfc2;margin:15px 0"></div>
+    <div style="font-size:17px;font-weight:700">Chers clients,</div>
+    <div style="margin-top:7px;font-size:15px">Nous vous informons que le total des soldes ayant dépassé leur date limite de règlement s'élève à <b style="color:#b42318">${money(total)} DH</b>. Nous vous prions de bien vouloir régulariser intégralement ce montant lors de notre prochaine visite.</div>
+   </div>
+   <div style="font-size:17px;font-weight:900;color:#12386f;margin-bottom:9px">DÉTAILS DES SOLDES · تفاصيل المبالغ المتبقية</div>
+   <table style="width:100%;border-collapse:collapse;font-size:14px;direction:ltr"><thead><tr style="background:#12386f;color:#fff"><th style="padding:11px">N°</th><th style="padding:11px;text-align:left">Client / الزبون</th><th style="padding:11px">Échéance / آخر أجل</th><th style="padding:11px;text-align:right">Solde dû / الباقي</th></tr></thead><tbody>${detailRows}</tbody></table>
+   <div style="margin:24px 0 0 auto;width:330px;border:2px solid #b58a2a;border-radius:14px;padding:16px;background:#fffdf7"><div style="font-size:14px;color:#667085">TOTAL À RÉGLER · مجموع الباقي</div><div style="font-size:28px;font-weight:900;color:#b42318;margin-top:7px;text-align:right">${money(total)} DH</div></div>
+   <div style="margin-top:28px;text-align:center;color:#667085;font-size:13px;line-height:1.6">هذا تذكير ودي وليس إشعاراً قانونياً.<br>Ceci est un rappel amiable et non une mise en demeure.</div>
+   <div style="margin-top:18px;text-align:center;font-weight:900;color:#12386f;font-size:15px">شكراً لتعاونكم · Merci pour votre collaboration</div>
+  </div>`;
+  document.body.appendChild(root);
+  const canvas=await html2canvas(root,{scale:2,backgroundColor:"#ffffff",useCORS:true,logging:false});
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF({orientation:"p",unit:"mm",format:"a4"});
+  const pageW=210,pageH=297,margin=8,imgW=pageW-margin*2,imgH=canvas.height*imgW/canvas.width,pagePx=Math.floor(canvas.width*(pageH-margin*2)/imgH);
+  let yPx=0,page=0;
+  while(yPx<canvas.height){const sliceH=Math.min(pagePx,canvas.height-yPx);const slice=document.createElement("canvas");slice.width=canvas.width;slice.height=sliceH;slice.getContext("2d").drawImage(canvas,0,yPx,canvas.width,sliceH,0,0,canvas.width,sliceH);if(page>0)pdf.addPage();pdf.addImage(slice.toDataURL("image/jpeg",.92),"JPEG",margin,margin,imgW,sliceH*imgW/canvas.width);yPx+=sliceH;page++}
+  const safeDate=date.replaceAll("/","-");
+  return {blob:pdf.output("blob"),name:`Rappel_Echeances_3D_PEINTURES_${safeDate}.pdf`,message,total,count:rows.length};
+ }catch(err){console.error(err);toast("تعذر إنشاء ملف PDF للتذكير");return null}
+ finally{const root=document.querySelector('body > div[style*="left: -10000px"]');if(root)root.remove()}
+}
+function downloadBlob(blob,name){const url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000)}
+async function shareDueReminderPDF(){
+ const rows=overdueReminderRows();if(!rows.length){toast("لا توجد كوموندات تجاوزت أجل الاستخلاص");return}
+ const waWindow=window.open("about:blank","_blank");
+ const result=await createDueReminderPDF(rows);if(!result){waWindow?.close();return}
+ const file=new File([result.blob],result.name,{type:"application/pdf"});
+ const whatsappText=`${result.message}\n\nPDF : ${result.name}`;
+ try{
+  if(navigator.share&&navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({title:"Rappel de règlement — 3D PEINTURES",text:result.message,files:[file]});waWindow?.close();toast("تم تجهيز PDF وفتحت نافذة المشاركة");return}
+ }catch(err){console.warn("Native share cancelled or unavailable",err)}
+ downloadBlob(result.blob,result.name);
+ const url=`https://wa.me/?text=${encodeURIComponent(whatsappText)}`;
+ if(waWindow&&!waWindow.closed)waWindow.location.href=url;else window.open(url,"_blank");
+ toast("تم تحميل PDF وفتح واتساب برسالة التذكير");
+}
+function renderDueAlerts(){
+ const bar=$("dueAlertBar"); if(!bar)return;
+ const alerts=orders.map(order=>({order,state:deadlineState(order)})).filter(x=>x.state.remaining>0&&(x.state.overdue||x.state.daysLeft<=3)).sort((a,b)=>Number(b.state.overdue)-Number(a.state.overdue)||a.state.daysLeft-b.state.daysLeft);
+ if(!alerts.length){bar.hidden=true;bar.className="due-alert-bar";bar.innerHTML="";return}
+ const expired=alerts.some(x=>x.state.overdue);
+ const first=alerts[0];
+ const overdueRows=expired?overdueReminderRows():[];
+ const overdueTotal=dueReminderTotal(overdueRows);
+ bar.hidden=false;
+ bar.className=`due-alert-bar ${expired?"expired":"warning"}`;
+ bar.innerHTML=`<div><strong>${expired?"تنبيه: انتهت مدة استخلاص بون":"تذكير باقتراب موعد الاستخلاص"}</strong><small>${expired?`${overdueRows.length} بون(ات) تجاوزت الأجل · مجموع الباقي ${money(overdueTotal)} DH`: `${alerts.length} بون(ات) قريبة من تاريخ الاستحقاق`} · ${esc(first.order.client||"Client")} · ${deadlineText(first.state)}</small></div><div class="due-alert-actions"><button type="button" data-due-open>فتح الأرشيف</button>${expired?`<button type="button" class="due-reminder-btn" data-due-reminder>PDF + WhatsApp · ${money(overdueTotal)} DH</button>`:""}</div>`;
+ bar.querySelector("[data-due-open]")?.addEventListener("click",openOrdersModal);
+ bar.querySelector("[data-due-reminder]")?.addEventListener("click",e=>{e.stopPropagation();shareDueReminderPDF()});
 }
 function renderOrders(){
  renderSalesForecast();
  const q=($("orderSearch").value||"").trim().toLowerCase();
  let sales=0,paid=0,due=0;
- orders.forEach(o=>{sales+=Number(o.total)||0;paid+=Number(o.paid)||0;due+=Math.max(0,Number(o.due ?? ((Number(o.total)||0)-(Number(o.paid)||0))))});
+ orders.forEach(o=>{const state=recalculateOrderPaymentState(o);sales+=Number(o.total)||0;paid+=state.paid;due+=state.due});
  $("statSales").textContent=money(sales)+" DH";
  $("statPaid").textContent=money(paid)+" DH";
  $("statDue").textContent=money(due)+" DH";
@@ -1145,11 +1436,14 @@ function renderOrders(){
    const date=d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
    const time=d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
    const total=Number(o.total)||0;
-   const paid=Number(o.paid)||0;
-   const due=Math.max(0,Number(o.due ?? (total-paid)));
+   const state=recalculateOrderPaymentState(o);
+   const paid=state.paid;
+   const due=state.due;
    const status=due<=0.000001?"مخلصة كاملة":paid>0?"مخلصة جزئياً":"غير مخلصة";
    const statusClass=due<=0.000001?"paid":paid>0?"partial":"unpaid";
-   return `<div class="order-row ${statusClass}" data-order-open="${esc(o.id)}" tabindex="0" role="button">
+   const deadline=deadlineState(o);
+   const rowClass=deadline.overdue&&due>0?`${statusClass} overdue`:statusClass;
+   return `<div class="order-row ${rowClass}" data-order-open="${esc(o.id)}" tabindex="0" role="button">
      <div class="order-main">
        <div class="order-client">${esc(o.client)}</div>
        <small>${date} · ${time}</small>
@@ -1160,7 +1454,9 @@ function renderOrders(){
        <b>${money(total)} DH</b>
        <span>خلص: ${money(paid)} DH</span>
        <span class="${due>0?"due":""}">باقي: ${money(due)} DH</span>
-       ${due>0?`<button class="payment-btn" data-order-pay="${o.id}">💰 تسجيل الخلاص</button>`:`<span class="paid-label">✓ مخلصة</span>`}
+       ${due>0?`<button class="payment-btn" data-order-pay="${o.id}">💰 تسجيل قسط</button>`:`<span class="paid-label">✓ مخلصة</span>`}
+       ${getPaymentHistory(o).length?`<small class="order-installment-summary">${getPaymentHistory(o).length} قسط · مجموع الأقساط ${money(paid)} DH</small>`:""}
+       ${due>0?`<span class="deadline-chip ${deadline.overdue?"expired":""}">⏱ ${deadlineText(deadline)}</span>`:`<span class="deadline-chip paid">✓ تم الاستخلاص</span>`}
      </div>
      <button class="order-delete" data-order-delete="${o.id}" title="حذف">×</button>
    </div>`;
@@ -1173,9 +1469,10 @@ function renderOrders(){
  document.querySelectorAll("[data-order-open]").forEach(b=>{
    b.onclick=()=>openOrderDetail(b.dataset.orderOpen);
    b.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();openOrderDetail(b.dataset.orderOpen)}};
- });
-}
-function openOrdersModal(){renderOrders();$("ordersModal").classList.add("show")}
+    });
+   renderDueAlerts();
+ }
+ function openOrdersModal(){renderOrders();$("ordersModal").classList.add("show")}
 function closeOrdersModal(){$("ordersModal").classList.remove("show")}
 
 /* ===== Dashboard commercial ===== */
@@ -1312,8 +1609,9 @@ function openOrderDetail(orderId){
  const date=d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
  const time=d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
  const total=Number(o.total)||0;
- const paid=Number(o.paid)||0;
- const due=Math.max(0,Number(o.due ?? total-paid));
+ const payments=getPaymentHistory(o);
+ const paid=paymentTotal(o);
+ const due=Math.max(0,total-paid);
  const items=orderItemsForDisplay(o);
  $("orderDetailTitle").textContent="Commande de "+(o.client||"Client");
  $("orderDetailBody").innerHTML=`
@@ -1337,6 +1635,10 @@ function openOrderDetail(orderId){
    </div>
    <div class="detail-total"><span>Total Payé</span><strong>${money(total)} DH</strong></div>
    <div class="detail-payment"><span>Déjà encaissé</span><strong>${money(paid)} DH</strong><span>Reste</span><strong>${money(due)} DH</strong></div>
+   <div class="detail-installments">
+     <div class="detail-installments-head"><span>سجل الأقساط</span><strong>مجموع الأقساط: ${money(paid)} DH</strong></div>
+     <div class="installment-list">${payments.length?payments.map((p,index)=>`<div class="installment-row"><span class="installment-index">${index+1}</span><div><b>قسط رقم ${index+1}</b><small class="installment-date">${formatPaymentDate(p.date)}</small></div><strong class="installment-amount">${money(p.amount)} DH</strong></div>`).join(""):`<div class="installment-empty">لم يتم تسجيل أي قسط بعد.</div>`}</div>
+   </div>
    ${o.note?`<div class="detail-note">${esc(o.note)}</div>`:""}
    ${o.paymentNumber?`<div class="detail-note"><b>رقم الشيك / الكمبيالة:</b> ${esc(o.paymentNumber)}</div>`:""}
    <button class="gold-btn full" id="detailPaymentBtn" type="button">💰 Enregistrer un paiement</button>
@@ -1470,6 +1772,10 @@ $("dashboardModal").onclick=e=>{if(e.target===$("dashboardModal"))closeDashboard
 $("dashboardMonth").onchange=renderDashboard;
 $("orderSearch").oninput=renderOrders;
 $("clearOrders").onclick=()=>{if(!orders.length)return;if(confirm("مسح جميع الطلبات؟")){orders=[];localStorage.setItem("3d_peintures_orders_v1","[]");renderOrders();toast("تم مسح الطلبات")}};
+$("closePaymentModal").onclick=closePaymentModal;
+$("paymentModal").onclick=e=>{if(e.target===$("paymentModal"))closePaymentModal()};
+$("paymentForm").onsubmit=savePaymentForm;
+$("paymentAmount").oninput=updatePaymentPreview;
 
 $("openClientFormFromOrder").onclick=()=>openClientModal($("orderClient").value.trim());
 $("closeClientModal").onclick=closeClientModal;
@@ -1487,10 +1793,12 @@ $("exportStatsExcel").onclick=exportClientStatsToExcel;
 $("productSearch").oninput=()=>{render();$("clearProductSearch").style.display=$("productSearch").value?"block":"none"};
 $("clearProductSearch").onclick=()=>{$("productSearch").value="";$("clearProductSearch").style.display="none";render();$("productSearch").focus()};
 
-initProductCarousel();
-initProductFocus();
-renderCart();
-render();
+ initProductCarousel();
+ initProductFocus();
+ renderCart();
+ render();
+ renderDueAlerts();
+ setInterval(renderDueAlerts,60000);
 
 /* ===== SLIDER — auto only, no arrows, no dots, no zoom ===== */
 (function(){

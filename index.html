@@ -49,10 +49,16 @@
       <button id="menuImportClients"><span class="mi excel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v5h4M8 12h8M8 16h8"/></svg></span><div><b>Import Excel clients</b><small>إضافة الكليان دفعة واحدة</small></div></button>
       <div class="menu-section-title"><span>04</span> التحليل والتتبع</div>
       <button id="menuDashboard"><span class="mi dashboard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16"/><path d="m7 15 3-4 3 2 5-7"/><path d="M17 6h1v1"/></svg></span><div><b>Dashboard commercial</b><small>المبيعات · المنتجات · أوقات الذروة</small></div></button>
+      <div class="menu-section-title"><span>05</span> الأرشيف الشامل Excel</div>
+      <button id="menuExportAllExcel"><span class="mi export"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14"/><path d="M8 8h8"/></svg></span><div><b>Exporter archive complet</b><small>المبيعات · المنتجات · الكليان · الأقساط</small></div></button>
+      <button id="menuImportAllExcel"><span class="mi import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4 4 4M5 20h14"/><path d="M8 12h8"/></svg></span><div><b>Restaurer archive Excel</b><small>رفع ملف Excel لاسترجاع جميع المعلومات</small></div></button>
+      <input id="allExcelRestoreInput" type="file" accept=".xlsx,.xls" hidden>
     </div>
   </div>
   </div>
 </header>
+
+<div id="dueAlertBar" class="due-alert-bar" role="status" aria-live="polite" hidden></div>
 
 <!-- Slider Hero -->
 <section class="slider-wrap" id="sliderWrap">
@@ -274,6 +280,13 @@
       <label>رقم الشيك / الكمبيالة (اختياري)
         <input id="orderPaymentNumber" placeholder="مثلاً: CH-2026-001">
       </label>
+      <label>مدة الاستخلاص
+        <select id="orderPaymentTerm">
+          <option value="15">15 يوماً</option>
+          <option value="30">30 يوماً</option>
+        </select>
+        <small class="field-hint">تُستعمل للتنبيه الداخلي فقط ولا تظهر في ملف PDF.</small>
+      </label>
       <div class="order-total-preview">
         <span>Total commande</span><strong id="orderGrandTotal">0,00 DH</strong>
       </div>
@@ -395,6 +408,28 @@
       <button class="close" id="closeOrderDetail">×</button>
     </div>
     <div id="orderDetailBody"></div>
+  </div>
+</div>
+
+<div class="modal" id="paymentModal">
+  <div class="modal-card payment-modal-card">
+    <div class="modal-head">
+      <div><small class="modal-kicker">RÈGLEMENT</small><h3>تسجيل قسط جديد</h3></div>
+      <button class="close" id="closePaymentModal" type="button">×</button>
+    </div>
+    <div class="payment-context" id="paymentContext">—</div>
+    <div class="payment-now"><span>تاريخ ووقت القسط</span><strong id="paymentNow">—</strong></div>
+    <form id="paymentForm">
+      <label>مبلغ القسط (DH)
+        <input id="paymentAmount" type="number" min="0.01" step="0.01" required placeholder="مثلاً: 500">
+      </label>
+      <div class="payment-preview-grid">
+        <div><span>الباقي قبل القسط</span><strong id="paymentBeforeDue">0,00 DH</strong></div>
+        <div><span>مجموع الأقساط بعده</span><strong id="paymentAfterTotal">0,00 DH</strong></div>
+        <div><span>الباقي بعد القسط</span><strong id="paymentAfterDue">0,00 DH</strong></div>
+      </div>
+      <button class="gold-btn full" type="submit">💰 حفظ القسط</button>
+    </form>
   </div>
 </div>
 
