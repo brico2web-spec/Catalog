@@ -1133,14 +1133,11 @@ async function createOrderPDF(order){
       const promoNote=freeUnits>0?`<div style="margin-top:4px;color:#d92d20;font-size:11px;font-weight:800">🎁 10 + 1 GRATUIT · +${freeUnits} pièce(s) offerte(s) · livré : ${deliveredUnits}</div>`:"";
       return `<tr><td style="padding:8px;border-bottom:1px solid #ddd;text-align:left"><div>${esc(row.name||p.name||"Produit")}</div>${promoNote}</td><td style="padding:8px;border-bottom:1px solid #ddd;text-align:center">${boxes}</td><td style="padding:8px;border-bottom:1px solid #ddd;text-align:center">${units}</td><td style="padding:8px;border-bottom:1px solid #ddd;text-align:right">${money(unitPrice)} DH</td><td style="padding:8px;border-bottom:1px solid #ddd;text-align:right;font-weight:700">${money(line)} DH</td></tr>`;
     }).join("");
-    const paymentHistory=getPaymentHistory(order);
-    const paidTotal=paymentTotal(order);
     const scheduleState=deadlineState(order);
     const scheduleHtml=paymentScheduleHtml(order,scheduleState);
     const isCodOrder=scheduleState.termKey==="cod";
-    const paymentRows=paymentHistory.length?paymentHistory.map(p=>`<tr><td style="padding:8px;border-bottom:1px solid #eadfc2">${formatPaymentDate(p.date)}</td><td style="padding:8px;border-bottom:1px solid #eadfc2;text-align:right;font-weight:400;color:#d00000">${money(p.amount)} DH</td></tr>`).join(""):"<tr><td colspan=\"2\" style=\"padding:10px;color:#d00000;text-align:center;font-weight:400\">Aucun acompte enregistré</td></tr>";
-    const orderSummaryHtml=isCodOrder?"":`<div style="margin-top:25px;margin-left:auto;width:360px;border:2px solid #12386f;border-radius:14px;padding:18px;direction:ltr"><div style="display:flex;justify-content:space-between;font-size:15px;font-weight:400;color:#d00000"><span>Total commande</span><span>${money(order.total)} DH</span></div><div style="display:flex;justify-content:space-between;margin-top:6px;font-size:14px;font-weight:400;color:#d00000"><span>Total des acomptes</span><b>${money(paidTotal)} DH</b></div><div style="display:flex;justify-content:space-between;margin-top:5px;font-size:14px;color:#d00000;font-weight:400"><span>Total - acomptes</span><b>${money(Math.max(0,Number(order.total||0)-paidTotal))} DH</b></div><div style="display:flex;justify-content:space-between;margin-top:10px;padding-top:9px;border-top:2px solid #e8a0a0;font-size:25px;color:#d00000;font-weight:900"><span>Reste à payer</span><b>${money(Math.max(0,Number(order.total||0)-paidTotal))} DH</b></div></div>`;
-    const paymentHistoryHtml=isCodOrder?"":`<div style="margin-top:22px;border:1px solid #eadfc2;border-radius:12px;padding:12px;background:#fffdf7;direction:ltr"><div style="font-size:13px;font-weight:400;color:#d00000;margin-bottom:8px">HISTORIQUE DES ACOMPTES</div>         <table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:#d00000;text-align:left;font-weight:400"><th style="padding:8px">Date et heure</th><th style="padding:8px;text-align:right">Montant</th></tr></thead><tbody>${paymentRows}</tbody></table></div>`;
+    const creditDueDate=scheduleState.dueDate?scheduleState.dueDate.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"}):"—";
+    const creditFooterHtml=isCodOrder?"":`<div style="margin-top:22px;border-top:2px solid #12386f;border-bottom:2px solid #12386f;padding:12px 4px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;direction:ltr;text-align:center"><div><div style="font-size:10px;color:#667085">Total produits</div><div style="font-size:15px;font-weight:700;color:#172033;margin-top:4px">${money(productSubtotal)} DH</div><div style="font-size:10px;color:#667085;margin-top:2px">مجموع ثمن المنتجات</div></div><div><div style="font-size:10px;color:#667085">Date limite de règlement</div><div style="font-size:14px;font-weight:700;color:#c62828;margin-top:4px">${creditDueDate}</div><div style="font-size:10px;color:#c62828;margin-top:2px">تاريخ آخر أجل للاستخلاص</div></div><div><div style="font-size:10px;color:#667085">Total du bon</div><div style="font-size:17px;font-weight:900;color:#c62828;margin-top:4px">${money(order.total)} DH</div><div style="font-size:10px;color:#667085;margin-top:2px">الإجمالي للبون</div></div></div>`;
 
    const watermarkHtml = logoB64
      ? `<div style="position:absolute;top:55%;left:50%;transform:translate(-50%,-50%);width:620px;opacity:0.18;z-index:0;pointer-events:none;"><img src="${logoB64}" style="width:100%;height:auto;filter:none;"></div>`
@@ -1181,10 +1178,9 @@ async function createOrderPDF(order){
          </thead>
          <tbody>${rows}</tbody>
        </table>
-       ${orderSummaryHtml}
-       ${paymentHistoryHtml}
        ${isCodOrder?`<div style="margin:14px 0 0 auto;width:280px;border:1px solid #d9ad4d;border-radius:9px;padding:10px 12px;direction:ltr;background:#fffdf7"><div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;color:#172033"><span>Total produits</span><b>${money(productSubtotal)} DH</b></div><div style="font-size:10px;color:#667085;margin-top:3px;text-align:right">مجموع أثمان المنتجات</div></div>`:""}
-       <div style="margin-top:20px">${scheduleHtml}</div>
+       ${creditFooterHtml}
+       ${isCodOrder?`<div style="margin-top:20px">${scheduleHtml}</div>`:""}
        <div style="margin-top:28px;text-align:center;color:#777;font-size:14px">Merci pour votre confiance · 3D PEINTURES</div>
      </div>`;
 
@@ -1421,6 +1417,33 @@ function updatePaymentPreview(){
  $("paymentBeforeDue").textContent=money(before)+" DH";
  $("paymentAfterTotal").textContent=money(paymentTotal(order)+accepted)+" DH";
  $("paymentAfterDue").textContent=money(Math.max(0,before-accepted))+" DH";
+}
+function paymentCustomerSummary(order,amount){
+ const total=Number(order.total||0);
+ const before=Math.max(0,total-paymentTotal(order));
+ const accepted=Math.min(Math.max(0,Number(amount)||0),before);
+ const due=Math.max(0,before-accepted);
+ const state=deadlineState(order);
+ const dueDate=state.termKey==="cod"?"عند الاستلام":(state.dueDate?state.dueDate.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"}):"—");
+ return {total,before,accepted,due,dueDate};
+}
+function buildPaymentCustomerMessage(order,amount){
+ const data=paymentCustomerSummary(order,amount);
+ return [`ملخص أداء القسط`,`الزبون: ${order.client||"—"}`,`الإجمالي للبون: ${money(data.total)} DH`,`تاريخ آخر أجل للاستخلاص: ${data.dueDate}`,`مبلغ القسط: ${money(data.accepted)} DH`,`الباقي بعد الأداء: ${money(data.due)} DH`,`شكراً لكم.`].join("\n");
+}
+async function sharePaymentSummaryWithCustomer(){
+ const order=orders.find(o=>String(o.id)===String(activePaymentOrderId));if(!order)return;
+ const amount=Number(String($("paymentAmount")?.value||"").replace(",","."));
+ const before=Math.max(0,Number(order.total||0)-paymentTotal(order));
+ if(!Number.isFinite(amount)||amount<=0){alert("دخل مبلغ القسط أولاً.");$("paymentAmount")?.focus();return}
+ if(amount>before+0.000001){alert(`المبلغ أكبر من الباقي: ${money(before)} DH`);return}
+ const text=buildPaymentCustomerMessage(order,amount);
+ const encoded=encodeURIComponent(text);
+ const rawPhone=String(order.phone||"").replace(/\D/g,"");
+ const waPhone=rawPhone.startsWith("0")?`212${rawPhone.slice(1)}`:rawPhone;
+ const wa=waPhone?`https://wa.me/${waPhone}?text=${encoded}`:`https://wa.me/?text=${encoded}`;
+ try{if(navigator.share){await navigator.share({title:"ملخص أداء القسط",text});toast("تم تجهيز ملخص القسط للزبون");return}}catch(e){}
+ window.open(wa,"_blank");toast("تم تجهيز رسالة ملخص القسط");
 }
 function openPaymentModal(orderId){
  const order=orders.find(o=>String(o.id)===String(orderId)); if(!order)return;
@@ -1967,6 +1990,7 @@ $("closePaymentModal").onclick=closePaymentModal;
 $("paymentModal").onclick=e=>{if(e.target===$("paymentModal"))closePaymentModal()};
 $("paymentForm").onsubmit=savePaymentForm;
 $("paymentAmount").oninput=updatePaymentPreview;
+$("paymentCustomerBtn").onclick=sharePaymentSummaryWithCustomer;
 
 $("openClientFormFromOrder").onclick=()=>openClientModal($("orderClient").value.trim());
 $("closeClientModal").onclick=closeClientModal;
