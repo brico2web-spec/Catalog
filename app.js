@@ -755,10 +755,60 @@ function paymentTypeLabel(value){
   if(type==="lettre_de_change")return "كمبيالة / Cambiale";
   return "شيك / Chèque";
 }
+let activeClientSuggestionIndex=-1,activeClientSuggestionItems=[];
+function normalizeClientLookup(value){return String(value||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim()}
+function uniqueOrderClients(){
+ const known=new Set();
+ return clients.filter(client=>{
+  const key=normalizeClientLookup(client?.name);if(!key||known.has(key))return false;
+  known.add(key);return true;
+ }).sort((a,b)=>String(a.name||"").localeCompare(String(b.name||""),"fr",{sensitivity:"base"}));
+}
+function hideClientSuggestions(){
+ const box=$("clientSuggestions"),input=$("orderClient");
+ activeClientSuggestionIndex=-1;activeClientSuggestionItems=[];
+ if(box){box.hidden=true;box.innerHTML=""}
+ if(input)input.setAttribute("aria-expanded","false");
+}
+function selectClientSuggestion(index){
+ const client=activeClientSuggestionItems[Number(index)];if(!client)return;
+ $("orderClient").value=String(client.name||"").trim();
+ hideClientSuggestions();
+}
+function renderClientSuggestions(value=$("orderClient")?.value||""){
+ const box=$("clientSuggestions"),input=$("orderClient");if(!box||!input)return;
+ const query=normalizeClientLookup(value);
+ activeClientSuggestionIndex=-1;
+ if(!query){hideClientSuggestions();return}
+ const matches=uniqueOrderClients().filter(client=>[client.name,client.company,client.city,client.ville].some(field=>normalizeClientLookup(field).includes(query))).slice(0,7);
+ activeClientSuggestionItems=matches;
+ box.hidden=false;input.setAttribute("aria-expanded","true");
+ if(!matches.length){box.innerHTML='<div class="client-suggestion-empty">ما لقيناش كليان مطابق. تقدر تزيده بزر + Client.</div>';return}
+ box.innerHTML=matches.map((client,index)=>{
+  const details=[client.company,client.city||client.ville].filter(Boolean).join(" · ");
+  return `<button class="client-suggestion" type="button" role="option" data-client-suggestion="${index}"><b>${esc(client.name||"")}</b>${details?`<small>${esc(details)}</small>`:""}</button>`;
+ }).join("");
+ box.querySelectorAll("[data-client-suggestion]").forEach(button=>{
+  button.onmousedown=event=>event.preventDefault();
+  button.onclick=()=>selectClientSuggestion(button.dataset.clientSuggestion);
+ });
+}
+function handleClientSuggestionKeys(event){
+ const box=$("clientSuggestions");if(!box||box.hidden)return;
+ const options=[...box.querySelectorAll("[data-client-suggestion]")];
+ if(event.key==="Escape"){hideClientSuggestions();return}
+ if(!options.length)return;
+ if(event.key==="ArrowDown"||event.key==="ArrowUp"){
+  event.preventDefault();
+  activeClientSuggestionIndex=event.key==="ArrowDown"?Math.min(activeClientSuggestionIndex+1,options.length-1):Math.max(activeClientSuggestionIndex-1,0);
+  options.forEach((option,index)=>option.classList.toggle("is-active",index===activeClientSuggestionIndex));
+  options[activeClientSuggestionIndex]?.scrollIntoView({block:"nearest"});
+ }
+ if(event.key==="Enter"&&activeClientSuggestionIndex>=0){event.preventDefault();selectClientSuggestion(options[activeClientSuggestionIndex].dataset.clientSuggestion)}
+}
 function renderClientList(){
-  const dl=$("clientsList"); if(!dl)return;
-  const unique=[...new Set(clients.map(c=>c.name).filter(Boolean))];
-  dl.innerHTML=unique.map(n=>`<option value="${esc(n)}"></option>`).join("");
+ const box=$("clientSuggestions"),input=$("orderClient");if(!box||!input)return;
+ if(!box.hidden&&input.value.trim())renderClientSuggestions(input.value);else hideClientSuggestions();
 }
 function importClientsExcel(file){
   if(!file)return;
@@ -1071,7 +1121,7 @@ function saveClientForm(e){
  const duplicate=clients.findIndex(c=>c.id!==data.id && String(c.name||"").trim().toLowerCase()===name.toLowerCase());
  if(duplicate>=0){ clients[duplicate]={...clients[duplicate],...data,id:clients[duplicate].id}; }
  else if(idx>=0) clients[idx]=data; else clients.unshift(data);
-   saveClients(); renderClientsManager(); renderClientStats(); $("orderClient").value=name; closeClientModal(); toast("تم حفظ معلومات الكليان");
+   saveClients(); renderClientsManager(); renderClientStats(); $("orderClient").value=name; hideClientSuggestions(); closeClientModal(); toast("تم حفظ معلومات الكليان");
 
 }
 
@@ -1089,7 +1139,7 @@ function orderCartSummary(){
 function openOrderModal(){
  if(!cart.length){toast("السلة فارغة");return}
  const x=orderCartSummary();
-  $("orderClient").value="";
+  $("orderClient").value="";hideClientSuggestions();
   $("orderPaymentNumber").value="";
   if($("orderPaymentType"))$("orderPaymentType").value="cash";
   $("orderPaymentTerm").value="15";
@@ -1101,7 +1151,7 @@ function openOrderModal(){
  $("orderModal").classList.add("show");
  // Ne pas ouvrir automatiquement le clavier sur Android.
 }
-function closeOrderModal(){$("orderModal").classList.remove("show")}
+function closeOrderModal(){hideClientSuggestions();$("orderModal").classList.remove("show")}
 async function createOrderPDF(order){
  try{
    if(!window.html2canvas || !window.jspdf) throw new Error("PDF libraries unavailable");
@@ -1992,7 +2042,12 @@ $("paymentForm").onsubmit=savePaymentForm;
 $("paymentAmount").oninput=updatePaymentPreview;
 $("paymentCustomerBtn").onclick=sharePaymentSummaryWithCustomer;
 
-$("openClientFormFromOrder").onclick=()=>openClientModal($("orderClient").value.trim());
+$("openClientFormFromOrder").onclick=()=>{hideClientSuggestions();openClientModal($("orderClient").value.trim())};
+$("orderClient").oninput=event=>renderClientSuggestions(event.target.value);
+$("orderClient").onfocus=event=>{if(event.target.value.trim())renderClientSuggestions(event.target.value)};
+$("orderClient").onkeydown=handleClientSuggestionKeys;
+$("orderClient").onblur=()=>setTimeout(hideClientSuggestions,140);
+document.addEventListener("pointerdown",event=>{if(!event.target.closest(".client-autocomplete"))hideClientSuggestions()});
 $("closeClientModal").onclick=closeClientModal;
 $("clientModal").onclick=e=>{if(e.target===$("clientModal"))closeClientModal()};
 $("clientForm").onsubmit=saveClientForm;

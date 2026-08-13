@@ -267,11 +267,13 @@
     </div>
     <form id="orderForm">
       <label>Nom du client
-        <div class="client-input-row">
-          <input id="orderClient" list="clientsList" required placeholder="Ex: Épicerie Al Amal">
-          <button class="client-add-btn" id="openClientFormFromOrder" type="button">👤 + Client</button>
+        <div class="client-autocomplete">
+          <div class="client-input-row">
+            <input id="orderClient" required placeholder="Ex: Épicerie Al Amal" autocomplete="off" aria-autocomplete="list" aria-controls="clientSuggestions" aria-expanded="false">
+            <button class="client-add-btn" id="openClientFormFromOrder" type="button">👤 + Client</button>
+          </div>
+          <div id="clientSuggestions" class="client-suggestions" role="listbox" hidden></div>
         </div>
-        <datalist id="clientsList"></datalist>
       </label>
       <label>رقم الشيك / الكمبيالة (اختياري)
         <input id="orderPaymentNumber" placeholder="مثلاً: CH-2026-001">
