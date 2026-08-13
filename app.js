@@ -364,6 +364,8 @@ $("menuDelete").onclick=()=>{
 $("menuOrders").onclick=()=>{$("actionMenu").classList.remove("show");openOrdersModal()};
 $("menuClients").onclick=()=>{$("actionMenu").classList.remove("show");openClientModal()};
 $("menuImportClients").onclick=()=>{$("actionMenu").classList.remove("show");$("clientsExcelInput").click()};
+$("menuExportProductsJson").onclick=()=>{$("actionMenu").classList.remove("show");exportProductsJson()};
+$("menuImportProductsJson").onclick=()=>{$("actionMenu").classList.remove("show");const input=$("productsJsonInput");if(input){input.value="";input.click()}};
 $("menuImportAllExcel").onclick=()=>{$("actionMenu").classList.remove("show");openArchiveRestorePicker()};
 $("allExcelRestoreInput").onchange=e=>importFullArchiveExcel(e.target.files[0]);
 $("menuDashboard").onclick=()=>openDashboard();
@@ -412,6 +414,14 @@ function exportBackup(){
  document.body.appendChild(a);a.click();a.remove();
  setTimeout(()=>URL.revokeObjectURL(url),3000);
  toast(`Sauvegarde téléchargée : ${products.length} produit(s) avec photos`);
+ }
+
+function exportProductsJson(){
+ const payload={format:"3D_PEINTURES_PRODUCTS_BACKUP",version:1,createdAt:new Date().toISOString(),activeCategory:active,products:(Array.isArray(products)?products:[]).map(backupProductSnapshot)};
+ const blob=new Blob([JSON.stringify(payload)],{type:"application/json;charset=utf-8"});
+ const url=URL.createObjectURL(blob);const a=document.createElement("a");const d=new Date();const pad=n=>String(n).padStart(2,"0");
+ a.href=url;a.download=`3D_PEINTURES_PRODUITS_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.json`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
+ toast(`تم تحميل ${products.length} منتوج(ات) مع الصور`);
 }
 
 function excelSheet(rows, widths){
@@ -602,6 +612,38 @@ async function importBackupFile(file){
 
 $("backupInput").onchange=e=>importBackupFile(e.target.files[0]);
 
+function importProductsJson(file){
+ if(!file)return;
+ const reader=new FileReader();
+ reader.onload=async e=>{
+  let previousProducts=null,previousActive=null;
+  try{
+   const data=JSON.parse(e.target.result);
+   const rawProducts=Array.isArray(data)?data:data?.products;
+   if(!Array.isArray(rawProducts)||!rawProducts.length)throw new Error("PRODUCTS_EMPTY");
+   if(!confirm(`رفع ${rawProducts.length} منتوج(ات) جاهزة؟\n\nسيتم استبدال قائمة المنتجات فقط، مع الحفاظ على الكوموندات والكليان.`))return;
+   previousProducts=products;previousActive=active;
+   const restored=rawProducts.map((p,i)=>backupProductSnapshot(p,i));
+   const usedIds=new Set();
+   restored.forEach((p,i)=>{if(usedIds.has(p.id))p.id=`p_json_${Date.now().toString(36)}_${i}_${Math.random().toString(36).slice(2,7)}`;usedIds.add(p.id)});
+   products=restored;
+   active=categories.includes(canonicalCategory(data?.activeCategory))?canonicalCategory(data.activeCategory):categories[0];
+   if(!save()){
+    await compactProductsImages();
+    if(!save())throw new Error("STORAGE_FULL");
+   }
+   selectedProductId=null;selectedImage="";
+   renderCart();render();
+   toast(`تم رفع ${products.length} منتوج(ات) جاهزة بنجاح`);
+  }catch(err){
+   if(previousProducts){products=previousProducts;active=previousActive;save();renderCart();render()}
+   alert(err?.message==="STORAGE_FULL"?"الملف كبير على ذاكرة المتصفح. حاول رفع نسخة أقل حجماً.":err?.message==="PRODUCTS_EMPTY"?"ملف JSON لا يحتوي على منتجات.":"تعذر رفع ملف المنتجات. تأكد من أنه ملف JSON صادر من التطبيق.");
+  }finally{$("productsJsonInput").value=""}
+ };
+ reader.readAsText(file);
+}
+
+$("productsJsonInput").onchange=e=>importProductsJson(e.target.files[0]);
 
 function excelRows(wb,name){
  const actual=wb.SheetNames.find(s=>s===name)||wb.SheetNames.find(s=>String(s).toLowerCase()===String(name).toLowerCase());
