@@ -361,15 +361,18 @@ $("menuDelete").onclick=()=>{
  const p=products.find(x=>x.id===selectedProductId);
  if(p&&confirm(`Supprimer "${p.name}" ?`)){products=products.filter(x=>x.id!==selectedProductId);selectedProductId=null;save();render();toast("Produit supprimé")}
 };
-$("menuExport").onclick=()=>{$("actionMenu").classList.remove("show");exportBackup()};
-$("menuImport").onclick=()=>{$("actionMenu").classList.remove("show");$("backupInput").click()};
 $("menuOrders").onclick=()=>{$("actionMenu").classList.remove("show");openOrdersModal()};
 $("menuClients").onclick=()=>{$("actionMenu").classList.remove("show");openClientModal()};
 $("menuImportClients").onclick=()=>{$("actionMenu").classList.remove("show");$("clientsExcelInput").click()};
-$("menuExportAllExcel").onclick=()=>{$("actionMenu").classList.remove("show");exportFullArchiveExcel()};
-$("menuImportAllExcel").onclick=()=>{$("actionMenu").classList.remove("show");$("allExcelRestoreInput").click()};
+$("menuImportAllExcel").onclick=()=>{$("actionMenu").classList.remove("show");openArchiveRestorePicker()};
 $("allExcelRestoreInput").onchange=e=>importFullArchiveExcel(e.target.files[0]);
 $("menuDashboard").onclick=()=>openDashboard();
+$("exportOrdersArchiveExcel").onclick=exportOrdersArchiveExcel;
+$("restoreOrdersArchiveExcel").onclick=openArchiveRestorePicker;
+$("exportDashboardExcel").onclick=exportDashboardExcel;
+$("restoreDashboardExcel").onclick=openArchiveRestorePicker;
+$("exportClientsArchiveExcel").onclick=exportClientsArchiveExcel;
+$("restoreClientsArchiveExcel").onclick=openArchiveRestorePicker;
 
 /* Sauvegarde complète : produits + photos + codes + promotions + clients + commandes + panier */
 function backupProductSnapshot(p,index){
@@ -423,16 +426,23 @@ function excelSheet(rows, widths){
 function exportFullArchiveExcel(){
  try{
   if(typeof XLSX==="undefined")throw new Error("Excel library not loaded");
-  const productRows=products.map((p,i)=>{const row=backupProductSnapshot(p,i);return {"المعرف":row.id,"كود المنتج":row.code,"اسم المنتج":row.name,"القسم":row.category,"الثمن (DH)":row.price,"ثمن التكلفة (DH)":row.costPrice,"الوحدات في العلبة":row.qty,"التوفر":row.availability==="unavailable"?"غير متوفر":"متوفر","عرض 10+1":row.promo10Plus1?"نعم":"لا","الوصف":row.description,"الصورة (Data URL)":row.image};});
-  const clientRows=clients.map(c=>({"المعرف":c.id||"","اسم الزبون":c.name||"","الهاتف":c.phone||"","الشركة":c.company||c.societe||"","المدينة":c.city||"","العنوان":c.address||"","ICE":c.ice||"","صاحب الشيك/الكمبيالة":c.paymentHolder||c.paymentName||c.chequeName||"","رقم الشيك/الكمبيالة":c.paymentNumber||c.chequeNumber||"","نوع الأداء":paymentTypeLabel(c.paymentType),"تاريخ الإضافة":c.importedAt||c.createdAt||""}));
-  const orderRows=orders.map(o=>{ensureOrderDeadline(o);const state=recalculateOrderPaymentState(o);const deadline=deadlineState(o);return {"المعرف":o.id||"","التاريخ":o.date||"","الزبون":o.client||"","الشركة":o.company||"","ICE":o.ice||"","الهاتف":o.phone||"","الإجمالي (DH)":Number(o.total)||0,"المخلص (DH)":Number(state.paid)||0,"الباقي (DH)":Number(state.due)||0,"الحالة":o.status||"unpaid","مدة الأداء (يوم)":deadline.term,"تاريخ الاستحقاق":o.dueDate||"","صاحب الشيك/الكمبيالة":o.paymentHolder||o.paymentName||"","رقم الشيك/الكمبيالة":o.paymentNumber||"","نوع الأداء":paymentTypeLabel(o.paymentType),"الملاحظة":o.note||"","عدد العناصر":Array.isArray(o.items)?o.items.length:0};});
-  const paymentRows=[];
-  orders.forEach(o=>{ensureOrderDeadline(o);getPaymentHistory(o).forEach((p,index)=>paymentRows.push({"معرف القسط":p.id||`payment_${index+1}`,"معرف الكوموند":o.id||"","الزبون":o.client||"","رقم القسط":index+1,"مبلغ القسط (DH)":Number(p.amount)||0,"تاريخ وتوقيت الأداء":p.date||"","نوع الأداء":paymentTypeLabel(p.type||o.paymentType),"صاحب الشيك/الكمبيالة":p.holder||o.paymentHolder||"","رقم الشيك/الكمبيالة":p.number||o.paymentNumber||"","مدة الكوموند (يوم)":Number(o.paymentTermDays)||15,"تاريخ الاستحقاق":o.dueDate||""}));});
-  const itemRows=[];
-  orders.forEach(o=>(Array.isArray(o.items)?o.items:[]).forEach((item,index)=>itemRows.push({"معرف الكوموند":o.id||"","رقم السطر":index+1,"معرف المنتج":item.id||"","كود المنتج":item.code||"","اسم المنتج":item.name||"","عدد العلب":Number(item.boxes??item.qty)||0,"عدد الوحدات":Number(item.units)||0,"الوحدات المجانية":Number(item.freeUnits)||0,"ثمن الوحدة (DH)":Number(item.unitPrice??item.price)||0,"المجموع (DH)":Number(item.lineTotal??item.total)||0,"بيانات السطر":JSON.stringify(item)})));
-  const cartRows=(Array.isArray(cart)?cart:[]).map((item,index)=>({"رقم السطر":index+1,"معرف المنتج":item.id||"","عدد العلب":Number(item.qty)||0}));
-  const summaryRows=[{"المعلومة":"نوع الملف","القيمة":"3D_PEINTURES_FULL_ARCHIVE"},{"المعلومة":"الإصدار","القيمة":3},{"المعلومة":"تاريخ التصدير","القيمة":new Date().toISOString()},{"المعلومة":"القسم النشط","القيمة":active||""},{"المعلومة":"عدد المنتجات","القيمة":products.length},{"المعلومة":"عدد الزبناء","القيمة":clients.length},{"المعلومة":"عدد الكوموندات","القيمة":orders.length},{"المعلومة":"عدد الأقساط","القيمة":paymentRows.length},{"المعلومة":"الصور محفوظة داخل ورقة المنتجات","القيمة":"نعم — Data URL"}];
   const wb=XLSX.utils.book_new();
+  const safeWrap=(fn,fallback=[])=>{try{return fn()}catch(e){console.warn("Excel sheet error",e);return fallback}};
+  
+  const productRows=safeWrap(()=>products.map((p,i)=>{const row=backupProductSnapshot(p,i);return {"المعرف":row.id,"كود المنتج":row.code,"اسم المنتج":row.name,"القسم":row.category,"الثمن (DH)":row.price,"ثمن التكلفة (DH)":row.costPrice,"الوحدات في العلبة":row.qty,"التوفر":row.availability==="unavailable"?"غير متوفر":"متوفر","عرض 10+1":row.promo10Plus1?"نعم":"لا","الوصف":row.description,"الصورة (Data URL)":row.image};}));
+  const clientRows=safeWrap(()=>clients.map(c=>({"المعرف":c.id||"","اسم الزبون":c.name||"","الهاتف":c.phone||"","الشركة":c.company||c.societe||"","المدينة":c.city||"","العنوان":c.address||"","ICE":c.ice||"","صاحب الشيك/الكمبيالة":c.paymentHolder||c.paymentName||c.chequeName||"","رقم الشيك/الكمبيالة":c.paymentNumber||c.chequeNumber||"","نوع الأداء":paymentTypeLabel(c.paymentType),"تاريخ الإضافة":c.importedAt||c.createdAt||""})));
+  const orderRows=safeWrap(()=>orders.map(o=>{ensureOrderDeadline(o);const state=recalculateOrderPaymentState(o);const deadline=deadlineState(o);return {"المعرف":o.id||"","التاريخ":o.date||"","الزبون":o.client||"","الشركة":o.company||"","ICE":o.ice||"","الهاتف":o.phone||"","الإجمالي (DH)":Number(o.total)||0,"المخلص (DH)":Number(state.paid)||0,"الباقي (DH)":Number(state.due)||0,"الحالة":o.status||"unpaid","مدة الأداء (يوم)":deadline.term,"تاريخ الاستحقاق":o.dueDate||"","صاحب الشيك/الكمبيالة":o.paymentHolder||o.paymentName||"","رقم الشيك/الكمبيالة":o.paymentNumber||"","نوع الأداء":paymentTypeLabel(o.paymentType),"الملاحظة":o.note||"","عدد العناصر":Array.isArray(o.items)?o.items.length:0};}));
+  
+  const paymentRows=[];
+  safeWrap(()=>{orders.forEach(o=>{ensureOrderDeadline(o);getPaymentHistory(o).forEach((p,index)=>paymentRows.push({"معرف القسط":p.id||`payment_${index+1}`,"معرف الكوموند":o.id||"","الزبون":o.client||"","رقم القسط":index+1,"مبلغ القسط (DH)":Number(p.amount)||0,"تاريخ وتوقيت الأداء":p.date||"","نوع الأداء":paymentTypeLabel(p.type||o.paymentType),"صاحب الشيك/الكمبيالة":p.holder||o.paymentHolder||"","رقم الشيك/الكمبيالة":p.number||o.paymentNumber||"","مدة الكوموند (يوم)":Number(o.paymentTermDays)||15,"تاريخ الاستحقاق":o.dueDate||""}));});});
+  
+  const itemRows=[];
+  safeWrap(()=>{orders.forEach(o=>(Array.isArray(o.items)?o.items:[]).forEach((item,index)=>itemRows.push({"معرف الكوموند":o.id||"","رقم السطر":index+1,"معرف المنتج":item.id||"","كود المنتج":item.code||"","اسم المنتج":item.name||"","عدد العلب":Number(item.boxes??item.qty)||0,"عدد الوحدات":Number(item.units)||0,"الوحدات المجانية":Number(item.freeUnits)||0,"ثمن الوحدة (DH)":Number(item.unitPrice??item.price)||0,"المجموع (DH)":Number(item.lineTotal??item.total)||0,"بيانات السطر":JSON.stringify(item)})));});
+  
+  const cartRows=safeWrap(()=>(Array.isArray(cart)?cart:[]).map((item,index)=>({"رقم السطر":index+1,"معرف المنتج":item.id||"","عدد العلب":Number(item.qty)||0})));
+  
+  const summaryRows=[{"المعلومة":"نوع الملف","القيمة":"3D_PEINTURES_FULL_ARCHIVE"},{"المعلومة":"الإصدار","القيمة":4},{"المعلومة":"تاريخ التصدير","القيمة":new Date().toISOString()},{"المعلومة":"القسم النشط","القيمة":active||""},{"المعلومة":"عدد المنتجات","القيمة":products.length},{"المعلومة":"عدد الزبناء","القيمة":clients.length},{"المعلومة":"عدد الكوموندات","القيمة":orders.length},{"المعلومة":"عدد الأقساط","القيمة":paymentRows.length},{"المعلومة":"الصور محفوظة داخل ورقة المنتجات","القيمة":"نعم — Data URL"}];
+  
   XLSX.utils.book_append_sheet(wb,excelSheet(summaryRows,[34,60]),"ملخص");
   XLSX.utils.book_append_sheet(wb,excelSheet(productRows,[24,18,28,18,14,18,16,16,12,36,64]),"Products");
   XLSX.utils.book_append_sheet(wb,excelSheet(clientRows,[24,24,18,24,18,30,20,28,24,24,24]),"Clients");
@@ -440,10 +450,97 @@ function exportFullArchiveExcel(){
   XLSX.utils.book_append_sheet(wb,excelSheet(paymentRows,[28,28,24,12,18,26,24,28,24,18,24]),"Installments");
   XLSX.utils.book_append_sheet(wb,excelSheet(itemRows,[28,12,28,18,28,14,14,16,18,16,60]),"Order Items");
   XLSX.utils.book_append_sheet(wb,excelSheet(cartRows,[12,28,14]),"Cart");
+  
   const d=new Date(),pad=n=>String(n).padStart(2,"0");
   XLSX.writeFile(wb,`3D_PEINTURES_ARCHIVE_COMPLET_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.xlsx`);
   toast(`تم تحميل الأرشيف الكامل: ${products.length} منتوج · ${orders.length} كوموند`);
- }catch(err){console.error(err);toast("خطأ أثناء إنشاء أرشيف Excel الشامل")}
+ }catch(err){console.error("Critical Excel Error",err);toast("خطأ تقني أثناء إنشاء ملف Excel. يرجى مراجعة البيانات.");}
+}
+
+function exportOrdersAndAccountsExcel(){
+ try{
+  if(typeof XLSX==="undefined")throw new Error("Excel library not loaded");
+  const safeCell=(value,max=32000)=>String(value??"").replace(/[\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F]/g,"").slice(0,max);
+  const safeNumber=value=>{const n=Number(value);return Number.isFinite(n)?n:0};
+  const safeDate=value=>{const d=new Date(value);return Number.isNaN(d.getTime())?"":d.toISOString()};
+  const orderRows=[],paymentRows=[],itemRows=[],errors=[];
+  const accountMap=new Map();
+  const accountFor=(name,client={})=>{
+   const cleanName=safeCell(name||client.name||"بدون اسم عميل");
+   const key=cleanName.trim().toLowerCase()||"__unknown__";
+   if(!accountMap.has(key))accountMap.set(key,{name:cleanName||"بدون اسم عميل",company:safeCell(client.company||client.societe||""),ice:safeCell(client.ice||""),phone:safeCell(client.phone||""),orders:0,sales:0,paid:0,due:0,overdue:0,lastOrder:""});
+   return accountMap.get(key);
+  };
+  (Array.isArray(clients)?clients:[]).forEach(c=>accountFor(c.name,c));
+  (Array.isArray(orders)?orders:[]).forEach((o,orderIndex)=>{
+   try{
+    ensureOrderDeadline(o);
+    const state=recalculateOrderPaymentState(o), deadline=deadlineState(o), clientObj=(Array.isArray(clients)?clients:[]).find(c=>String(c.name||"").trim().toLowerCase()===String(o.client||"").trim().toLowerCase())||{};
+    const account=accountFor(o.client,clientObj), total=safeNumber(o.total), due=safeNumber(state.due), paid=safeNumber(state.paid), date=safeDate(o.date);
+    account.orders+=1;account.sales+=total;account.paid+=paid;account.due+=due;if(deadline.overdue&&due>0)account.overdue+=due;if(date&&(!account.lastOrder||date>account.lastOrder))account.lastOrder=date;
+    orderRows.push({"معرف الكوموند":safeCell(o.id),"التاريخ":date,"الزبون":safeCell(o.client),"الشركة":safeCell(o.company||clientObj.company||clientObj.societe),"ICE":safeCell(o.ice||clientObj.ice),"الهاتف":safeCell(o.phone||clientObj.phone),"الإجمالي (DH)":total,"المخلص (DH)":paid,"الباقي (DH)":due,"الحالة":safeCell(o.status||"unpaid"),"مدة الأداء (يوم)":deadline.term,"تاريخ الاستحقاق":safeDate(o.dueDate),"متأخر؟":deadline.overdue&&due>0?"نعم":"لا","نوع الأداء":safeCell(paymentTypeLabel(o.paymentType)),"رقم الشيك/الكمبيالة":safeCell(o.paymentNumber),"الملاحظة":safeCell(o.note)});
+    getPaymentHistory(o).forEach((p,paymentIndex)=>paymentRows.push({"معرف القسط":safeCell(p.id||`payment_${orderIndex+1}_${paymentIndex+1}`),"معرف الكوموند":safeCell(o.id),"الزبون":safeCell(o.client),"رقم القسط":paymentIndex+1,"مبلغ القسط (DH)":safeNumber(p.amount),"تاريخ وتوقيت الأداء":safeDate(p.date),"نوع الأداء":safeCell(paymentTypeLabel(p.type||o.paymentType)),"صاحب الشيك/الكمبيالة":safeCell(p.holder||o.paymentHolder),"رقم الشيك/الكمبيالة":safeCell(p.number||o.paymentNumber)}));
+    (Array.isArray(o.items)?o.items:[]).forEach((item,itemIndex)=>itemRows.push({"معرف الكوموند":safeCell(o.id),"رقم السطر":itemIndex+1,"معرف المنتج":safeCell(item.id),"كود المنتج":safeCell(item.code),"اسم المنتج":safeCell(item.name),"عدد العلب":safeNumber(item.boxes??item.qty),"عدد الوحدات":safeNumber(item.units),"الوحدات المجانية":safeNumber(item.freeUnits),"ثمن الوحدة (DH)":safeNumber(item.unitPrice??item.price),"المجموع (DH)":safeNumber(item.lineTotal??item.total)}));
+   }catch(error){console.warn("Order skipped during light export",orderIndex,error);errors.push(`الكوموند ${orderIndex+1}`)}
+  });
+  const accountRows=[...accountMap.values()].map(a=>({"الزبون":a.name,"الشركة":a.company,"ICE":a.ice,"الهاتف":a.phone,"عدد الكوموندات":a.orders,"إجمالي المبيعات (DH)":Number(a.sales.toFixed(2)),"إجمالي المخلص (DH)":Number(a.paid.toFixed(2)),"مجموع الباقي (DH)":Number(a.due.toFixed(2)),"المتأخر عن الأجل (DH)":Number(a.overdue.toFixed(2)),"آخر كوموند":a.lastOrder})).sort((a,b)=>b["مجموع الباقي (DH)"]-a["مجموع الباقي (DH)"]);
+  const totalSales=orderRows.reduce((sum,r)=>sum+safeNumber(r["الإجمالي (DH)"]),0),totalPaid=orderRows.reduce((sum,r)=>sum+safeNumber(r["المخلص (DH)"]),0),totalDue=orderRows.reduce((sum,r)=>sum+safeNumber(r["الباقي (DH)"]),0),totalOverdue=accountRows.reduce((sum,r)=>sum+safeNumber(r["المتأخر عن الأجل (DH)"]),0);
+  const summaryRows=[{"المعلومة":"نوع الملف","القيمة":"3D_PEINTURES_ORDERS_ACCOUNTS"},{"المعلومة":"تاريخ التصدير","القيمة":new Date().toISOString()},{"المعلومة":"عدد الكوموندات","القيمة":orderRows.length},{"المعلومة":"عدد الحسابات","القيمة":accountRows.length},{"المعلومة":"عدد الأقساط","القيمة":paymentRows.length},{"المعلومة":"إجمالي المبيعات (DH)","القيمة":Number(totalSales.toFixed(2))},{"المعلومة":"إجمالي المخلص (DH)","القيمة":Number(totalPaid.toFixed(2))},{"المعلومة":"مجموع الباقي (DH)","القيمة":Number(totalDue.toFixed(2))},{"المعلومة":"المتأخر عن الأجل (DH)","القيمة":Number(totalOverdue.toFixed(2))},{"المعلومة":"تنبيه","القيمة":errors.length?`تم تجاوز ${errors.length} سجل غير صالح`:"تم تصدير جميع السجلات"}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,excelSheet(summaryRows,[34,62]),"الملخص");
+  XLSX.utils.book_append_sheet(wb,excelSheet(orderRows,[28,24,24,24,18,18,16,16,16,14,18,24,12,24,24,42]),"الكوموندات");
+  XLSX.utils.book_append_sheet(wb,excelSheet(accountRows,[24,24,18,18,16,20,20,18,22,24]),"الحسابات");
+  XLSX.utils.book_append_sheet(wb,excelSheet(paymentRows,[28,28,24,12,18,26,24,24,24]),"الأقساط");
+  XLSX.utils.book_append_sheet(wb,excelSheet(itemRows,[28,12,28,18,28,14,14,16,18,16]),"تفاصيل الطلبات");
+  const d=new Date(),pad=n=>String(n).padStart(2,"0");
+  XLSX.writeFile(wb,`3D_PEINTURES_COMMANDES_COMPTES_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.xlsx`);
+  toast(`تم تحميل ملف الكوموندات والحسابات: ${orderRows.length} كوموند · ${money(totalDue)} DH باقي`);
+ }catch(error){console.error("Light Excel export error",error);toast("تعذر تحميل ملف الكوموندات والحسابات. حاول مرة أخرى.")}
+}
+
+function openArchiveRestorePicker(){
+ const input=$("allExcelRestoreInput");
+ if(input){input.value="";input.click()}
+}
+function exportOrdersArchiveExcel(){
+ exportOrdersAndAccountsExcel();
+}
+function exportClientsArchiveExcel(){
+ try{
+  if(typeof XLSX==="undefined")throw new Error("Excel library not loaded");
+  const clientRows=(Array.isArray(clients)?clients:[]).map(c=>({"المعرف":c.id||"","اسم الزبون":c.name||"","الهاتف":c.phone||c.whatsapp||"","الشركة":c.company||c.societe||"","المدينة":c.city||"","العنوان":c.address||"","ICE":c.ice||"","صاحب الشيك/الكمبيالة":c.paymentHolder||c.paymentName||"","رقم الشيك/الكمبيالة":c.paymentNumber||c.chequeNumber||"","نوع الأداء":paymentTypeLabel(c.paymentType),"تاريخ الإضافة":c.importedAt||c.createdAt||""}));
+  const accountMap=new Map();
+  (Array.isArray(orders)?orders:[]).forEach(order=>{
+   const name=String(order.client||"").trim();if(!name)return;
+   const key=name.toLowerCase();const item=accountMap.get(key)||{name,orders:0,sales:0,paid:0,due:0};
+   recalculateOrderPaymentState(order);item.orders+=1;item.sales+=Number(order.total)||0;item.paid+=paymentTotal(order);item.due+=Math.max(0,Number(order.total||0)-paymentTotal(order));accountMap.set(key,item);
+  });
+  const accountRows=[...accountMap.values()].map(a=>({"الزبون":a.name,"عدد الكوموندات":a.orders,"إجمالي المبيعات (DH)":Number(a.sales.toFixed(2)),"إجمالي المخلص (DH)":Number(a.paid.toFixed(2)),"مجموع الباقي (DH)":Number(a.due.toFixed(2))})).sort((a,b)=>b["مجموع الباقي (DH)"]-a["مجموع الباقي (DH)"]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,excelSheet(clientRows,[24,24,18,24,18,30,20,28,24,24,24]),"الكليان");
+  XLSX.utils.book_append_sheet(wb,excelSheet(accountRows,[24,16,22,22,20]),"حسابات الكليان");
+  const d=new Date(),pad=n=>String(n).padStart(2,"0");
+  XLSX.writeFile(wb,`3D_PEINTURES_CLIENTS_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.xlsx`);
+  toast(`تم تحميل أرشيف الكليان: ${clientRows.length} كليان`);
+ }catch(error){console.error("Clients Excel export error",error);toast("تعذر تحميل أرشيف الكليان")}
+}
+function exportDashboardExcel(){
+ try{
+  if(typeof XLSX==="undefined")throw new Error("Excel library not loaded");
+  const selectedMonth=$("dashboardMonth")?.value||currentMonthKey();
+  const selectedOrders=dashboardOrdersForMonth(selectedMonth),productMap=new Map(),hours=Array.from({length:24},()=>0);
+  let sales=0;
+  selectedOrders.forEach(order=>{
+   sales+=Number(order.total)||0;const date=new Date(order.date);if(!Number.isNaN(date.getTime()))hours[date.getHours()]++;
+   (Array.isArray(order.items)?order.items:[]).forEach(row=>{const product=products.find(p=>String(p.id)===String(row.id));const key=String(row.id||row.code||row.name||"unknown");const units=orderItemUnits(row);const line=Number(row.lineTotal??((Number(row.unitPrice??product?.price)||0)*units))||0;const item=productMap.get(key)||{name:row.name||product?.name||"Produit",units:0,sales:0};item.units+=units;item.sales+=line;productMap.set(key,item)});
+  });
+  const topProducts=[...productMap.values()].sort((a,b)=>b.units-a.units||b.sales-a.sales).slice(0,8),peakCount=Math.max(...hours,0),peakIndexes=hours.reduce((acc,value,index)=>value===peakCount&&value>0?acc.concat(index):acc,[]);
+  const orderRows=selectedOrders.map(o=>{recalculateOrderPaymentState(o);const state=deadlineState(o);return {"معرف الكوموند":o.id||"","التاريخ":o.date||"","الزبون":o.client||"","الإجمالي (DH)":Number(o.total)||0,"المخلص (DH)":Number(o.paid)||0,"الباقي (DH)":Number(o.due)||0,"مدة الأداء (يوم)":state.term,"تاريخ الاستحقاق":o.dueDate||""}});
+  const itemRows=[],paymentRows=[];selectedOrders.forEach(o=>{(Array.isArray(o.items)?o.items:[]).forEach((item,index)=>itemRows.push({"معرف الكوموند":o.id||"","رقم السطر":index+1,"معرف المنتج":item.id||"","كود المنتج":item.code||"","اسم المنتج":item.name||"","عدد الوحدات":Number(item.units)||0,"المجموع (DH)":Number(item.lineTotal??item.total)||0}));getPaymentHistory(o).forEach((p,index)=>paymentRows.push({"معرف القسط":p.id||`payment_${index+1}`,"معرف الكوموند":o.id||"","الزبون":o.client||"","رقم القسط":index+1,"مبلغ القسط (DH)":Number(p.amount)||0,"تاريخ وتوقيت الأداء":p.date||"","نوع الأداء":paymentTypeLabel(p.type||o.paymentType)}))});
+  const summaryRows=[{"المؤشر":"الشهر المحدد / Mois sélectionné","القيمة":selectedMonth},{"المؤشر":"عدد الكوموندات / Nombre de commandes","القيمة":selectedOrders.length},{"المؤشر":"إجمالي المبيعات (DH) / Ventes","القيمة":Number(sales.toFixed(2))},{"المؤشر":"المنتوج الأكثر طلباً / Produit leader","القيمة":topProducts[0]?.name||"—"},{"المؤشر":"ذروة الطلبات / Heure de pointe","القيمة":peakIndexes.length?peakIndexes.map(h=>`${String(h).padStart(2,"0")}:00`).join(" · "):"—"},{"المؤشر":"نوع الملف","القيمة":"3D_PEINTURES_DASHBOARD_ARCHIVE"}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,excelSheet(summaryRows,[42,60]),"ملخص اللوحة");XLSX.utils.book_append_sheet(wb,excelSheet(topProducts.map((p,i)=>({"الترتيب":i+1,"المنتوج":p.name,"الوحدات":p.units,"المبيعات (DH)":Number(p.sales.toFixed(2))})),[12,30,16,20]),"أفضل المنتجات");XLSX.utils.book_append_sheet(wb,excelSheet(hours.map((count,h)=>({"الساعة":`${String(h).padStart(2,"0")}:00`,"عدد الطلبات":count})),[16,18]),"أوقات الذروة");XLSX.utils.book_append_sheet(wb,excelSheet(orderRows,[28,24,24,18,18,16,18,24]),"بيانات الكوموندات");XLSX.utils.book_append_sheet(wb,excelSheet(itemRows,[28,12,28,18,28,16,18]),"تفاصيل dashboard");XLSX.utils.book_append_sheet(wb,excelSheet(paymentRows,[28,28,24,12,18,26,24]),"أقساط dashboard");
+  XLSX.writeFile(wb,`3D_PEINTURES_DASHBOARD_${selectedMonth}.xlsx`);toast(`تم تحميل لوحة التحكم التجارية: ${selectedMonth}`);
+ }catch(error){console.error("Dashboard Excel export error",error);toast("تعذر تحميل لوحة التحكم التجارية")}
 }
 
 async function importBackupFile(file){
@@ -510,6 +607,10 @@ function excelRows(wb,name){
  const actual=wb.SheetNames.find(s=>s===name)||wb.SheetNames.find(s=>String(s).toLowerCase()===String(name).toLowerCase());
  return actual?XLSX.utils.sheet_to_json(wb.Sheets[actual],{defval:""}):[];
 }
+function excelRowsAny(wb,names){
+ for(const name of names){const rows=excelRows(wb,name);if(rows.length)return rows}
+ return [];
+}
 function excelNum(value,fallback=0){
  if(typeof value==="number")return Number.isFinite(value)?value:fallback;
  const n=Number(String(value??"").trim().replace(/\s/g,"").replace(",","."));
@@ -527,38 +628,45 @@ function importFullArchiveExcel(file){
   try{
    if(typeof XLSX==="undefined")throw new Error("Excel library not loaded");
    const wb=XLSX.read(e.target.result,{type:"array",cellDates:true});
-   const productRows=excelRows(wb,"Products").filter(r=>String(r["المعرف"]||r["اسم المنتج"]||r["كود المنتج"]||"").trim());
-   const clientRows=excelRows(wb,"Clients").filter(r=>String(r["المعرف"]||r["اسم الزبون"]||"").trim());
-   const orderRows=excelRows(wb,"Orders").filter(r=>String(r["المعرف"]||r["الزبون"]||"").trim());
-   if(!productRows.length&&!clientRows.length&&!orderRows.length)throw new Error("ARCHIVE_EMPTY");
-   if(!confirm(`استرجاع الأرشيف الكامل؟\n\n${productRows.length} منتوج · ${clientRows.length} كليان · ${orderRows.length} كوموند\n\nسيتم تعويض البيانات الحالية.`))return;
+   const productRows=excelRowsAny(wb,["Products","المنتجات"]).filter(r=>String(r["المعرف"]||r["اسم المنتج"]||r["كود المنتج"]||"").trim());
+   const clientRows=excelRowsAny(wb,["Clients","الكليان","الزبناء"]).filter(r=>String(r["المعرف"]||r["اسم الزبون"]||r["الزبون"]||"").trim());
+   const orderRows=excelRowsAny(wb,["Orders","الكوموندات","بيانات الكوموندات"]).filter(r=>String(r["المعرف"]||r["معرف الكوموند"]||r["الزبون"]||"").trim());
+   const hasProducts=productRows.length>0,hasClients=clientRows.length>0,hasOrders=orderRows.length>0;
+   const hasInstallments=excelRowsAny(wb,["Installments","الأقساط","أقساط dashboard"]).length>0;
+   const hasItems=excelRowsAny(wb,["Order Items","تفاصيل الطلبات","تفاصيل dashboard"]).length>0;
+   const hasCart=excelRows(wb,"Cart").length>0;
+   if(!hasProducts&&!hasClients&&!hasOrders&&!hasInstallments&&!hasItems)throw new Error("ARCHIVE_EMPTY");
+   if(!confirm(`استرجاع ملف Excel؟\n\n${productRows.length} منتوج · ${clientRows.length} كليان · ${orderRows.length} كوموند\n\nسيتم تحديث الأقسام الموجودة في الملف فقط، مع الحفاظ على باقي البيانات.`))return;
    previousState={products,cart,orders,clients,active};
-   const restoredProducts=productRows.map((r,i)=>({
+   const importedProducts=productRows.map((r,i)=>({
     id:String(r["المعرف"]||`p_excel_${Date.now().toString(36)}_${i}`),name:String(r["اسم المنتج"]||"Produit").trim(),code:normalizeProductCode(r["كود المنتج"]),price:excelNum(r["الثمن (DH)"]),costPrice:excelNum(r["ثمن التكلفة (DH)"]),qty:Math.max(0,Math.floor(excelNum(r["الوحدات في العلبة"]))),category:canonicalCategory(r["القسم"]),availability:String(r["التوفر"]||"").trim()==="غير متوفر"?"unavailable":"available",promo10Plus1:["نعم","yes","true","1"].includes(String(r["عرض 10+1"]||"").trim().toLowerCase()),description:String(r["الوصف"]||""),image:typeof r["الصورة (Data URL)"]==="string"?r["الصورة (Data URL)"]:""
    }));
-   const productIds=new Set();restoredProducts.forEach((p,i)=>{if(!p.id||productIds.has(p.id))p.id=`p_excel_${Date.now().toString(36)}_${i}_${Math.random().toString(36).slice(2,7)}`;productIds.add(p.id)});
-   const restoredClients=clientRows.map((r,i)=>({id:String(r["المعرف"]||`c_excel_${Date.now().toString(36)}_${i}`),name:String(r["اسم الزبون"]||"").trim(),phone:String(r["الهاتف"]||""),company:String(r["الشركة"]||""),city:String(r["المدينة"]||""),address:String(r["العنوان"]||""),ice:String(r["ICE"]||""),paymentHolder:String(r["صاحب الشيك/الكمبيالة"]||""),paymentNumber:String(r["رقم الشيك/الكمبيالة"]||""),paymentType:paymentTypeValue(r["نوع الأداء"]),importedAt:excelDate(r["تاريخ الإضافة"],new Date().toISOString())})).filter(c=>c.name);
-   const restoredOrders=[];const orderMap=new Map();
+   const restoredProducts=hasProducts?importedProducts:products;
+   const productIds=new Set();restoredProducts.forEach((p,i)=>{if(!p.id||productIds.has(String(p.id)))p.id=`p_excel_${Date.now().toString(36)}_${i}_${Math.random().toString(36).slice(2,7)}`;productIds.add(String(p.id))});
+   const importedClients=clientRows.map((r,i)=>({id:String(r["المعرف"]||`c_excel_${Date.now().toString(36)}_${i}`),name:String(r["اسم الزبون"]||"").trim(),phone:String(r["الهاتف"]||""),company:String(r["الشركة"]||""),city:String(r["المدينة"]||""),address:String(r["العنوان"]||""),ice:String(r["ICE"]||""),paymentHolder:String(r["صاحب الشيك/الكمبيالة"]||""),paymentNumber:String(r["رقم الشيك/الكمبيالة"]||""),paymentType:paymentTypeValue(r["نوع الأداء"]),importedAt:excelDate(r["تاريخ الإضافة"],new Date().toISOString())})).filter(c=>c.name);
+   const importedOrders=[];const orderMap=new Map();
    orderRows.forEach((r,i)=>{
-    const id=String(r["المعرف"]||`o_excel_${Date.now().toString(36)}_${i}`);
+    const id=String(r["المعرف"]||r["معرف الكوموند"]||r["معرف الطلب"]||`o_excel_${Date.now().toString(36)}_${i}`);
     const term=[15,30].includes(excelNum(r["مدة الأداء (يوم)"],15))?excelNum(r["مدة الأداء (يوم)"],15):15;
     const order={id,date:excelDate(r["التاريخ"]),client:String(r["الزبون"]||""),company:String(r["الشركة"]||""),ice:String(r["ICE"]||""),phone:String(r["الهاتف"]||""),total:excelNum(r["الإجمالي (DH)"]),paid:0,due:0,profit:0,status:"unpaid",paymentTermDays:term,dueDate:excelDate(r["تاريخ الاستحقاق"],null),paymentHolder:String(r["صاحب الشيك/الكمبيالة"]||""),paymentNumber:String(r["رقم الشيك/الكمبيالة"]||""),paymentType:paymentTypeValue(r["نوع الأداء"]),note:String(r["الملاحظة"]||""),payments:[],items:[]};
     if(!order.dueDate)order.dueDate=new Date(new Date(order.date).getTime()+term*86400000).toISOString();
-    restoredOrders.push(order);orderMap.set(id,order);
+    importedOrders.push(order);orderMap.set(id,order);
    });
-   excelRows(wb,"Order Items").forEach((r)=>{
+   const restoredClients=hasClients?importedClients:clients;
+   const restoredOrders=hasOrders?importedOrders:orders;
+   excelRowsAny(wb,["Order Items","تفاصيل الطلبات","تفاصيل dashboard"]).forEach((r)=>{
     const order=orderMap.get(String(r["معرف الكوموند"]||""));if(!order)return;
     let item=null;try{item=JSON.parse(String(r["بيانات السطر"]||""))}catch(err){}
     order.items.push(item&&typeof item==="object"?item:{id:String(r["معرف المنتج"]||""),code:String(r["كود المنتج"]||""),name:String(r["اسم المنتج"]||""),boxes:excelNum(r["عدد العلب"]),qty:excelNum(r["عدد العلب"]),units:excelNum(r["عدد الوحدات"]),freeUnits:excelNum(r["الوحدات المجانية"]),unitPrice:excelNum(r["ثمن الوحدة (DH)"]),lineTotal:excelNum(r["المجموع (DH)"])});
    });
-   excelRows(wb,"Installments").forEach((r)=>{
+   excelRowsAny(wb,["Installments","الأقساط","أقساط dashboard"]).forEach((r)=>{
     const order=orderMap.get(String(r["معرف الكوموند"]||""));if(!order)return;
     order.payments.push({id:String(r["معرف القسط"]||makeId()),amount:excelNum(r["مبلغ القسط (DH)"]),date:excelDate(r["تاريخ وتوقيت الأداء"]),type:paymentTypeValue(r["نوع الأداء"]),holder:String(r["صاحب الشيك/الكمبيالة"]||""),number:String(r["رقم الشيك/الكمبيالة"]||"")});
    });
    restoredOrders.forEach(o=>recalculateOrderPaymentState(o));
-   const restoredCart=excelRows(wb,"Cart").map(r=>({id:String(r["معرف المنتج"]||""),qty:Math.max(1,Math.floor(excelNum(r["عدد العلب"],1)))})).filter(r=>productIds.has(r.id));
-   const summary=excelRows(wb,"ملخص");const summaryMap=new Map(summary.map(r=>[String(r["المعلومة"]||""),r["القيمة"]]));
-   const restoredActive=canonicalCategory(summaryMap.get("القسم النشط")||categories[0]);
+   const restoredCart=hasCart?excelRows(wb,"Cart").map(r=>({id:String(r["معرف المنتج"]||""),qty:Math.max(1,Math.floor(excelNum(r["عدد العلب"],1)))})).filter(r=>productIds.has(r.id)):cart;
+   const summary=excelRowsAny(wb,["ملخص","الملخص","ملخص اللوحة"]);const summaryMap=new Map(summary.map(r=>[String(r["المعلومة"]||r["المؤشر"]||""),r["القيمة"]]));
+   const restoredActive=summaryMap.get("القسم النشط")?canonicalCategory(summaryMap.get("القسم النشط")):active;
    products=restoredProducts;clients=restoredClients;orders=restoredOrders;cart=restoredCart;active=restoredActive;
    if(!save()){await compactProductsImages();if(!save())throw new Error("STORAGE_FULL")}
    localStorage.setItem("3d_peintures_orders_v1",JSON.stringify(orders));localStorage.setItem("3d_peintures_cart_v4",JSON.stringify(cart));saveClients();
@@ -656,7 +764,7 @@ function openClientModal(prefillName=""){
   const existing=clients.find(c=>String(c.name||"").trim().toLowerCase()===String(initialName||"").trim().toLowerCase());
   $("clientName").value=initialName;
   if($("clientManagerSearch")){ $("clientManagerSearch").value=""; $("clearClientManagerSearch").style.display="none"; }
-  $("clientCompany").value=existing?.company||""; $("clientICE").value=existing?.ice||""; $("clientPaymentHolder").value=existing?.paymentHolder||existing?.chequeHolder||existing?.paymentName||""; $("clientPaymentNumber").value=existing?.paymentNumber||existing?.chequeNumber||""; $("clientPaymentType").value=paymentTypeValue(existing?.paymentType||existing?.paymentMode||existing?.modePaiement); $("clientWhatsapp").value=existing?.phone||"";
+  $("clientCompany").value=existing?.company||""; $("clientCity").value=existing?.city||existing?.ville||""; $("clientICE").value=existing?.ice||""; $("clientPaymentHolder").value=existing?.paymentHolder||existing?.chequeHolder||existing?.paymentName||""; $("clientPaymentNumber").value=existing?.paymentNumber||existing?.chequeNumber||""; $("clientPaymentType").value=paymentTypeValue(existing?.paymentType||existing?.paymentMode||existing?.modePaiement); $("clientWhatsapp").value=existing?.phone||"";
    renderClientsManager();
    renderClientStats();
    $("clientModal").classList.add("show");
@@ -892,12 +1000,12 @@ function renderClientsManager(){
  const query=normalizeClientSearch($("clientManagerSearch")?.value||"");
  const visibleClients=clients.filter(c=>{
    if(!query)return true;
-   return [c.name,c.company,c.ice,c.paymentHolder,c.paymentNumber,c.paymentName,c.chequeHolder,c.chequeNumber,c.chequeName,c.cambiale].some(value=>normalizeClientSearch(value).includes(query));
+   return [c.name,c.company,c.city,c.ville,c.address,c.ice,c.paymentHolder,c.paymentNumber,c.paymentName,c.chequeHolder,c.chequeNumber,c.chequeName,c.cambiale].some(value=>normalizeClientSearch(value).includes(query));
  });
- box.innerHTML=visibleClients.map(c=>`<div class="client-manager-row"><div><b>${esc(c.name||"")}</b><small>${esc(c.company||"")}${c.ice?` · ICE ${esc(c.ice)}`:""}${(c.paymentHolder||c.paymentName)?` · صاحب: ${esc(c.paymentHolder||c.paymentName)}`:""}${c.paymentNumber?` · رقم: ${esc(c.paymentNumber)}`:""}${c.paymentType?` · ${esc(paymentTypeLabel(c.paymentType))}`:""}${c.phone?` · WhatsApp ${esc(c.phone)}`:""}</small></div><div class="client-manager-actions"><button type="button" data-client-invoice="${esc(c.id)}">📄 Infos facturation</button><button type="button" data-client-edit="${esc(c.id)}">Modifier</button></div></div>`).join("") || `<div class="cart-empty">${query?"ما لقيتش زبون مطابق للبحث.":"Aucun client enregistré."}</div>`;
+ box.innerHTML=visibleClients.map(c=>`<div class="client-manager-row"><div><b>${esc(c.name||"")}</b><small>${esc(c.city||c.ville||"")}${c.company?` · ${esc(c.company)}`:""}${c.ice?` · ICE ${esc(c.ice)}`:""}${c.phone?` · WhatsApp ${esc(c.phone)}`:""}</small></div><div class="client-manager-actions"><button type="button" data-client-invoice="${esc(c.id)}">📄 Infos facturation</button><button type="button" data-client-edit="${esc(c.id)}">Modifier</button></div></div>`).join("") || `<div class="cart-empty">${query?"ما لقيتش زبون مطابق للبحث.":"Aucun client enregistré."}</div>`;
    box.querySelectorAll("[data-client-edit]").forEach(btn=>btn.onclick=()=>{
      const c=clients.find(x=>x.id===btn.dataset.clientEdit); if(!c)return;
-      $("clientEditId").value=c.id; $("clientName").value=c.name||""; $("clientCompany").value=c.company||""; $("clientICE").value=c.ice||""; $("clientPaymentHolder").value=c.paymentHolder||c.chequeHolder||c.paymentName||""; $("clientPaymentNumber").value=c.paymentNumber||c.chequeNumber||""; $("clientPaymentType").value=paymentTypeValue(c.paymentType||c.paymentMode||c.modePaiement); $("clientWhatsapp").value=c.phone||"";
+      $("clientEditId").value=c.id; $("clientName").value=c.name||""; $("clientCompany").value=c.company||""; $("clientCity").value=c.city||c.ville||""; $("clientICE").value=c.ice||""; $("clientPaymentHolder").value=c.paymentHolder||c.chequeHolder||c.paymentName||""; $("clientPaymentNumber").value=c.paymentNumber||c.chequeNumber||""; $("clientPaymentType").value=paymentTypeValue(c.paymentType||c.paymentMode||c.modePaiement); $("clientWhatsapp").value=c.phone||"";
    });
    box.querySelectorAll("[data-client-invoice]").forEach(btn=>btn.onclick=()=>{
      const c=clients.find(x=>x.id===btn.dataset.clientInvoice); if(c) shareClientBillingPDF(c);
@@ -906,7 +1014,7 @@ function renderClientsManager(){
 function saveClientForm(e){
  e.preventDefault();
  const name=$("clientName").value.trim(); if(!name){alert("دخل اسم الكليان");return}
-  const data={id:$("clientEditId").value||("c_"+Date.now().toString(36)),name,company:$("clientCompany").value.trim(),ice:$("clientICE").value.trim(),paymentHolder:$("clientPaymentHolder").value.trim(),paymentNumber:$("clientPaymentNumber").value.trim(),paymentType:paymentTypeValue($("clientPaymentType").value),phone:$("clientWhatsapp").value.trim()};
+  const data={id:$("clientEditId").value||("c_"+Date.now().toString(36)),name,company:$("clientCompany").value.trim(),city:$("clientCity").value.trim(),ice:$("clientICE").value.trim(),paymentHolder:$("clientPaymentHolder").value.trim(),paymentNumber:$("clientPaymentNumber").value.trim(),paymentType:paymentTypeValue($("clientPaymentType").value),phone:$("clientWhatsapp").value.trim()};
  const idx=clients.findIndex(c=>c.id===data.id);
  const duplicate=clients.findIndex(c=>c.id!==data.id && String(c.name||"").trim().toLowerCase()===name.toLowerCase());
  if(duplicate>=0){ clients[duplicate]={...clients[duplicate],...data,id:clients[duplicate].id}; }
@@ -1328,18 +1436,43 @@ function buildDueReminderText(rows,total){
   `التاريخ / Date : ${date}`,
   "",
   "زبناؤنا الكرام،",
-  `نحيطكم علماً بأن مجموع المبالغ المتبقية التي تجاوزت آخر أجل للاستخلاص هو ${money(total)} DH. نرجو منكم، بكل احترام، إتمام أداء المبلغ بأكمله خلال الزيارة القادمة.`,
+  `نحيطكم علماً بأن مجموع المبالغ المتبقية في الكوموندات التي تجاوزت آخر أجل للاستخلاص هو ${money(total)} DH. نرجو منكم، بكل احترام، إتمام أداء المبلغ بأكمله خلال الزيارة القادمة. ستجدون أسفله كشفاً دقيقاً لكل كوموند ولكل قسط مسجل.`,
   "",
   "Chers clients,",
-  `Nous vous informons que le total des soldes ayant dépassé leur date limite de règlement s'élève à ${money(total)} DH. Nous vous prions de bien vouloir régulariser intégralement ce montant lors de notre prochaine visite.`,
+  `Nous vous informons que le total des soldes des commandes ayant dépassé leur date limite de règlement s'élève à ${money(total)} DH. Nous vous prions de bien vouloir régulariser intégralement ce montant lors de notre prochaine visite. Vous trouverez ci-dessous le détail précis de chaque commande et de chaque versement enregistré.`,
   "",
-  "التفاصيل / Détails :"
+  "━━━━━━━━━━━━━━━━━━━━━━━━",
+  "تفاصيل الدين والأقساط / DÉTAILS DES SOLDES ET VERSEMENTS",
+  "━━━━━━━━━━━━━━━━━━━━━━━━"
  ];
  rows.forEach((row,index)=>{
+  const order=row.order||{};
+  recalculateOrderPaymentState(order);
+  const history=getPaymentHistory(order);
+  const totalOrder=Number(order.total)||0;
+  const paidOrder=paymentTotal(order);
+  const dueOrder=Math.max(0,totalOrder-paidOrder);
   const dueDate=row.state.dueDate.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
-  lines.push(`${index+1}. ${row.order.client||"Client"} — ${money(row.due)} DH — آخر أجل / Échéance : ${dueDate}`);
+  lines.push("",`【${index+1}】 ${order.client||"Client"}`);
+  lines.push(`الكوموند / Commande : ${order.id||"—"}`);
+  if(order.company)lines.push(`الشركة / Société : ${order.company}`);
+  lines.push(`إجمالي الكوموند / Total commande : ${money(totalOrder)} DH`);
+  lines.push(`مجموع الأقساط المؤداة / Total versé : ${money(paidOrder)} DH`);
+  lines.push(`المبلغ المتبقي / Solde restant : ${money(dueOrder)} DH`);
+  lines.push(`آخر أجل / Échéance : ${dueDate} — أجل ${row.state.term} يوم(s)`);
+  lines.push(`عدد الأقساط المسجلة / Nombre de versements : ${history.length}`);
+  lines.push("الأقساط المسجلة / Versements enregistrés :");
+  if(!history.length){
+   lines.push("  • لم يتم تسجيل أي قسط بعد / Aucun versement enregistré");
+  }else{
+   history.forEach((payment,paymentIndex)=>{
+    const type=payment.type?` — ${paymentTypeLabel(payment.type)}`:"";
+    lines.push(`  • القسط ${paymentIndex+1} / Versement ${paymentIndex+1} : ${money(payment.amount)} DH — ${formatPaymentDate(payment.date)}${type}`);
+   });
+  }
+  lines.push(`  ▶ الباقي لهذه الكوموند / Solde de cette commande : ${money(dueOrder)} DH`);
  });
- lines.push("","شكراً لتعاونكم وتفهمكم. / Nous vous remercions pour votre collaboration et votre compréhension.","3D PEINTURES");
+ lines.push("","━━━━━━━━━━━━━━━━━━━━━━━━",`المجموع النهائي المتبقي / TOTAL GÉNÉRAL À RÉGLER : ${money(total)} DH`,"━━━━━━━━━━━━━━━━━━━━━━━━","","نرجو منكم إتمام المبلغ بأكمله في الزيارة القادمة. شكراً لتعاونكم وتفهمكم.","Nous vous prions de régler l'intégralité du montant lors de notre prochaine visite. Merci pour votre collaboration et votre compréhension.","","3D PEINTURES");
  return lines.join("\n");
 }
 async function createDueReminderPDF(rows=overdueReminderRows()){

@@ -1098,3 +1098,120 @@ body.focus-active{overflow:hidden}
 .deadline-chip{display:inline-flex;align-items:center;gap:4px;margin-top:5px;padding:4px 7px;border-radius:8px;background:#fff3cd;color:#7a5a16;font-size:8px;font-weight:900}.deadline-chip.expired{background:#fff0ed;color:#b42318}.deadline-chip.paid{background:#e9f7ef;color:#087443}
 .order-installment-summary{display:block;color:#667085;font-size:8px;margin-top:4px}.order-row.overdue{border-left-color:#d92d20;box-shadow:0 0 0 1px rgba(217,45,32,.08)}
 @media(max-width:699px){.due-alert-bar{margin-left:10px;margin-right:10px;align-items:flex-start;flex-direction:column}.due-alert-actions{width:100%;display:grid;grid-template-columns:1fr 1fr}.due-alert-bar button{width:100%;font-size:9px;padding:9px 6px}}
+
+/* ===== Section Excel exports and restoration ===== */
+.section-file-actions{display:flex;align-items:center;justify-content:flex-end;gap:9px;flex-wrap:wrap;margin:18px 0 2px;padding:12px 0 0;border-top:1px solid var(--line)}
+.section-file-actions button{border:0;border-radius:12px;padding:10px 14px;font-size:11px;font-weight:900;transition:transform .2s ease,box-shadow .2s ease,filter .2s ease;white-space:nowrap}
+.section-file-actions button:active{transform:scale(.96)}
+.section-excel-btn{background:linear-gradient(135deg,#e9f8ef,#cdebd9);color:#176342;box-shadow:0 5px 14px rgba(23,99,66,.12)}
+.section-restore-btn{background:linear-gradient(135deg,#fff8e3,#f1dfac);color:#7b5a18;box-shadow:0 5px 14px rgba(123,90,24,.12)}
+.section-file-actions button:hover{filter:brightness(.98);box-shadow:0 8px 18px rgba(16,24,40,.13)}
+.dashboard-file-actions{margin-top:20px;border-color:#ffffff20}.dashboard-file-actions .section-excel-btn{background:linear-gradient(135deg,#f8e9b5,#d5ab45);color:#3b2b0e}.dashboard-file-actions .section-restore-btn{background:linear-gradient(135deg,#e9f1ff,#c6d9fb);color:#173f78}
+@media(max-width:600px){.section-file-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}.section-file-actions button{width:100%;padding:10px 6px;font-size:10px}.dashboard-file-actions{margin-top:15px}}
+
+
+/* ===== Requested client/search polish ===== */
+/* إخفاء الشريط الظاهر فوق سلايدر الإعلانات مع إبقاء السلايدر ملاصقاً للواجهة */
+#dueAlertBar{display:none!important}
+
+/* خانة البحث بنفس النمط الدائري الذهبي المرجعي */
+.product-search,
+.client-manager-search{
+  position:relative;
+  display:flex;
+  align-items:center;
+  gap:14px;
+  width:100%;
+  height:64px;
+  margin:0 0 18px;
+  padding:0 24px;
+  border:2px solid #d9ad4d;
+  border-radius:999px;
+  background:linear-gradient(180deg,#fffefa 0%,#fffdf8 100%);
+  box-shadow:0 7px 18px rgba(189,141,49,.09), inset 0 1px 0 rgba(255,255,255,.9);
+  transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease;
+}
+.product-search:focus-within,
+.client-manager-search:focus-within{
+  border-color:#b58a2a;
+  box-shadow:0 0 0 4px rgba(217,173,77,.14),0 9px 22px rgba(189,141,49,.14),inset 0 1px 0 rgba(255,255,255,.95);
+}
+.product-search-icon,
+.client-manager-search>span{
+  flex:0 0 28px;
+  width:28px;
+  height:28px;
+  display:grid;
+  place-items:center;
+  color:#a47a1f;
+}
+.product-search-icon svg,
+.client-manager-search>span svg{
+  width:28px;
+  height:28px;
+  fill:none;
+  stroke:currentColor;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+.product-search input,
+.client-manager-search input{
+  flex:1;
+  min-width:0;
+  height:100%;
+  border:0;
+  outline:0;
+  background:transparent;
+  color:#172033;
+  font-size:16px;
+  font-weight:500;
+}
+.product-search input::placeholder,
+.client-manager-search input::placeholder{color:#9a9da5;opacity:1}
+.product-search button,
+.client-manager-search button{
+  flex:0 0 auto;
+  width:30px;
+  height:30px;
+  border:0;
+  border-radius:50%;
+  background:#f3e5bd;
+  color:#7a5a16;
+  font-size:20px;
+  line-height:1;
+  cursor:pointer;
+}
+.client-manager-search{margin-bottom:18px;background:#fffefa}
+.client-manager-search input{direction:rtl;text-align:right}
+@media(max-width:699px){
+  .product-search,
+  .client-manager-search{height:58px;padding:0 18px;gap:11px}
+  .product-search input,
+  .client-manager-search input{font-size:14px}
+  .product-search-icon,
+  .client-manager-search>span,
+  .product-search-icon svg,
+  .client-manager-search>span svg{width:25px;height:25px}
+}
+@media(max-width:379px){
+  .product-search,
+  .client-manager-search{height:52px;padding:0 15px;border-width:1.5px}
+  .product-search input,
+  .client-manager-search input{font-size:12px}
+}
+
+/* المدينة هي المعلومة الثانوية تحت اسم الكليان */
+.client-manager-row>div:first-child small{color:#667085;font-size:12px;line-height:1.5}
+.client-manager-row>div:first-child small:empty{display:none}
+@media(max-width:480px){.client-manager-row>div:first-child small{font-size:11px}}
+
+/* لا توجد فاصلة بصرية فوق السلايدر */
+.slider-wrap{border-top:0!important;box-shadow:none!important}
+.slider-wrap::before{display:none!important}
+.fixed-ad-divider,.slider-divider,.ads-divider{display:none!important}
+
+@media(prefers-reduced-motion:reduce){
+  .product-search,.client-manager-search{transition:none}
+}
+

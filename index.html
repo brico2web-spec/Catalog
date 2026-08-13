@@ -40,18 +40,14 @@
       <button id="menuAdd"><span class="mi add"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><div><b>Ajouter</b><small>إضافة منتوج جديد</small></div></button>
       <button id="menuEdit"><span class="mi edit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2 2 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg></span><div><b>Modifier</b><small>تعديل المنتوج المحدد</small></div></button>
       <button id="menuDelete"><span class="mi delete"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 11v5m4-5v5"/></svg></span><div><b>Supprimer</b><small>حذف المنتوج المحدد</small></div></button>
-      <div class="menu-section-title"><span>02</span> النظام والنسخ الاحتياطي</div>
-      <button id="menuExport"><span class="mi export"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14"/></svg></span><div><b>Télécharger sauvegarde</b><small>تحميل المنتجات والصور والسلة</small></div></button>
-      <button id="menuImport"><span class="mi import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4 4 4M5 20h14"/></svg></span><div><b>Restaurer sauvegarde</b><small>استرجاع البيانات من ملف</small></div></button>
+      <div class="menu-section-title"><span>02</span> Restoration</div>
+      <button id="menuImportAllExcel"><span class="mi import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4 4 4M5 20h14"/><path d="M8 12h8"/></svg></span><div><b>Restaurer archive Excel</b><small>رفع ملف الأرشيف أو لوحة التحكم واسترجاع البيانات</small></div></button>
       <div class="menu-section-title"><span>03</span> التسيير التجاري</div>
       <button id="menuOrders"><span class="mi orders"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></span><div><b>Gestion des commandes</b><small>الكوموندات · الخلاص · الربح</small></div></button>
       <button id="menuClients"><span class="mi clients"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span><div><b>Gestion des clients</b><small>الكليان · الشركة · ICE · واتساب</small></div></button>
       <button id="menuImportClients"><span class="mi excel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v5h4M8 12h8M8 16h8"/></svg></span><div><b>Import Excel clients</b><small>إضافة الكليان دفعة واحدة</small></div></button>
       <div class="menu-section-title"><span>04</span> التحليل والتتبع</div>
       <button id="menuDashboard"><span class="mi dashboard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16"/><path d="m7 15 3-4 3 2 5-7"/><path d="M17 6h1v1"/></svg></span><div><b>Dashboard commercial</b><small>المبيعات · المنتجات · أوقات الذروة</small></div></button>
-      <div class="menu-section-title"><span>05</span> الأرشيف الشامل Excel</div>
-      <button id="menuExportAllExcel"><span class="mi export"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14"/><path d="M8 8h8"/></svg></span><div><b>Exporter archive complet</b><small>المبيعات · المنتجات · الكليان · الأقساط</small></div></button>
-      <button id="menuImportAllExcel"><span class="mi import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4 4 4M5 20h14"/><path d="M8 12h8"/></svg></span><div><b>Restaurer archive Excel</b><small>رفع ملف Excel لاسترجاع جميع المعلومات</small></div></button>
       <input id="allExcelRestoreInput" type="file" accept=".xlsx,.xls" hidden>
     </div>
   </div>
@@ -73,7 +69,7 @@
 </section>
 <section class="toolbar">
   <div class="product-search" id="productSearchBox">
-    <span class="product-search-icon">⌕</span>
+    <span class="product-search-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="10.8" cy="10.8" r="6.4"></circle><path d="m16 16 5 5"></path></svg></span>
     <input id="productSearch" type="search" autocomplete="off" placeholder="قلب بكود المنتوج: d402 أو w202...">
     <button id="clearProductSearch" type="button" aria-label="مسح البحث">×</button>
   </div>
@@ -312,6 +308,7 @@
       <input type="hidden" id="clientEditId">
       <label>Nom du client<input id="clientName" required placeholder="Nom et prénom"></label>
       <label>Société<input id="clientCompany" placeholder="Nom de la société"></label>
+      <label>Ville<input id="clientCity" placeholder="Ex: KENITRA"></label>
       <label>ICE<input id="clientICE" placeholder="ICE"></label>
       <label>Titulaire du chèque / cambiale<input id="clientPaymentHolder" placeholder="اسم صاحب الشيك أو الكمبيالة"></label>
       <label>Numéro du chèque / cambiale<input id="clientPaymentNumber" placeholder="رقم الشيك أو الكمبيالة"></label>
@@ -349,8 +346,9 @@
       <div class="sales-forecast-products-title">المنتوجات الأكثر طلباً والمتوقع طلبها</div>
       <div id="salesForecastProducts" class="sales-forecast-products"></div>
     </div>
+    <div class="section-file-actions client-file-actions"><button id="exportClientsArchiveExcel" class="section-excel-btn" type="button">⬇ Télécharger clients Excel</button><button id="restoreClientsArchiveExcel" class="section-restore-btn" type="button">↥ Restoration</button></div>
     <div class="client-manager-title">Clients enregistrés</div>
-    <div class="client-manager-search"><span>⌕</span><input id="clientManagerSearch" type="search" placeholder="قلب بالاسم أو الشركة أو ICE..." autocomplete="off"><button id="clearClientManagerSearch" type="button" aria-label="مسح البحث">×</button></div>
+    <div class="client-manager-search"><span aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="10.8" cy="10.8" r="6.4"></circle><path d="m16 16 5 5"></path></svg></span><input id="clientManagerSearch" type="search" placeholder="قلب بالاسم أو الشركة أو ICE..." autocomplete="off"><button id="clearClientManagerSearch" type="button" aria-label="مسح البحث">×</button></div>
     <div id="clientsManagerList" class="clients-manager-list"></div>
   </div>
 </div>
@@ -377,6 +375,7 @@
       <section class="dashboard-chart-card"><div class="dashboard-chart-head"><div><b>أوقات الذروة</b><small>عدد الطلبات حسب الساعة</small></div><span>24H</span></div><div class="dashboard-chart-wrap"><canvas id="peakHoursChart"></canvas></div><div class="dashboard-empty" id="peakHoursEmpty">لا توجد أوقات مسجلة بعد.</div></section>
     </div>
     <div class="dashboard-note">ملاحظة: تعتمد الرسوم على الكوموندات المسجلة داخل التطبيق. إذا لم يتوفر وقت الطلب في البيانات القديمة، سيتم عرض الطلبات الجديدة التي تحتوي على توقيت التسجيل.</div>
+    <div class="section-file-actions dashboard-file-actions"><button id="exportDashboardExcel" class="section-excel-btn" type="button">⬇ Télécharger dashboard Excel</button><button id="restoreDashboardExcel" class="section-restore-btn" type="button">↥ Restoration</button></div>
   </div>
 </div>
 
@@ -397,6 +396,7 @@
     </div>
     <div id="ordersList" class="orders-list"></div>
     <div id="ordersEmpty" class="cart-empty">مازال ما تسجل حتى طلب.</div>
+    <div class="section-file-actions orders-file-actions"><button id="exportOrdersArchiveExcel" class="section-excel-btn" type="button">⬇ Télécharger archive Excel</button><button id="restoreOrdersArchiveExcel" class="section-restore-btn" type="button">↥ Restoration</button></div>
   </div>
 </div>
 
