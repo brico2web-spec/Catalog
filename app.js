@@ -15,6 +15,18 @@ products.forEach(p=>{if(p.costPrice==null)p.costPrice=0});
 
 function save(){try{localStorage.setItem(KEY,JSON.stringify(products));return true}catch(err){console.error(err);toast(err&&err.name==="QuotaExceededError"?"Mémoire pleine : image trop grande.":"Impossible d'enregistrer le produit");return false}}
 function makeId(){try{if(window.crypto&&typeof crypto.randomUUID==="function")return crypto.randomUUID()}catch(e){}return "p_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,10)}
+function shortFilePart(value,fallback="Client"){
+ const clean=String(value||fallback).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^\p{L}\p{N}]+/gu,"_").replace(/^_+|_+$/g,"").slice(0,42);
+ return clean||fallback;
+}
+function shortFileDate(value=new Date()){
+ const d=value instanceof Date?value:new Date(value);if(Number.isNaN(d.getTime()))return shortFileDate(new Date());
+ return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function pdfFileName(type,client,date=new Date()){
+ const base=shortFilePart(type,"PDF"),day=shortFileDate(date),person=client?`_${shortFilePart(client,"Client")}`:"";
+ return `${base}_${day}${person}.pdf`;
+}
 function normalizeProductCode(value){return String(value||"").trim().toUpperCase().replace(/\s+/g,"")}
 function productCode(p){return normalizeProductCode(p?.code||p?.productCode||"")}
 function compressImage(file,maxSide=1000,quality=.78){return new Promise((resolve,reject)=>{const r=new FileReader();r.onerror=()=>reject(new Error("Lecture impossible"));r.onload=e=>{const img=new Image();img.onerror=()=>reject(new Error("Image invalide"));img.onload=()=>{const ow=img.naturalWidth||img.width,oh=img.naturalHeight||img.height,s=Math.min(1,maxSide/Math.max(ow,oh)),w=Math.max(1,Math.round(ow*s)),h=Math.max(1,Math.round(oh*s)),c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(img,0,0,w,h);resolve(c.toDataURL("image/webp",quality))};img.src=e.target.result};r.readAsDataURL(file)})}
@@ -1084,7 +1096,7 @@ async function createClientBillingPDF(client){
    let yPx=0,page=0;
    while(yPx<canvas.height){const sliceH=Math.min(pagePx,canvas.height-yPx);const slice=document.createElement("canvas");slice.width=canvas.width;slice.height=sliceH;slice.getContext("2d").drawImage(canvas,0,yPx,canvas.width,sliceH,0,0,canvas.width,sliceH);if(page>0)pdf.addPage();pdf.addImage(slice.toDataURL("image/jpeg",.92),"JPEG",margin,margin,imgW,sliceH*imgW/canvas.width);yPx+=sliceH;page++}
    document.body.removeChild(root);
-   return {blob:pdf.output("blob"),name:`Fiche_Facturation_${String(client.name||"Client").replace(/[^a-z0-9_-]+/gi,"_")}_${date.replaceAll("/","-")}.pdf`};
+   return {blob:pdf.output("blob"),name:pdfFileName("Fiche",client.name||"Client",now)};
  }catch(err){console.error(err);return null}
 }
 async function shareClientBillingPDF(client){
@@ -1252,7 +1264,7 @@ async function createOrderPDF(order){
      yPx+=sliceH; page++;
    }
    document.body.removeChild(root);
-   return {blob:pdf.output("blob"),name:`Bon_Commande_${String(order.client).replace(/[^a-z0-9_-]+/gi,"_")}_${date.replaceAll("/","-")}.pdf`};
+   return {blob:pdf.output("blob"),name:pdfFileName("Bon",order.client||"Client",d)};
  }catch(err){console.error(err); return null;}
 }
 async function createInvoiceRequestPDF(order){
@@ -1321,7 +1333,7 @@ async function createInvoiceRequestPDF(order){
    let yPx=0,page=0;
    while(yPx<canvas.height){const sliceH=Math.min(pagePx,canvas.height-yPx);const slice=document.createElement("canvas");slice.width=canvas.width;slice.height=sliceH;slice.getContext("2d").drawImage(canvas,0,yPx,canvas.width,sliceH,0,0,canvas.width,sliceH);if(page>0)pdf.addPage();pdf.addImage(slice.toDataURL("image/jpeg",.92),"JPEG",margin,margin,imgW,sliceH*imgW/canvas.width);yPx+=sliceH;page++}
    document.body.removeChild(root);
-   return {blob:pdf.output("blob"),name:`Demande_Facture_${String(order.client||"Client").replace(/[^a-z0-9_-]+/gi,"_")}_${date.replaceAll("/","-")}.pdf`};
+   return {blob:pdf.output("blob"),name:pdfFileName("Facture",order.client||"Client",d)};
  }catch(err){console.error(err);return null}
 }
 async function shareInvoiceRequestPDF(order){
@@ -1651,8 +1663,7 @@ async function createDueReminderPDF(rows=overdueReminderRows()){
   const pageW=210,pageH=297,margin=8,imgW=pageW-margin*2,imgH=canvas.height*imgW/canvas.width,pagePx=Math.floor(canvas.width*(pageH-margin*2)/imgH);
   let yPx=0,page=0;
   while(yPx<canvas.height){const sliceH=Math.min(pagePx,canvas.height-yPx);const slice=document.createElement("canvas");slice.width=canvas.width;slice.height=sliceH;slice.getContext("2d").drawImage(canvas,0,yPx,canvas.width,sliceH,0,0,canvas.width,sliceH);if(page>0)pdf.addPage();pdf.addImage(slice.toDataURL("image/jpeg",.92),"JPEG",margin,margin,imgW,sliceH*imgW/canvas.width);yPx+=sliceH;page++}
-  const safeDate=date.replaceAll("/","-");
-  return {blob:pdf.output("blob"),name:`Rappel_Echeances_3D_PEINTURES_${safeDate}.pdf`,message,total,count:rows.length};
+  return {blob:pdf.output("blob"),name:pdfFileName("Rappel",null,now),message,total,count:rows.length};
  }catch(err){console.error(err);toast("تعذر إنشاء ملف PDF للتذكير");return null}
  finally{const root=document.querySelector('body > div[style*="left: -10000px"]');if(root)root.remove()}
 }
