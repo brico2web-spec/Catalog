@@ -1513,3 +1513,73 @@ main{padding-top:4px}
  .action-menu small{font-size:9px}
  .action-menu .mi{width:39px;height:39px;flex-basis:39px}
 }
+
+
+/* ===== تحسين قرب الشاشة وتراص الكتالوج ===== */
+.toolbar .categories{align-items:center;justify-content:center;gap:10px;padding:10px 0 5px}
+.toolbar .cat{display:flex;align-items:center;justify-content:center;text-align:center;min-height:46px;padding:9px 16px;border-radius:999px;font-size:12px;line-height:1.15;letter-spacing:.2px}
+.toolbar .cat.active{box-shadow:0 9px 18px rgba(21,94,239,.18),inset 0 -4px 0 #f5d477}
+
+.catalog-carousel{margin:0 auto 8px;min-height:378px}
+.carousel-stage{min-height:355px;padding-top:0;border-radius:22px}
+.carousel-ring{min-height:338px}
+.flip-card,.catalog-carousel .flip-card.selected{top:1px;width:min(78vw,286px);height:338px}
+.flip-front .photo{height:207px;min-height:207px;flex-basis:207px}
+.flip-front .card-body{padding:9px 14px 10px;text-align:center;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
+.flip-front-kicker{font-size:7px;letter-spacing:1px;line-height:1.1}
+.flip-front .card-body h3{width:100%;margin:4px 0 3px;min-height:0;font-size:16px;line-height:1.18;text-align:center;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.flip-front .product-code-line{font-size:9px;line-height:1.1;margin:1px 0 0;text-align:center}
+.flip-front .price{margin-top:5px;font-size:27px;line-height:1;color:#082e68;letter-spacing:-.7px;font-weight:950;white-space:nowrap}
+.flip-front .price small{font-size:10px;letter-spacing:0}
+.flip-tap-hint{position:static;margin-top:auto;padding-top:5px;font-size:8px;line-height:1.1;text-align:center}
+.carousel-levels-display{margin-top:-2px;padding:10px 12px 9px;border-radius:16px}
+.levels-display-top{margin-bottom:7px}
+.levels-display-top small{font-size:10px;color:#80601d;font-weight:950}
+.levels-display-top>span{font-size:8px;padding:5px 8px}
+.levels-display-track{gap:6px;padding-bottom:3px}
+.levels-display-card{flex-basis:112px;min-height:59px;padding:8px 7px;text-align:center}
+.levels-display-card b{font-size:11px;text-align:center}
+.levels-display-card span{margin-top:3px;font-size:9px;text-align:center}
+.levels-display-card strong{margin-top:3px;font-size:8px;text-align:center}
+.levels-display-hint{margin-top:5px;font-size:7px}
+.levels-display-promo{margin-top:6px;padding:7px 8px}
+
+@media(max-width:699px){
+ .toolbar .categories{justify-content:flex-start;gap:7px;padding:8px 0 4px}
+ .toolbar .cat{min-height:42px;padding:8px 13px;font-size:11px}
+ main{padding:2px 10px 12px}
+ .section-head{margin-bottom:0}
+ .section-head h2{font-size:19px;margin-bottom:1px}
+ .catalog-carousel{min-height:365px;margin-top:-2px;margin-bottom:4px}
+ .carousel-stage{min-height:342px}
+ .carousel-ring{min-height:325px}
+ .flip-card,.catalog-carousel .flip-card.selected{width:min(80vw,286px);height:326px}
+ .flip-front .photo{height:199px;min-height:199px;flex-basis:199px}
+ .flip-front .card-body{padding:8px 12px 9px}
+ .flip-front .card-body h3{font-size:15px}
+ .flip-front .price{font-size:25px}
+ .carousel-levels-display{width:98%;margin-top:-5px;padding:9px 8px 8px}
+}
+@media(max-width:379px){
+ .toolbar .cat{min-height:39px;padding:7px 11px;font-size:10px}
+ .catalog-carousel{min-height:347px}
+ .carousel-stage{min-height:324px}
+ .carousel-ring{min-height:308px}
+ .flip-card,.catalog-carousel .flip-card.selected{width:84vw;height:309px}
+ .flip-front .photo{height:184px;min-height:184px;flex-basis:184px}
+ .flip-front .card-body{padding:7px 10px 8px}
+ .flip-front .card-body h3{font-size:14px}
+ .flip-front .price{font-size:23px}
+ .flip-tap-hint{font-size:7px}
+ .carousel-levels-display{margin-top:-7px;padding:8px 6px 7px}
+ .levels-display-card{flex-basis:104px;min-height:55px;padding:7px 5px}
+ .levels-display-card b{font-size:10px}.levels-display-card span{font-size:8px}.levels-display-card strong{font-size:7px}
+}
+@media(min-width:700px){
+ .catalog-carousel{min-height:445px;margin-bottom:8px}
+ .carousel-stage{min-height:418px}
+ .carousel-ring{min-height:400px}
+ .flip-card,.catalog-carousel .flip-card.selected{width:300px;height:392px}
+ .flip-front .photo{height:238px;min-height:238px;flex-basis:238px}
+ .flip-front .price{font-size:29px}
+}
