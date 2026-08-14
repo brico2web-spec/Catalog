@@ -442,8 +442,8 @@ $("menuOrders").onclick=()=>{$("actionMenu").classList.remove("show");openOrders
 $("menuCollections").onclick=()=>{$("actionMenu").classList.remove("show");openCollections()};
 $("menuClients").onclick=()=>{$("actionMenu").classList.remove("show");openClientModal()};
 $("menuImportClients").onclick=()=>{$("actionMenu").classList.remove("show");$("clientsExcelInput").click()};
-$("menuExportProductsJson").onclick=()=>{$("actionMenu").classList.remove("show");exportProductsJson()};
-$("menuImportProductsJson").onclick=()=>{$("actionMenu").classList.remove("show");const input=$("productsJsonInput");if(input){input.value="";input.click()}};
+$("menuExportProductsJson").onclick=()=>{$("actionMenu").classList.remove("show");exportLightBackup()};
+$("menuImportProductsJson").onclick=()=>{$("actionMenu").classList.remove("show");const input=$("backupInput");if(input){input.value="";input.click()}};
 $("menuImportAllExcel").onclick=()=>{$("actionMenu").classList.remove("show");openArchiveRestorePicker()};
 $("allExcelRestoreInput").onchange=e=>importFullArchiveExcel(e.target.files[0]);
 $("menuDashboard").onclick=()=>openDashboard();
@@ -455,8 +455,8 @@ $("exportClientsArchiveExcel").onclick=exportClientsArchiveExcel;
 $("restoreClientsArchiveExcel").onclick=openArchiveRestorePicker;
 
 /* Sauvegarde complète : produits + photos + codes + promotions + clients + commandes + panier */
-function backupProductSnapshot(p,index){
- const code=productCode(p);
+function backupProductSnapshot(p,index,includeImage=true){
+ const code=productCode(p),tiers=Array.isArray(p?.priceTiers)?p.priceTiers.map(t=>({minQty:Number(t?.minQty)||1,maxQty:t?.maxQty==null||t?.maxQty===""?null:Number(t.maxQty)||null,price:Number(t?.price)||0})).filter(t=>t.price>=0):[];
  return {
    id:String(p?.id||`p_restore_${Date.now().toString(36)}_${index}`),
    name:String(p?.name||"Produit").trim(),
@@ -467,9 +467,10 @@ function backupProductSnapshot(p,index){
    category:canonicalCategory(p?.category),
    availability:p?.availability==="unavailable"?"unavailable":"available",
    description:String(p?.description||"").trim(),
-   image:typeof p?.image==="string"?p.image:"",
+   priceTiers:tiers,
+   image:includeImage&&typeof p?.image==="string"?p.image:"",
    promo10Plus1:hasPromo10Plus1(p)
- };
+  };
 }
 function exportBackup(){
  const backup={
@@ -495,11 +496,51 @@ function exportBackup(){
  }
 
 function exportProductsJson(){
- const payload={format:"3D_PEINTURES_PRODUCTS_BACKUP",version:1,createdAt:new Date().toISOString(),activeCategory:active,products:(Array.isArray(products)?products:[]).map(backupProductSnapshot)};
+ const payload={format:"3D_PEINTURES_PRODUCTS_BACKUP",version:1,createdAt:new Date().toISOString(),activeCategory:active,products:(Array.isArray(products)?products:[]).map((p,i)=>backupProductSnapshot(p,i,false))};
  const blob=new Blob([JSON.stringify(payload)],{type:"application/json;charset=utf-8"});
  const url=URL.createObjectURL(blob);const a=document.createElement("a");const d=new Date();const pad=n=>String(n).padStart(2,"0");
  a.href=url;a.download=`3D_PEINTURES_PRODUITS_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.json`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);
- toast(`تم تحميل ${products.length} منتوج(ات) مع الصور`);
+ toast(`تم تحميل ${products.length} منتوج(ات) نصية بدون صور`);
+}
+function stripBackupImages(value,key=""){
+ if(Array.isArray(value))return value.map(v=>stripBackupImages(v));
+ if(value&&typeof value==="object"){
+  const result={};Object.entries(value).forEach(([k,v])=>{if(/image|photo|logo|avatar|thumbnail/i.test(k))return;result[k]=stripBackupImages(v,k)});return result;
+ }
+ return typeof value==="string"&&/^data:image\//i.test(value)?"":value;
+}
+function buildLightBackup(){
+ const history=typeof collectionHistory==="function"?collectionHistory():[];
+ const cycleStart=typeof collectionCycleStart==="function"?collectionCycleStart():localStorage.getItem(COLLECTIONS_CYCLE_KEY)||"";
+ return stripBackupImages({
+  format:"3D_PEINTURES_LIGHT_BACKUP",version:1,createdAt:new Date().toISOString(),activeCategory:active,
+  products:(Array.isArray(products)?products:[]).map((p,i)=>backupProductSnapshot(p,i,false)),
+  cart:Array.isArray(cart)?cart:[],orders:Array.isArray(orders)?orders:[],clients:Array.isArray(clients)?clients:[],
+  collections:{cycleStart,history},
+  contents:["products","cart","orders","clients","collections"]
+ });
+}
+function lightBackupFileName(){const d=new Date();return `3D_PEINTURES_SAUVEGARDE_LEGERE_${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}.json`}
+function openTextBackupWindow(text,name){
+ try{
+  const win=window.open("","_blank");if(!win)return false;
+  const safe=text.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  win.document.open();win.document.write(`<meta name="viewport" content="width=device-width,initial-scale=1"><title>${name}</title><style>body{margin:0;background:#06152f;color:#f5d477;font-family:monospace}header{position:sticky;top:0;padding:14px;background:#0b2e63;color:#fff;font-family:Arial}textarea{display:block;width:100%;height:calc(100vh - 58px);box-sizing:border-box;padding:14px;background:#fff;color:#17233b;border:0;font:12px monospace;direction:ltr}</style><header>نسخة احتياطية نصية — اضغط مطولًا لنسخ المحتوى</header><textarea readonly>${safe}</textarea>`);win.document.close();return true;
+ }catch(err){console.warn("Backup open fallback failed",err);return false}
+}
+async function copyBackupToClipboard(text){try{if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(text);return true}}catch(err){console.warn("Clipboard backup failed",err)}return false}
+async function exportLightBackup(){
+ const text=JSON.stringify(buildLightBackup(),null,2),name=lightBackupFileName(),fileType="application/json;charset=utf-8";
+ try{
+  const file=new File([text],name,{type:fileType});
+  if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){await navigator.share({title:"نسخة احتياطية 3D PEINTURES",text:"نسخة نصية خفيفة تشمل المنتجات والكوموندات والأقساط والديون والمستخلاصات",files:[file]});toast("تمت مشاركة النسخة الاحتياطية الخفيفة");return}
+ }catch(err){if(err?.name==="AbortError")return;console.warn("Share backup failed",err)}
+ try{
+  const blob=new Blob([text],{type:fileType}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;a.rel="noopener";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),4000);toast("تم تحميل نسخة JSON خفيفة بدون صور");return;
+ }catch(err){console.warn("Download backup failed",err)}
+ if(openTextBackupWindow(text,name)){toast("تم فتح النسخة في نافذة جديدة؛ احفظها يدويًا");return}
+ if(await copyBackupToClipboard(text)){toast("تعذر التنزيل؛ تم نسخ النسخة إلى الحافظة")}
+ else toast("تعذر تنزيل النسخة. افتح القائمة مرة أخرى وحاول النسخ إلى الحافظة.");
 }
 
 function excelSheet(rows, widths){
@@ -688,7 +729,34 @@ async function importBackupFile(file){
  reader.readAsText(file);
 }
 
-$("backupInput").onchange=e=>importBackupFile(e.target.files[0]);
+async function importLightBackup(file){
+ if(!file)return;
+ const reader=new FileReader();
+ reader.onload=async e=>{
+  const previous={products,cart,orders,clients,active,cycle:localStorage.getItem(COLLECTIONS_CYCLE_KEY),history:localStorage.getItem(COLLECTIONS_HISTORY_KEY)};
+  try{
+   const data=JSON.parse(e.target.result),isLight=data?.format==="3D_PEINTURES_LIGHT_BACKUP",rawProducts=Array.isArray(data)?data:data?.products;
+   if(!Array.isArray(rawProducts))throw new Error("BACKUP_INVALID");
+   const hasBusinessData=isLight&&(Array.isArray(data.orders)||Array.isArray(data.clients)||Array.isArray(data.cart)||data.collections);
+   if(!isLight&&!Array.isArray(data?.products))throw new Error("BACKUP_INVALID");
+   if(!confirm(`استرجاع النسخة النصية؟\n\n${rawProducts.length} منتوج · ${Array.isArray(data?.orders)?data.orders.length:0} كوموند · ${Array.isArray(data?.clients)?data.clients.length:0} زبناء\n\nسيتم تحديث البيانات الموجودة.`))return;
+   const localImages=new Map((Array.isArray(products)?products:[]).map(p=>[String(p.id),typeof p.image==="string"?p.image:""]));
+   const restored=rawProducts.map((p,i)=>{const clean=backupProductSnapshot(p,i,false);if(!clean.image&&localImages.has(String(clean.id)))clean.image=localImages.get(String(clean.id));return clean});
+   const usedIds=new Set();restored.forEach((p,i)=>{if(usedIds.has(p.id))p.id=`p_light_${Date.now().toString(36)}_${i}_${Math.random().toString(36).slice(2,7)}`;usedIds.add(p.id)});
+   products=restored;
+   if(hasBusinessData){cart=Array.isArray(data.cart)?data.cart:[];orders=Array.isArray(data.orders)?data.orders:[];clients=Array.isArray(data.clients)?data.clients:[];if(data.collections?.cycleStart)localStorage.setItem(COLLECTIONS_CYCLE_KEY,String(data.collections.cycleStart));if(Array.isArray(data.collections?.history))localStorage.setItem(COLLECTIONS_HISTORY_KEY,JSON.stringify(data.collections.history.slice(0,100)))}
+   active=categories.includes(canonicalCategory(data?.activeCategory))?canonicalCategory(data.activeCategory):categories[0];
+   if(!save())throw new Error("STORAGE_FULL");
+   localStorage.setItem("3d_peintures_orders_v1",JSON.stringify(orders));localStorage.setItem("3d_peintures_cart_v4",JSON.stringify(cart));localStorage.setItem(CLIENTS_KEY,JSON.stringify(clients));
+   selectedProductId=null;selectedImage="";renderCart();render();toast(`تم استرجاع النسخة الخفيفة: ${products.length} منتوج · ${orders.length} كوموند · بدون صور`);
+  }catch(err){
+   products=previous.products;cart=previous.cart;orders=previous.orders;clients=previous.clients;active=previous.active;if(previous.cycle==null)localStorage.removeItem(COLLECTIONS_CYCLE_KEY);else localStorage.setItem(COLLECTIONS_CYCLE_KEY,previous.cycle);if(previous.history==null)localStorage.removeItem(COLLECTIONS_HISTORY_KEY);else localStorage.setItem(COLLECTIONS_HISTORY_KEY,previous.history);renderCart();render();
+   alert(err?.message==="STORAGE_FULL"?"تعذر حفظ النسخة: الذاكرة ممتلئة.":err?.message==="BACKUP_INVALID"?"الملف غير صالح أو ليس نسخة 3D PEINTURES نصية.":"تعذر استرجاع النسخة النصية. البيانات الحالية لم تتغير.");
+  }finally{$("backupInput").value=""}
+ };
+ reader.readAsText(file);
+}
+$("backupInput").onchange=e=>importLightBackup(e.target.files[0]);
 
 function importProductsJson(file){
  if(!file)return;
