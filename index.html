@@ -32,30 +32,41 @@
     <div class="subtitle">CATALOGUE PRODUITS</div>
   </div>
   <div class="header-actions">
+  <button class="search-btn" id="headerSearchToggle" type="button" aria-label="البحث عن منتوج" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.4"></circle><path d="m16 16 5 5"></path></svg></button>
   <button class="cart-btn" id="cartBtn" aria-label="Panier"><span>🛒</span><b id="cartCount">0</b></button>
   <div class="action-menu-wrap">
     <button class="menu-btn" id="menuBtn" aria-label="Menu">⋮</button>
     <div class="action-menu" id="actionMenu">
       <div class="menu-section-title"><span>01</span> التسيير التجاري</div>
-      <button id="menuOrders"><span class="mi orders"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></span><div><b>Gestion des commandes</b><small>الكوموندات · الخلاص · الربح</small></div></button>
+      <button id="menuOrders"><span class="mi orders"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></span><div><b>الطلبيات</b><small>الكوموندات · الخلاص · الربح</small></div></button>
       <button id="menuCollections"><span class="mi collections"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="m7 15 3-4 3 2 5-7"/><path d="M17 6h1v1"/></svg></span><div><b>تتبع المستخلاصات</b><small>عند الاستلام · الأقساط · المجموع الإجمالي</small></div></button>
-      <button id="menuClients"><span class="mi clients"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span><div><b>Gestion des clients</b><small>الكليان · الشركة · ICE · واتساب</small></div></button>
-      <button id="menuImportClients"><span class="mi excel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v5h4M8 12h8M8 16h8"/></svg></span><div><b>Import Excel clients</b><small>إضافة الكليان دفعة واحدة</small></div></button>
+      <button id="menuClients"><span class="mi clients"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span><div><b>معلومات الزبون</b><small>الكليان · الشركة · ICE · واتساب</small></div></button>
+      <button id="menuImportClients"><span class="mi excel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v5h4M8 12h8M8 16h8"/></svg></span><div><b>رفع ملف الزبناء</b><small>إضافة الكليان دفعة واحدة</small></div></button>
       <div class="menu-section-title"><span>02</span> إدارة المنتوجات</div>
-      <button id="menuAdd"><span class="mi add"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><div><b>Ajouter</b><small>إضافة منتوج جديد</small></div></button>
-      <button id="menuEdit"><span class="mi edit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2 2 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg></span><div><b>Modifier</b><small>تعديل المنتوج المحدد</small></div></button>
-      <button id="menuDelete"><span class="mi delete"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 11v5m4-5v5"/></svg></span><div><b>Supprimer</b><small>حذف المنتوج المحدد</small></div></button>
+      <button id="menuAdd"><span class="mi add"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><div><b>إضافة منتوج</b><small>إضافة منتوج جديد</small></div></button>
+      <button id="menuEdit"><span class="mi edit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2 2 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg></span><div><b>تعديل منتوج</b><small>تعديل المنتوج المحدد</small></div></button>
+      <button id="menuDelete"><span class="mi delete"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 11v5m4-5v5"/></svg></span><div><b>حذف منتوج</b><small>حذف المنتوج المحدد</small></div></button>
       <div class="menu-section-title"><span>03</span> تحميل واستيراد</div>
-      <button id="menuExportProductsJson"><span class="mi excel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 20h14"/><path d="M8 7h8"/></svg></span><div><b>نسخة احتياطية خفيفة JSON</b><small>المنتجات · الكوموندات · الديون · الأقساط · المستخلاصات بدون صور</small></div></button>
-      <button id="menuImportProductsJson"><span class="mi import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4 4 4M5 20h14"/><path d="M8 12h8"/></svg></span><div><b>رفع نسخة احتياطية JSON</b><small>استرجاع الخدمة عند تغيير الهاتف أو الجهاز</small></div></button>
-      <button id="menuImportAllExcel"><span class="mi import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4 4 4M5 20h14"/><path d="M8 12h8"/></svg></span><div><b>Restaurer archive Excel</b><small>رفع ملف الأرشيف أو لوحة التحكم واسترجاع البيانات</small></div></button>
+      <button id="menuExportProductsJson"><span class="mi excel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 20h14"/><path d="M8 7h8"/></svg></span><div><b>نسخة احتياطية خفيفة</b><small>المنتجات · الكوموندات · الديون · الأقساط · المستخلاصات بدون صور</small></div></button>
+      <button id="menuImportProductsJson"><span class="mi import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4 4 4M5 20h14"/><path d="M8 12h8"/></svg></span><div><b>رفع نسخة احتياطية خفيفة</b><small>استرجاع البيانات التجارية بدون صور</small></div></button>
+      <button id="menuExportProductsFullJson"><span class="mi excel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 20h14"/><path d="M8 7h8"/></svg></span><div><b>تحميل المنتجات والصور</b><small>المعلومات · الأسعار · الأقسام · الصور</small></div></button>
+      <button id="menuImportProductsFullJson"><span class="mi import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4 4 4M5 20h14"/><path d="M8 12h8"/></svg></span><div><b>رفع المنتجات والصور</b><small>إرجاع صور ومعلومات المنتجات إلى التطبيق</small></div></button>
       <div class="menu-section-title"><span>04</span> التحليل</div>
-      <button id="menuDashboard"><span class="mi dashboard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16"/><path d="m7 15 3-4 3 2 5-7"/><path d="M17 6h1v1"/></svg></span><div><b>Dashboard commercial</b><small>المبيعات · المنتجات · أوقات الذروة</small></div></button>
+      <button id="menuDashboard"><span class="mi dashboard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16"/><path d="m7 15 3-4 3 2 5-7"/><path d="M17 6h1v1"/></svg></span><div><b>إحصائيات عامة</b><small>المبيعات · المنتجات · أوقات الذروة</small></div></button>
       <input id="allExcelRestoreInput" type="file" accept=".xlsx,.xls" hidden>
+      <input id="fullProductsJsonInput" type="file" accept=".json,application/json" hidden>
     </div>
   </div>
   </div>
 </header>
+
+<div class="header-search-panel" id="headerSearchPanel" aria-hidden="true">
+  <div class="product-search" id="productSearchBox">
+    <span class="product-search-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="10.8" cy="10.8" r="6.4"></circle><path d="m16 16 5 5"></path></svg></span>
+    <input id="productSearch" type="search" autocomplete="off" placeholder="قلب بكود المنتوج: D402 أو W202...">
+    <button id="clearProductSearch" type="button" aria-label="مسح البحث">×</button>
+  </div>
+</div>
 
 <!-- Slider Hero -->
 <section class="slider-wrap" id="sliderWrap">
@@ -68,12 +79,7 @@
     <div class="slide"><img src="https://www.dropbox.com/scl/fi/qmyg9cnhmm6xcv3sk2wjh/c383f310-95e5-11f1-bc8d-7d83266a267a.webp?rlkey=roif0tu87r98g7zezkxodluvr&st=s8esc5j3&raw=1" alt="Image slider 6" loading="lazy" decoding="async" onerror="this.closest('.slide').style.display='none'"></div>
   </div>
 </section>
-<section class="toolbar">
-  <div class="product-search" id="productSearchBox">
-    <span class="product-search-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="10.8" cy="10.8" r="6.4"></circle><path d="m16 16 5 5"></path></svg></span>
-    <input id="productSearch" type="search" autocomplete="off" placeholder="قلب بكود المنتوج: d402 أو w202...">
-    <button id="clearProductSearch" type="button" aria-label="مسح البحث">×</button>
-  </div>
+<section class="toolbar" aria-label="أقسام المنتجات">
   <div class="categories" id="categories"></div>
 </section>
 

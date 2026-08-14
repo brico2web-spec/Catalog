@@ -1,4 +1,5 @@
 const KEY="3d_peintures_catalog_v3";
+const CATALOG_LAST_UPDATE_KEY="3d_peintures_catalog_last_update_v1";
 const categories=["PRODUITS","ESSENCE JUPITER","DILUANT","COLLE","PEINTURE"];
 function canonicalCategory(value){
  const normalized=String(value||"").trim().toUpperCase();
@@ -15,7 +16,8 @@ const COLLECTIONS_HISTORY_KEY="3d_peintures_collections_history_v1";
 const $=id=>document.getElementById(id);
 products.forEach(p=>{if(p.costPrice==null)p.costPrice=0});
 
-function save(){try{localStorage.setItem(KEY,JSON.stringify(products));return true}catch(err){console.error(err);toast(err&&err.name==="QuotaExceededError"?"Mémoire pleine : image trop grande.":"Impossible d'enregistrer le produit");return false}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(products));localStorage.setItem(CATALOG_LAST_UPDATE_KEY,new Date().toISOString());return true}catch(err){console.error(err);toast(err&&err.name==="QuotaExceededError"?"Mémoire pleine : image trop grande.":"Impossible d'enregistrer le produit");return false}}
+function catalogLastUpdate(){return localStorage.getItem(CATALOG_LAST_UPDATE_KEY)||""}
 function makeId(){try{if(window.crypto&&typeof crypto.randomUUID==="function")return crypto.randomUUID()}catch(e){}return "p_"+Date.now().toString(36)+"_"+Math.random().toString(36).slice(2,10)}
 function shortFilePart(value,fallback="Client"){
  const clean=String(value||fallback).normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^\p{L}\p{N}]+/gu,"_").replace(/^_+|_+$/g,"").slice(0,42);
@@ -444,7 +446,8 @@ $("menuClients").onclick=()=>{$("actionMenu").classList.remove("show");openClien
 $("menuImportClients").onclick=()=>{$("actionMenu").classList.remove("show");$("clientsExcelInput").click()};
 $("menuExportProductsJson").onclick=()=>{$("actionMenu").classList.remove("show");exportLightBackup()};
 $("menuImportProductsJson").onclick=()=>{$("actionMenu").classList.remove("show");const input=$("backupInput");if(input){input.value="";input.click()}};
-$("menuImportAllExcel").onclick=()=>{$("actionMenu").classList.remove("show");openArchiveRestorePicker()};
+$("menuExportProductsFullJson").onclick=()=>{$("actionMenu").classList.remove("show");exportBackup()};
+$("menuImportProductsFullJson").onclick=()=>{$("actionMenu").classList.remove("show");const input=$("fullProductsJsonInput");if(input){input.value="";input.click()}};
 $("allExcelRestoreInput").onchange=e=>importFullArchiveExcel(e.target.files[0]);
 $("menuDashboard").onclick=()=>openDashboard();
 $("exportOrdersArchiveExcel").onclick=exportOrdersArchiveExcel;
@@ -474,9 +477,10 @@ function backupProductSnapshot(p,index,includeImage=true){
 }
 function exportBackup(){
  const backup={
-   format:"3D_PEINTURES_CATALOG_BACKUP",
-   version:2,
+   format:"3D_PEINTURES_PRODUCTS_IMAGES_JSON",
+   version:3,
    createdAt:new Date().toISOString(),
+   catalogUpdatedAt:catalogLastUpdate(),
    activeCategory:active,
    products:products.map(backupProductSnapshot),
    cart:Array.isArray(cart)?cart:[],
@@ -489,10 +493,10 @@ function exportBackup(){
  const d=new Date();
  const pad=n=>String(n).padStart(2,"0");
  a.href=url;
- a.download=`3D_PEINTURES_SAUVEGARDE_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.3dbackup`;
+ a.download=`3D_PEINTURES_PRODUITS_IMAGES_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.json`;
  document.body.appendChild(a);a.click();a.remove();
  setTimeout(()=>URL.revokeObjectURL(url),3000);
- toast(`Sauvegarde téléchargée : ${products.length} produit(s) avec photos`);
+ toast(`تم تحميل ${products.length} منتوج(ات) مع الصور والمعلومات بصيغة JSON`);
  }
 
 function exportProductsJson(){
@@ -790,6 +794,7 @@ function importProductsJson(file){
 }
 
 $("productsJsonInput").onchange=e=>importProductsJson(e.target.files[0]);
+$("fullProductsJsonInput").onchange=e=>importBackupFile(e.target.files[0]);
 
 function excelRows(wb,name){
  const actual=wb.SheetNames.find(s=>s===name)||wb.SheetNames.find(s=>String(s).toLowerCase()===String(name).toLowerCase());
@@ -2340,6 +2345,12 @@ $("clientStatsSearch").oninput=renderClientStats;
 $("exportStatsExcel").onclick=exportClientStatsToExcel;
 $("productSearch").oninput=()=>{render();$("clearProductSearch").style.display=$("productSearch").value?"block":"none"};
 $("clearProductSearch").onclick=()=>{$("productSearch").value="";$("clearProductSearch").style.display="none";render();$("productSearch").focus()};
+
+function openHeaderSearch(){const panel=$("headerSearchPanel"),button=$("headerSearchToggle");if(!panel||!button)return;panel.classList.add("show");panel.setAttribute("aria-hidden","false");button.classList.add("is-open");button.setAttribute("aria-expanded","true");setTimeout(()=>{$("productSearch")?.focus()},60)}
+function closeHeaderSearch(){const panel=$("headerSearchPanel"),button=$("headerSearchToggle");if(!panel||!button)return;panel.classList.remove("show");panel.setAttribute("aria-hidden","true");button.classList.remove("is-open");button.setAttribute("aria-expanded","false")}
+$("headerSearchToggle").onclick=e=>{e.stopPropagation();const panel=$("headerSearchPanel");panel?.classList.contains("show")?closeHeaderSearch():openHeaderSearch()};
+document.addEventListener("click",e=>{const panel=$("headerSearchPanel"),button=$("headerSearchToggle");if(panel?.classList.contains("show")&&!panel.contains(e.target)&&e.target!==button)closeHeaderSearch()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("headerSearchPanel")?.classList.contains("show"))closeHeaderSearch()});
 
  initProductCarousel();
  initProductFocus();
