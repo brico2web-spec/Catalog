@@ -1312,3 +1312,140 @@ body.focus-active{overflow:hidden}
 /* اقتراحات الكليان في نموذج الكوموند: لا تظهر إلا بعد الكتابة */
 .client-autocomplete{position:relative;z-index:12}.client-suggestions{position:absolute;top:calc(100% + 6px);left:0;right:0;max-height:228px;overflow-y:auto;border:1px solid #dce5f0;border-radius:14px;background:#fff;box-shadow:0 16px 30px rgba(6,21,47,.18);padding:5px;direction:ltr}.client-suggestions[hidden]{display:none!important}.client-suggestion{display:block;width:100%;border:0;border-radius:10px;background:transparent;padding:10px 12px;text-align:left;color:#172033;cursor:pointer;transition:background .16s ease,transform .16s ease}.client-suggestion:hover,.client-suggestion:focus,.client-suggestion.is-active{background:#eef4fb;outline:0}.client-suggestion:active{transform:scale(.98)}.client-suggestion b{display:block;font-size:12px;font-weight:900;line-height:1.25}.client-suggestion small{display:block;margin-top:3px;color:#667085;font-size:9px;line-height:1.3}.client-suggestion-empty{padding:11px 12px;color:#667085;font-size:10px;text-align:center}.client-autocomplete .client-input-row{position:relative;z-index:1}
 @media(max-width:379px){.client-suggestions{max-height:190px}.client-suggestion{padding:9px 10px}}
+
+
+/* Collections tracker */
+.mi.collections{background:#fff4d8;color:#9a6d14}
+.collections-modal-card{max-width:760px}
+.collections-intro{margin:2px 0 14px;padding:11px 13px;border-radius:13px;background:#fffaf0;border:1px solid #ead9ad;color:#7a5a16;font-size:10px;line-height:1.6}
+.collections-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:5px 0 18px}
+.collection-card{border:1px solid var(--line);border-radius:15px;padding:13px 12px;min-width:0;background:#fff}
+.collection-card small{display:block;color:#667085;font-size:10px;font-weight:800;line-height:1.35;min-height:27px}
+.collection-card strong{display:block;margin-top:6px;font-size:18px;white-space:nowrap;color:var(--navy)}
+.collection-card span{display:block;margin-top:5px;color:#98a2b3;font-size:9px}
+.collection-card.delivery{border-top:3px solid #12b76a;background:linear-gradient(160deg,#f4fff8,#fff)}
+.collection-card.delivery strong{color:#087443}
+.collection-card.installments{border-top:3px solid #155eef;background:linear-gradient(160deg,#f5f8ff,#fff)}
+.collection-card.installments strong{color:#155eef}
+.collection-card.total{border:2px solid #d9b866;background:linear-gradient(160deg,#fffaf0,#fff);box-shadow:0 8px 20px rgba(189,141,49,.10)}
+.collection-card.total strong{color:#9a6d14;font-size:20px}
+.collections-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:9px}
+.collections-toolbar b{display:block;color:#172033;font-size:12px}
+.collections-toolbar small{display:block;margin-top:3px;color:#98a2b3;font-size:9px}
+.collections-toolbar button{border:1px solid #d9b866;border-radius:10px;padding:8px 11px;background:#fffaf0;color:#7a5a16;font-size:10px;font-weight:900;cursor:pointer}
+.collections-list{display:grid;gap:7px;max-height:42vh;overflow:auto}
+.collection-row{display:grid;grid-template-columns:82px minmax(0,1fr) auto;align-items:center;gap:10px;border:1px solid #e4e8ef;border-radius:13px;padding:10px 11px;background:#fff}
+.collection-kind{justify-self:start;border-radius:999px;padding:6px 8px;font-size:9px;font-weight:900;white-space:nowrap}
+.collection-kind.delivery{background:#e9f7ef;color:#087443}
+.collection-kind.installment{background:#eef4ff;color:#155eef}
+.collection-main{min-width:0}.collection-main b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#172033;font-size:11px}.collection-main small{display:block;margin-top:3px;color:#98a2b3;font-size:8px}
+.collection-row>strong{color:var(--navy);font-size:13px;white-space:nowrap}
+.collections-empty{padding:24px 12px;text-align:center;border:1px dashed #d8dee8;border-radius:13px;color:#98a2b3;font-size:11px}
+@media(max-width:520px){
+ .collections-summary{grid-template-columns:1fr;gap:7px}
+ .collection-card{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px 10px;padding:11px 12px}
+ .collection-card small{min-height:0}.collection-card strong{grid-column:2;grid-row:1 / span 2;margin:0;font-size:17px}.collection-card span{grid-column:1;grid-row:2;margin:0}
+ .collection-card.total strong{font-size:19px}.collection-row{grid-template-columns:70px minmax(0,1fr);gap:8px}.collection-row>strong{grid-column:2}.collection-kind{font-size:8px;padding:5px 6px}
+}
+
+
+/* Collections cycle reset and archived history */
+.collections-toolbar-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.collections-reset-btn{border:1px solid #f04438!important;background:#fff1f0!important;color:#b42318!important}
+.collections-history-head{margin:20px 0 9px;padding-top:15px;border-top:1px solid #e4e8ef}
+.collections-history-head b{display:block;color:#172033;font-size:12px}
+.collections-history-head small{display:block;margin-top:3px;color:#98a2b3;font-size:9px}
+.collections-history-list{display:grid;gap:7px;max-height:32vh;overflow:auto}
+.collection-history-row{display:grid;grid-template-columns:minmax(145px,1fr) minmax(0,2fr);align-items:center;gap:10px;border:1px solid #ead9ad;border-radius:13px;padding:10px 11px;background:linear-gradient(135deg,#fffaf0,#fff)}
+.collection-history-date b{display:block;color:#7a5a16;font-size:10px}.collection-history-date small{display:block;margin-top:4px;color:#98a2b3;font-size:8px}
+.collection-history-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}.collection-history-metrics span{display:block;padding:7px 6px;border-radius:9px;background:#fff;border:1px solid #f0e6ca;color:#7a8492;font-size:8px;text-align:center}.collection-history-metrics strong{display:block;margin-top:3px;color:#344054;font-size:10px;white-space:nowrap}.collection-history-metrics .history-grand{background:#fff7df;border-color:#d9b866;color:#7a5a16}.collection-history-metrics .history-grand strong{color:#9a6d14}
+@media(max-width:520px){
+ .collections-toolbar{align-items:flex-start}.collections-toolbar-actions{justify-content:flex-end}.collections-history-row{grid-template-columns:1fr}.collection-history-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+
+
+/* Order form choice cards */
+.order-choice-fieldset{border:0;padding:0;margin:13px 0 0;min-width:0}
+.order-choice-fieldset legend{padding:0;color:#344054;font-size:10px;font-weight:900}
+.order-choice-group{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:7px}
+.order-choice{position:relative;display:flex!important;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:68px;margin:0!important;padding:10px 7px;border:1px solid #d0d5dd;border-radius:14px;background:#fff;color:#344054;text-align:center;cursor:pointer;transition:border-color .18s ease,background .18s ease,box-shadow .18s ease,opacity .18s ease}
+.order-choice input{position:absolute!important;inset:0;width:100%!important;height:100%!important;margin:0!important;opacity:0;cursor:pointer}
+.order-choice span{font-size:11px;font-weight:900;line-height:1.2}.order-choice small{font-size:8px;color:#98a2b3;line-height:1.2}
+.order-choice.is-selected{border-color:#d9b866;background:linear-gradient(145deg,#fffaf0,#fff4d8);box-shadow:0 0 0 2px rgba(217,184,102,.16)}
+.order-choice.is-selected::before{content:"";width:8px;height:8px;border-radius:50%;background:#b88624;box-shadow:0 0 0 3px rgba(184,134,36,.14);margin-bottom:1px}
+.order-choice.is-disabled{opacity:.42;background:#f2f4f7;cursor:not-allowed;filter:grayscale(.15)}
+.order-choice.is-disabled input{cursor:not-allowed}
+.order-choice-fieldset .field-hint{margin-top:7px}
+@media(max-width:520px){.order-choice-group{gap:6px}.order-choice{min-height:64px;padding:8px 4px}.order-choice span{font-size:10px}}
+
+
+/* أسعار البيع حسب الكمية */
+.price-tier-editor{margin:14px 0 16px;padding:14px;border:1px solid rgba(16,54,96,.14);border-radius:16px;background:linear-gradient(145deg,#f8fbff,#fffdf6)}
+.price-tier-editor-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:12px}
+.price-tier-editor-head b{display:block;color:#103660;font-size:15px}
+.price-tier-editor-head small{display:block;margin-top:4px;color:#65758a;font-size:11px;line-height:1.5}
+.price-tier-editor-head>span{flex:none;padding:5px 9px;border-radius:999px;background:#e7f0fb;color:#103660;font-size:11px;font-weight:800}
+.price-tier-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.price-tier-row{display:grid;grid-template-columns:auto repeat(3,minmax(0,1fr));align-items:end;gap:7px;padding:9px;border-radius:12px;background:#fff;border:1px solid rgba(16,54,96,.1)}
+.price-tier-row>span{padding-bottom:9px;color:#103660;font-size:11px;font-weight:800;white-space:nowrap}
+.price-tier-row label{margin:0;color:#65758a;font-size:10px}
+.price-tier-row input{width:100%;margin-top:4px;padding:8px 7px;border:1px solid #d7e0eb;border-radius:8px;background:#fbfdff;color:#142238;font-size:13px;font-weight:700}
+.price-tier-row input:focus{outline:2px solid rgba(212,160,42,.35);border-color:#d4a02a}
+.field-hint{display:block;margin-top:10px;color:#65758a;font-size:11px;line-height:1.5}
+@media(max-width:620px){.price-tier-grid{grid-template-columns:1fr}.price-tier-row{grid-template-columns:62px repeat(3,minmax(0,1fr));gap:5px}.price-tier-row input{padding-left:5px;padding-right:5px;font-size:12px}}
+
+
+/* عرض مستويات الكمية على بطاقات الصفحة الرئيسية */
+.price-tier-display{margin-top:10px;padding:9px 8px;border:1px solid rgba(16,54,96,.12);border-radius:13px;background:linear-gradient(145deg,#f8fbff,#fffaf0)}
+.price-tier-display-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;color:#718096;font-size:8px;font-weight:900;letter-spacing:.4px}
+.price-tier-display-head span{color:#103660}.price-tier-display-head small{font-size:8px;color:#bd8d31}
+.price-tier-display-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.price-tier-chip{display:grid;grid-template-columns:auto 1fr;grid-template-rows:auto auto;column-gap:4px;align-items:center;padding:5px 6px;border-radius:9px;background:#fff;border:1px solid #e7edf5;box-shadow:0 2px 7px rgba(6,21,47,.05);direction:rtl;text-align:right}
+.price-tier-chip b{grid-row:1 / span 2;color:#0b2d63;font-size:13px;line-height:1}.price-tier-chip em{font-style:normal;color:#98a2b3;font-size:7px;line-height:1}.price-tier-chip strong{color:#bd8d31;font-size:9px;line-height:1.1;white-space:nowrap}
+.flip-back .price-tier-display{background:rgba(255,255,255,.09);border-color:rgba(245,212,119,.28);direction:rtl}
+.flip-back .price-tier-display-head{color:#b9c8df}.flip-back .price-tier-display-head span{color:#f5d477}.flip-back .price-tier-display-head small{color:#fff}
+.flip-back .price-tier-chip{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.12);box-shadow:none}.flip-back .price-tier-chip b{color:#fff}.flip-back .price-tier-chip em{color:#b9c8df}.flip-back .price-tier-chip strong{color:#f5d477}
+@media(max-width:620px){.price-tier-display{margin-top:8px;padding:7px 6px}.price-tier-chip{padding:4px 5px}.price-tier-chip b{font-size:11px}.price-tier-chip strong{font-size:8px}}
+
+
+/* سلايدر مستويات الأسعار داخل بطاقة المنتوج */
+.price-tier-slider{margin-top:10px;padding:9px 8px;border:1px solid rgba(16,54,96,.14);border-radius:14px;background:linear-gradient(145deg,#f8fbff,#fffaf0);direction:rtl}
+.price-tier-slider-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;color:#103660;font-size:9px;font-weight:900}
+.price-tier-slider-head small{padding:3px 7px;border-radius:999px;background:#e8f0fb;color:#bd8d31;font-size:8px;direction:ltr}
+.price-tier-track{display:flex;align-items:center;gap:4px;direction:ltr}
+.tier-window{min-width:0;flex:1;overflow:hidden;border-radius:8px}
+.tier-level-strip{display:flex;transition:transform .28s cubic-bezier(.2,.8,.2,1);direction:ltr}
+.tier-level-pill{flex:0 0 100%;display:block;padding:6px 5px;border:1px solid #dbe5f1;border-radius:8px;background:#fff;color:#5f7188;font-size:10px;font-weight:900;text-align:center;white-space:nowrap;cursor:pointer;direction:rtl}
+.tier-level-pill.active{border-color:#d4a02a;background:linear-gradient(135deg,#fff8df,#fff0ba);color:#80601d;box-shadow:0 3px 9px rgba(189,141,49,.16)}
+.tier-nav{width:24px;height:24px;flex:0 0 24px;border:1px solid #d9e4f1;border-radius:8px;background:#fff;color:#103660;font-size:18px;line-height:18px;font-weight:900;padding:0;box-shadow:0 2px 6px rgba(6,21,47,.08)}
+.tier-nav:hover:not(:disabled){background:#103660;color:#f5d477;border-color:#103660}.tier-nav:disabled{opacity:.3;cursor:default}
+.tier-info-card{display:grid;grid-template-columns:1.05fr .9fr 1.3fr;gap:5px;margin-top:7px;padding:7px;border-radius:10px;background:#fff;border:1px solid rgba(16,54,96,.1);direction:rtl}
+.tier-info-card>div{min-width:0}.tier-info-card small{display:block;color:#98a2b3;font-size:7px;line-height:1.2;white-space:nowrap}.tier-info-card strong{display:block;margin-top:3px;color:#103660;font-size:9px;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tier-info-card .tier-unit-price{color:#bd8d31}.tier-info-card .tier-total{font-size:8px}
+@media(max-width:620px){.price-tier-slider{margin-top:8px;padding:8px 6px}.tier-level-pill{font-size:9px}.tier-info-card{gap:3px;padding:6px 5px}.tier-info-card small{font-size:6.5px}.tier-info-card strong{font-size:8px}.tier-info-card .tier-total{font-size:7px}}
+
+
+/* شريط مستويات المنتوج الحالي أسفل carousel */
+.carousel-levels-display{position:relative;z-index:140;width:min(94%,860px);margin:8px auto 0;padding:13px 15px 12px;border:1px solid rgba(189,141,49,.28);border-radius:20px;background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(255,250,236,.96));box-shadow:0 12px 28px rgba(6,21,47,.11),inset 0 1px 0 rgba(255,255,255,.9);direction:rtl;overflow:hidden}
+.levels-display-top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;text-align:right}.levels-display-top small{display:block;color:#98a2b3;font-size:8px;font-weight:800;letter-spacing:.4px}.levels-display-top strong{display:block;margin-top:3px;color:#103660;font-size:16px;font-weight:950}.levels-display-top>span{flex:none;padding:6px 10px;border-radius:999px;background:#fff1c9;border:1px solid #e7c76d;color:#80601d;font-size:9px;font-weight:900}
+.levels-display-track{display:flex;gap:8px;overflow-x:auto;padding:2px 1px 6px;scrollbar-width:none;direction:rtl}.levels-display-track::-webkit-scrollbar{display:none}
+.levels-display-card{flex:1 0 128px;min-height:68px;padding:10px 9px;border:1px solid #e5eaf2;border-radius:13px;background:linear-gradient(145deg,#fff,#f8fbff);box-shadow:0 4px 12px rgba(6,21,47,.06);text-align:right;opacity:0}.levels-display-card b{display:block;color:#103660;font-size:12px;font-weight:950}.levels-display-card span{display:block;margin-top:4px;color:#bd8d31;font-size:10px;font-weight:900}.levels-display-card strong{display:block;margin-top:4px;color:#667085;font-size:9px;font-weight:800}.carousel-levels-display.is-changing .levels-display-card{animation:levelsCardIn .55s cubic-bezier(.2,.8,.2,1) var(--level-delay) forwards}.levels-display-card:first-child{border-color:#d4a02a;background:linear-gradient(145deg,#fff8df,#fff1bf)}
+.levels-display-hint{margin-top:7px;color:#98a2b3;font-size:8px;font-weight:800;text-align:center;letter-spacing:.2px}.carousel-levels-display.is-changing .levels-display-top{animation:levelsTextIn .42s ease both}.carousel-levels-display.is-changing .levels-display-hint{animation:levelsTextIn .5s .18s ease both}
+@keyframes levelsCardIn{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes levelsTextIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:620px){.carousel-levels-display{width:96%;padding:11px 10px 10px;border-radius:16px}.levels-display-top strong{font-size:14px}.levels-display-top>span{font-size:8px;padding:5px 8px}.levels-display-card{flex-basis:116px;min-height:63px;padding:8px}.levels-display-card b{font-size:10px}.levels-display-card span{font-size:9px}.levels-display-card strong{font-size:8px}.levels-display-hint{font-size:7px}}
+
+
+/* عرض 10+1 مجانًا في الشريط السفلي فقط */
+.levels-display-promo{display:flex;align-items:center;gap:10px;margin-top:9px;padding:9px 11px;border:1px solid #efb7a8;border-radius:13px;background:linear-gradient(135deg,#fff4ed,#fffaf5);color:#9f2f20;text-align:right;direction:rtl;box-shadow:0 5px 14px rgba(217,45,32,.08)}
+.levels-display-promo>span{display:grid;place-items:center;width:31px;height:31px;flex:0 0 31px;border-radius:10px;background:linear-gradient(145deg,#ff7048,#d92d20);color:#fff;font-size:17px;box-shadow:0 4px 10px rgba(217,45,32,.22)}
+.levels-display-promo b{display:block;font-size:11px;font-weight:950}.levels-display-promo small{display:block;margin-top:2px;color:#b54739;font-size:8px;font-weight:700}
+.carousel-levels-display.is-changing .levels-display-promo{animation:levelsPromoIn .52s .12s cubic-bezier(.2,.8,.2,1) both}
+@keyframes levelsPromoIn{from{opacity:0;transform:translateY(7px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(max-width:620px){.levels-display-promo{gap:8px;padding:8px 9px}.levels-display-promo>span{width:27px;height:27px;flex-basis:27px;font-size:15px}.levels-display-promo b{font-size:10px}.levels-display-promo small{font-size:7px}}
+
+
+/* محددا القطع والعلب في نافذة المنتج المكبرة */
+.focus-quantity-group{display:grid;gap:8px;margin-top:auto}.focus-quantity-group .focus-quantity{margin-top:0}.focus-quantity-group .focus-qty-control{margin-top:5px}
+.focus-quantity-group .focus-quantity:first-child .focus-qty-control{border-color:rgba(245,212,119,.62);background:rgba(245,212,119,.09)}
+.focus-quantity-group .focus-quantity:first-child input{color:#f5d477}
+@media(max-width:379px){.focus-quantity-group{gap:6px}.focus-quantity-group .focus-qty-control{margin-top:4px}}

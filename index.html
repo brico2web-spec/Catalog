@@ -38,6 +38,7 @@
     <div class="action-menu" id="actionMenu">
       <div class="menu-section-title"><span>01</span> التسيير التجاري</div>
       <button id="menuOrders"><span class="mi orders"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></span><div><b>Gestion des commandes</b><small>الكوموندات · الخلاص · الربح</small></div></button>
+      <button id="menuCollections"><span class="mi collections"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="m7 15 3-4 3 2 5-7"/><path d="M17 6h1v1"/></svg></span><div><b>تتبع المستخلاصات</b><small>عند الاستلام · الأقساط · المجموع الإجمالي</small></div></button>
       <button id="menuClients"><span class="mi clients"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span><div><b>Gestion des clients</b><small>الكليان · الشركة · ICE · واتساب</small></div></button>
       <button id="menuImportClients"><span class="mi excel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v5h4M8 12h8M8 16h8"/></svg></span><div><b>Import Excel clients</b><small>إضافة الكليان دفعة واحدة</small></div></button>
       <div class="menu-section-title"><span>02</span> إدارة المنتوجات</div>
@@ -89,10 +90,7 @@
       <div class="grid carousel-ring" id="grid"></div>
     </div>
     <button type="button" class="carousel-nav carousel-next" id="carouselNext" aria-label="المنتوج التالي">›</button>
-    <div class="carousel-bottom">
-      <div class="carousel-dots" id="carouselDots" aria-label="اختيار المنتوج"></div>
-      <span class="carousel-hint">اضغط على البطاقة لقلبها · اسحب للتنقل</span>
-    </div>
+    <div class="carousel-levels-display" id="carouselLevelsDisplay" aria-live="polite" aria-label="مستويات أسعار المنتوج الحالي"></div>
   </section>
 
   <!-- Product focus: zoom + flip to cart -->
@@ -132,9 +130,14 @@
               <div class="calc-row"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8 12 4l8 4v10l-8 4-8-4V8Z"/><path d="m4 8 8 4 8-4"/></svg>مجموع الوحدات</span><strong><b id="focusUnitsTotal">0</b> وحدة</strong></div>
               <div class="calc-total"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.2c.4-1.5 4.5-1.5 4.9 0 .4 1.5-4.6 1.3-4.9 2.8-.3 1.5 4.5 1.6 4.9.1"/></svg>TOTAL À PAYER</span><strong><b id="focusTotalPrice">0,00</b> DH</strong></div>
             </div>
-            <label class="focus-quantity">NOMBRE DE BOÎTES
-              <div class="focus-qty-control"><button type="button" id="focusQtyMinus" aria-label="إنقاص عدد العلب">−</button><input id="focusQty" type="number" min="1" max="999" value="1" inputmode="numeric"><button type="button" id="focusQtyPlus" aria-label="زيادة عدد العلب">+</button></div>
-            </label>
+            <div class="focus-quantity-group">
+              <label class="focus-quantity">NOMBRE DE PIÈCES
+                <div class="focus-qty-control"><button type="button" id="focusPiecesMinus" aria-label="إنقاص عدد القطع">−</button><input id="focusPieces" type="number" min="1" value="20" inputmode="numeric"><button type="button" id="focusPiecesPlus" aria-label="زيادة عدد القطع">+</button></div>
+              </label>
+              <label class="focus-quantity">NOMBRE DE BOÎTES
+                <div class="focus-qty-control"><button type="button" id="focusQtyMinus" aria-label="إنقاص عدد العلب">−</button><input id="focusQty" type="number" min="1" max="999" value="1" inputmode="numeric"><button type="button" id="focusQtyPlus" aria-label="زيادة عدد العلب">+</button></div>
+              </label>
+            </div>
             <button type="button" class="focus-add" id="focusAdd"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h2l2 11h10l2-8H7M10 20a1 1 0 1 0 0 .01M18 20a1 1 0 1 0 0 .01"/></svg> Envoyer au panier</button>
             <div class="focus-unavailable" id="focusUnavailable">غير متوفر حاليا</div>
           </section>
@@ -231,7 +234,18 @@
       <label>Code produit
         <input id="productCode" required maxlength="30" autocomplete="off" placeholder="Ex: d402 ou w202">
       </label>
-      <label>Prix de vente / unité (DH)<input id="price" type="number" min="0" step="0.01" required></label>
+      <section class="price-tier-editor" aria-labelledby="priceTierTitle">
+        <div class="price-tier-editor-head"><div><b id="priceTierTitle">أسعار البيع حسب الكمية</b><small>عمر ثمن الوحدة لكل مستوى. التطبيق يختار الثمن حسب مجموع القطع.</small></div><span>6 مستويات</span></div>
+        <div class="price-tier-grid">
+          <div class="price-tier-row"><span>المستوى 1</span><label>من قطعة<input id="tierMin1" type="number" min="1" step="1" required placeholder="1"></label><label>إلى قطعة<input id="tierMax1" type="number" min="1" step="1" required placeholder="20"></label><label>ثمن القطعة DH<input id="tierPrice1" type="number" min="0" step="0.01" required placeholder="12.00"></label></div>
+          <div class="price-tier-row"><span>المستوى 2</span><label>من قطعة<input id="tierMin2" type="number" min="1" step="1" placeholder="21"></label><label>إلى قطعة<input id="tierMax2" type="number" min="1" step="1" placeholder="50"></label><label>ثمن القطعة DH<input id="tierPrice2" type="number" min="0" step="0.01" placeholder="11.00"></label></div>
+          <div class="price-tier-row"><span>المستوى 3</span><label>من قطعة<input id="tierMin3" type="number" min="1" step="1" placeholder="51"></label><label>إلى قطعة<input id="tierMax3" type="number" min="1" step="1" placeholder="100"></label><label>ثمن القطعة DH<input id="tierPrice3" type="number" min="0" step="0.01" placeholder="10.75"></label></div>
+          <div class="price-tier-row"><span>المستوى 4</span><label>من قطعة<input id="tierMin4" type="number" min="1" step="1" placeholder="101"></label><label>إلى قطعة<input id="tierMax4" type="number" min="1" step="1" placeholder="200"></label><label>ثمن القطعة DH<input id="tierPrice4" type="number" min="0" step="0.01" placeholder="10.50"></label></div>
+          <div class="price-tier-row"><span>المستوى 5</span><label>من قطعة<input id="tierMin5" type="number" min="1" step="1" placeholder="201"></label><label>إلى قطعة<input id="tierMax5" type="number" min="1" step="1" placeholder="500"></label><label>ثمن القطعة DH<input id="tierPrice5" type="number" min="0" step="0.01" placeholder="10.25"></label></div>
+          <div class="price-tier-row"><span>المستوى 6</span><label>من قطعة<input id="tierMin6" type="number" min="1" step="1" placeholder="501"></label><label>إلى قطعة<input id="tierMax6" type="number" min="1" step="1" placeholder="∞"></label><label>ثمن القطعة DH<input id="tierPrice6" type="number" min="0" step="0.01" placeholder="10.00"></label></div>
+        </div>
+        <small class="field-hint">كل مستوى هو فترة كاملة: من–إلى. مثال: 1–20 بسعر 12.00 DH، ثم 21–50 بسعر 11.00 DH. اترك «إلى» فارغة في المستوى الأخير إذا كان مفتوحًا.</small>
+      </section>
       <label>Unités dans la boîte<input id="qty" type="number" min="0" step="1" required></label>
       <label>Catégorie
         <select id="category">
@@ -270,39 +284,32 @@
         <div class="client-autocomplete">
           <div class="client-input-row">
             <input id="orderClient" required placeholder="Ex: Épicerie Al Amal" autocomplete="off" aria-autocomplete="list" aria-controls="clientSuggestions" aria-expanded="false">
-            <button class="client-add-btn" id="openClientFormFromOrder" type="button">👤 + Client</button>
           </div>
           <div id="clientSuggestions" class="client-suggestions" role="listbox" hidden></div>
         </div>
       </label>
-      <label>رقم الشيك / الكمبيالة (اختياري)
-        <input id="orderPaymentNumber" placeholder="مثلاً: CH-2026-001">
-      </label>
-      <label>طريقة الأداء
-        <select id="orderPaymentType">
-          <option value="cash">نقداً / Espèces</option>
-          <option value="cheque">شيك / Chèque</option>
-          <option value="lettre_de_change">كمبيالة / Cambiale</option>
-        </select>
-      </label>
-      <label>مدة الاستخلاص
-        <select id="orderPaymentTerm">
-          <option value="cod">إستخلاص عند الإستلام</option>
-          <option value="15">15 يوماً</option>
-          <option value="30">30 يوماً</option>
-        </select>
-        <small class="field-hint">يظهر نوع ومدة الاستخلاص وتاريخها بوضوح داخل ملف PDF.</small>
-      </label>
+      <input id="orderPaymentType" type="hidden" value="cash">
+      <fieldset class="order-choice-fieldset">
+        <legend>مدة الاستخلاص</legend>
+        <div class="order-choice-group" id="orderPaymentTermChoices" role="radiogroup" aria-label="مدة الاستخلاص">
+          <label class="order-choice is-selected"><input type="radio" name="orderPaymentTermChoice" value="cod" checked><span>عند الاستلام</span><small>Paiement à la livraison</small></label>
+          <label class="order-choice"><input type="radio" name="orderPaymentTermChoice" value="15"><span>15 يوماً</span><small>15 jours</small></label>
+          <label class="order-choice"><input type="radio" name="orderPaymentTermChoice" value="30"><span>30 يوماً</span><small>30 jours</small></label>
+        </div>
+      </fieldset>
+      <fieldset class="order-choice-fieldset">
+        <legend>طريقة الأداء</legend>
+        <div class="order-choice-group" id="orderPaymentTypeChoices" role="radiogroup" aria-label="طريقة الأداء">
+          <label class="order-choice is-selected"><input type="radio" name="orderPaymentTypeChoice" value="cash" checked><span>نقداً</span><small>Espèces</small></label>
+          <label class="order-choice"><input type="radio" name="orderPaymentTypeChoice" value="cheque"><span>شيك</span><small>Chèque</small></label>
+          <label class="order-choice"><input type="radio" name="orderPaymentTypeChoice" value="lettre_de_change"><span>كمبيالة</span><small>Cambiale</small></label>
+        </div>
+        <small class="field-hint">عند اختيار 15 أو 30 يوماً تبقى طريقة الأداء نقداً فقط.</small>
+      </fieldset>
+      <input id="orderPaymentTerm" type="hidden" value="cod">
       <div class="order-total-preview">
         <span>Total commande</span><strong id="orderGrandTotal">0,00 DH</strong>
       </div>
-      <div class="order-live">
-        <div><span>الحالة</span><strong id="orderDue">غير مخلص</strong></div>
-        <div><span>الربح المتوقع</span><strong id="orderProfit">0,00 DH</strong></div>
-      </div>
-      <label>ملاحظة (اختياري)
-        <textarea id="orderNote" rows="2" placeholder="مثلاً: خلص 500 DH والباقي نهاية الشهر"></textarea>
-      </label>
       <button class="gold-btn full" type="submit">✓ تسجيل الكوموند (غير مخلص)</button>
     </form>
   </div>
@@ -389,6 +396,27 @@
   </div>
 </div>
 
+<div class="modal" id="collectionsModal">
+  <div class="modal-card collections-modal-card">
+    <div class="modal-head">
+      <div><small class="modal-kicker">SUIVI DES RÈGLEMENTS</small><h3>تتبع المستخلاصات</h3></div>
+      <button class="close" id="closeCollections" aria-label="إغلاق تتبع المستخلاصات">×</button>
+    </div>
+    <div class="collections-intro">هذا الملخص يجمع قيمة الكوموندات المبرمجة للاستخلاص عند الاستلام، وجميع الأقساط المسجلة في الكوموندات المؤجلة.</div>
+    <div class="collections-summary">
+      <div class="collection-card delivery"><small>المستخلصات عند الاستلام</small><strong id="collectionsDeliveryTotal">0,00 DH</strong><span id="collectionsDeliveryCount">0 كوموند</span></div>
+      <div class="collection-card installments"><small>مجموع الأقساط المؤداة</small><strong id="collectionsInstallmentsTotal">0,00 DH</strong><span id="collectionsInstallmentsCount">0 قسط</span></div>
+      <div class="collection-card total"><small>المجموع الإجمالي</small><strong id="collectionsGrandTotal">0,00 DH</strong><span id="collectionsGrandCount">0 عملية</span></div>
+    </div>
+    <div class="collections-toolbar"><div><b>الدورة الحالية</b><small>من تاريخ <span id="collectionsCycleDate">—</span> · تفاصيل العمليات الحالية</small></div><div class="collections-toolbar-actions"><button id="refreshCollections" type="button">↻ تحديث</button><button id="resetCollections" class="collections-reset-btn" type="button">تصفير الدورة</button></div></div>
+    <div id="collectionsList" class="collections-list"></div>
+    <div id="collectionsEmpty" class="collections-empty">مازال ما تسجل حتى استخلاص في الدورة الحالية.</div>
+    <div class="collections-history-head"><div><b>سجل المستخلاصات القديمة</b><small>الدورات السابقة محفوظة بالتاريخ بدون أسماء الزبناء</small></div></div>
+    <div id="collectionsHistory" class="collections-history-list"></div>
+    <div id="collectionsHistoryEmpty" class="collections-empty">مازال ما كاين حتى سجل قديم.</div>
+  </div>
+</div>
+
 <div class="modal" id="ordersModal">
   <div class="modal-card orders-modal-card">
     <div class="modal-head">
@@ -452,8 +480,7 @@
   <div class="cart-empty" id="cartEmpty">Votre panier est vide.</div>
   <div class="cart-footer">
     <div><span>Total</span><strong id="cartTotal">0,00 DH</strong></div>
-    <button id="sendOrderSave" class="send-cart" type="button">🧾 تسجيل الكوموند</button>
-    <button id="sendCart" class="send-cart secondary-send" type="button">📤 Envoyer la commande</button>
+    <button id="sendOrderSave" class="send-cart" type="button">🧾 إرسال الطلب إلى الشركة وإلى الزبون</button>
     <button id="clearCart" class="clear-cart">Vider le panier</button>
   </div>
 </div>
