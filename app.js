@@ -1016,9 +1016,7 @@ function openClientModal(prefillName=""){
   const initialName=prefillName||$("orderClient").value.trim();
   const existing=clients.find(c=>String(c.name||"").trim().toLowerCase()===String(initialName||"").trim().toLowerCase());
   $("clientName").value=initialName;
-  if($("clientManagerSearch")){ $("clientManagerSearch").value=""; $("clearClientManagerSearch").style.display="none"; }
   $("clientCompany").value=existing?.company||""; $("clientCity").value=existing?.city||existing?.ville||""; $("clientICE").value=existing?.ice||""; $("clientPaymentHolder").value=existing?.paymentHolder||existing?.chequeHolder||existing?.paymentName||""; $("clientPaymentNumber").value=existing?.paymentNumber||existing?.chequeNumber||""; $("clientPaymentType").value=paymentTypeValue(existing?.paymentType||existing?.paymentMode||existing?.modePaiement); $("clientWhatsapp").value=existing?.phone||"";
-   renderClientsManager();
    renderClientStats();
    $("clientModal").classList.add("show");
 }
@@ -1248,22 +1246,18 @@ async function shareClientBillingPDF(client){
  const url=URL.createObjectURL(file);const a=document.createElement("a");a.href=url;a.download=result.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);toast("تم تحميل ملف معلومات الفوترة PDF");
 }
 function normalizeClientSearch(value){return String(value||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim()}
-function renderClientsManager(){
- const box=$("clientsManagerList"); if(!box)return;
- const query=normalizeClientSearch($("clientManagerSearch")?.value||"");
- const visibleClients=clients.filter(c=>{
-   if(!query)return true;
-   return [c.name,c.company,c.city,c.ville,c.address,c.ice,c.paymentHolder,c.paymentNumber,c.paymentName,c.chequeHolder,c.chequeNumber,c.chequeName,c.cambiale].some(value=>normalizeClientSearch(value).includes(query));
- });
- box.innerHTML=visibleClients.map(c=>`<div class="client-manager-row"><div><b>${esc(c.name||"")}</b><small>${esc(c.city||c.ville||"")}${c.company?` · ${esc(c.company)}`:""}${c.ice?` · ICE ${esc(c.ice)}`:""}${c.phone?` · WhatsApp ${esc(c.phone)}`:""}</small></div><div class="client-manager-actions"><button type="button" data-client-invoice="${esc(c.id)}">📄 Infos facturation</button><button type="button" data-client-edit="${esc(c.id)}">Modifier</button></div></div>`).join("") || `<div class="cart-empty">${query?"ما لقيتش زبون مطابق للبحث.":"Aucun client enregistré."}</div>`;
-   box.querySelectorAll("[data-client-edit]").forEach(btn=>btn.onclick=()=>{
-     const c=clients.find(x=>x.id===btn.dataset.clientEdit); if(!c)return;
-      $("clientEditId").value=c.id; $("clientName").value=c.name||""; $("clientCompany").value=c.company||""; $("clientCity").value=c.city||c.ville||""; $("clientICE").value=c.ice||""; $("clientPaymentHolder").value=c.paymentHolder||c.chequeHolder||c.paymentName||""; $("clientPaymentNumber").value=c.paymentNumber||c.chequeNumber||""; $("clientPaymentType").value=paymentTypeValue(c.paymentType||c.paymentMode||c.modePaiement); $("clientWhatsapp").value=c.phone||"";
-   });
-   box.querySelectorAll("[data-client-invoice]").forEach(btn=>btn.onclick=()=>{
-     const c=clients.find(x=>x.id===btn.dataset.clientInvoice); if(c) shareClientBillingPDF(c);
-   });
+function renderClientsDirectory(){
+ const box=$("clientsDirectoryList"),count=$("clientsDirectoryCount");if(!box)return;
+ const query=normalizeClientSearch($("clientsDirectorySearch")?.value||"");
+ const visibleClients=clients.filter(c=>!query||[c.name,c.company,c.city,c.ville,c.address,c.ice,c.phone,c.paymentHolder,c.paymentNumber,c.paymentName,c.chequeHolder,c.chequeNumber,c.chequeName,c.cambiale].some(value=>normalizeClientSearch(value).includes(query)));
+ if(count)count.textContent=String(clients.length);
+ box.innerHTML=visibleClients.map(c=>`<div class="client-directory-row"><div class="client-directory-main"><b>${esc(c.name||"زبون بدون اسم")}</b><small>${esc(c.city||c.ville||"")}${c.company?` · ${esc(c.company)}`:""}${c.ice?` · ICE ${esc(c.ice)}`:""}${c.phone?` · WhatsApp ${esc(c.phone)}`:""}</small></div><div class="client-directory-actions"><button type="button" data-directory-invoice="${esc(c.id)}">📄 Infos facturation</button><button type="button" data-directory-edit="${esc(c.id)}">تعديل</button></div></div>`).join("")||`<div class="cart-empty">${query?"ما لقيتش زبون مطابق للبحث.":"مازال ما تسجل حتى زبون."}</div>`;
+ box.querySelectorAll("[data-directory-edit]").forEach(btn=>btn.onclick=()=>{const c=clients.find(x=>String(x.id)===String(btn.dataset.directoryEdit));if(!c)return;closeClientsDirectory();openClientModal(c.name);$("clientEditId").value=c.id;$("clientName").value=c.name||"";$("clientCompany").value=c.company||"";$("clientCity").value=c.city||c.ville||"";$("clientICE").value=c.ice||"";$("clientPaymentHolder").value=c.paymentHolder||c.chequeHolder||c.paymentName||"";$("clientPaymentNumber").value=c.paymentNumber||c.chequeNumber||"";$("clientPaymentType").value=paymentTypeValue(c.paymentType||c.paymentMode||c.modePaiement);$("clientWhatsapp").value=c.phone||""});
+ box.querySelectorAll("[data-directory-invoice]").forEach(btn=>btn.onclick=()=>{const c=clients.find(x=>String(x.id)===String(btn.dataset.directoryInvoice));if(c)shareClientBillingPDF(c)});
 }
+function openClientsDirectory(){renderClientsDirectory();$("clientsDirectoryModal")?.classList.add("show");setTimeout(()=>$("clientsDirectorySearch")?.focus(),80)}
+function closeClientsDirectory(){$("clientsDirectoryModal")?.classList.remove("show")}
+
 function saveClientForm(e){
  e.preventDefault();
  const name=$("clientName").value.trim(); if(!name){alert("دخل اسم الكليان");return}
@@ -1272,7 +1266,7 @@ function saveClientForm(e){
  const duplicate=clients.findIndex(c=>c.id!==data.id && String(c.name||"").trim().toLowerCase()===name.toLowerCase());
  if(duplicate>=0){ clients[duplicate]={...clients[duplicate],...data,id:clients[duplicate].id}; }
  else if(idx>=0) clients[idx]=data; else clients.unshift(data);
-   saveClients(); renderClientsManager(); renderClientStats(); $("orderClient").value=name; hideClientSuggestions(); closeClientModal(); toast("تم حفظ معلومات الكليان");
+   saveClients(); renderClientStats(); $("orderClient").value=name; hideClientSuggestions(); closeClientModal(); toast("تم حفظ معلومات الكليان");
 
 }
 
@@ -2334,8 +2328,11 @@ document.addEventListener("pointerdown",event=>{if(!event.target.closest(".clien
 $("closeClientModal").onclick=closeClientModal;
 $("clientModal").onclick=e=>{if(e.target===$("clientModal"))closeClientModal()};
 $("clientForm").onsubmit=saveClientForm;
-$("clientManagerSearch").oninput=()=>{ $("clearClientManagerSearch").style.display=$("clientManagerSearch").value?"block":"none"; renderClientsManager(); };
-$("clearClientManagerSearch").onclick=()=>{ $("clientManagerSearch").value=""; $("clearClientManagerSearch").style.display="none"; renderClientsManager(); $("clientManagerSearch").focus(); };
+$("clientsDirectoryToggle").onclick=openClientsDirectory;
+$("closeClientsDirectory").onclick=closeClientsDirectory;
+$("clientsDirectoryModal").onclick=e=>{if(e.target===$("clientsDirectoryModal"))closeClientsDirectory()};
+$("clientsDirectorySearch").oninput=()=>{$("clearClientsDirectorySearch").style.display=$("clientsDirectorySearch").value?"block":"none";renderClientsDirectory()};
+$("clearClientsDirectorySearch").onclick=()=>{$("clientsDirectorySearch").value="";$("clearClientsDirectorySearch").style.display="none";renderClientsDirectory();$("clientsDirectorySearch").focus()};
 $("clientStatsToggle").onclick=toggleClientStats;
 $("clientStatsMonth").onchange=renderClientStats;
 $("salesForecastToggle").onclick=toggleSalesForecast;

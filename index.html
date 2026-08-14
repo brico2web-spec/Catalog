@@ -344,6 +344,7 @@
       <label>WhatsApp<input id="clientWhatsapp" type="tel" placeholder="06XXXXXXXX"></label>
       <button class="gold-btn full" type="submit">✓ Enregistrer le client</button>
     </form>
+    <button class="clients-directory-toggle" id="clientsDirectoryToggle" type="button">👥 الزبناء</button>
     <button class="client-stats-toggle" id="clientStatsToggle" type="button">📊 كشف الزبناء والإحصائيات</button>
     <div class="client-stats-panel" id="clientStatsPanel">
       <div class="client-stats-toolbar">
@@ -370,9 +371,19 @@
       <div id="salesForecastProducts" class="sales-forecast-products"></div>
     </div>
     <div class="section-file-actions client-file-actions"><button id="exportClientsArchiveExcel" class="section-excel-btn" type="button">⬇ Télécharger clients Excel</button><button id="restoreClientsArchiveExcel" class="section-restore-btn" type="button">↥ Restoration</button></div>
-    <div class="client-manager-title">Clients enregistrés</div>
-    <div class="client-manager-search"><span aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="10.8" cy="10.8" r="6.4"></circle><path d="m16 16 5 5"></path></svg></span><input id="clientManagerSearch" type="search" placeholder="قلب بالاسم أو الشركة أو ICE..." autocomplete="off"><button id="clearClientManagerSearch" type="button" aria-label="مسح البحث">×</button></div>
-    <div id="clientsManagerList" class="clients-manager-list"></div>
+  </div>
+</div>
+
+<!-- صفحة الزبناء والبحث السريع -->
+<div class="modal" id="clientsDirectoryModal">
+  <div class="modal-card clients-directory-card">
+    <div class="modal-head">
+      <div><small class="modal-kicker">CLIENTS</small><h3>الزبناء</h3></div>
+      <button class="close" id="closeClientsDirectory" aria-label="إغلاق صفحة الزبناء">×</button>
+    </div>
+    <div class="clients-directory-summary"><strong id="clientsDirectoryCount">0</strong><span>زبون مسجل</span><small>بحث سريع بالاسم أو الشركة أو ICE</small></div>
+    <div class="client-manager-search clients-directory-search"><span aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="10.8" cy="10.8" r="6.4"></circle><path d="m16 16 5 5"></path></svg></span><input id="clientsDirectorySearch" type="search" placeholder="قلب بالاسم أو الشركة أو ICE..." autocomplete="off"><button id="clearClientsDirectorySearch" type="button" aria-label="مسح بحث الزبناء">×</button></div>
+    <div id="clientsDirectoryList" class="clients-directory-list"></div>
   </div>
 </div>
 

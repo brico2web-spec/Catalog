@@ -1583,3 +1583,26 @@ main{padding-top:4px}
  .flip-front .photo{height:238px;min-height:238px;flex-basis:238px}
  .flip-front .price{font-size:29px}
 }
+
+
+/* ===== صفحة الزبناء والبحث السريع ===== */
+.clients-directory-toggle{width:100%;margin-top:10px;border:1px solid #d9b866;border-radius:14px;padding:13px 14px;background:linear-gradient(135deg,#0b2e63,#155eef);color:#fff;font-size:13px;font-weight:950;cursor:pointer;box-shadow:0 8px 18px rgba(21,94,239,.18);transition:transform .2s ease,box-shadow .2s ease}
+.clients-directory-toggle:active{transform:scale(.98)}
+.clients-directory-card{max-width:680px;direction:rtl}
+.clients-directory-summary{display:grid;grid-template-columns:auto auto 1fr;align-items:center;gap:9px;margin:2px 0 12px;padding:12px 14px;border-radius:15px;background:linear-gradient(135deg,#f7f1df,#fffaf0);border:1px solid #ead9ad;color:#7a5a16}
+.clients-directory-summary strong{font-size:25px;line-height:1;color:#0b2e63}.clients-directory-summary span{font-size:12px;font-weight:950}.clients-directory-summary small{justify-self:end;color:#98a2b3;font-size:9px}
+.clients-directory-search{height:54px;margin-bottom:12px;border-radius:15px;padding:0 14px;background:#fff;border-left:4px solid #d9ad4d}
+.clients-directory-search input{font-size:13px}
+.clients-directory-search button{display:flex;align-items:center;justify-content:center}
+.clients-directory-list{display:grid;gap:9px;max-height:55vh;overflow:auto;padding:2px 2px 5px}
+.client-directory-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 12px;border:1px solid #e2e6ee;border-radius:15px;background:linear-gradient(135deg,#fff,#f9fbff);box-shadow:0 5px 13px rgba(6,21,47,.06)}
+.client-directory-main{min-width:0;flex:1}.client-directory-main b{display:block;color:#172033;font-size:14px;font-weight:950;line-height:1.3}.client-directory-main small{display:block;margin-top:5px;color:#667085;font-size:10px;line-height:1.45;white-space:normal}
+.client-directory-actions{display:flex;gap:6px;flex:0 0 auto;direction:rtl}.client-directory-actions button{min-height:36px;border-radius:10px;padding:7px 10px;font-size:9px;font-weight:900;white-space:nowrap;cursor:pointer}.client-directory-actions button[data-directory-invoice]{border:1px solid #d9b866;background:#fff8e2;color:#7a5a16}.client-directory-actions button[data-directory-edit]{border:1px solid #d8dee8;background:#f4f6fa;color:#344054}
+@media(max-width:520px){
+ .clients-directory-card{width:100%;max-width:none}
+ .clients-directory-summary{grid-template-columns:auto auto;gap:5px 8px}.clients-directory-summary small{grid-column:1 / -1;justify-self:start;font-size:8px}
+ .clients-directory-list{max-height:58vh}
+ .client-directory-row{align-items:stretch;flex-direction:column;gap:10px;padding:12px 11px}
+ .client-directory-actions{width:100%}.client-directory-actions button{flex:1;font-size:10px;min-height:39px}
+}
+@media(max-width:379px){.clients-directory-toggle{font-size:12px;padding:12px}.clients-directory-search{height:50px}.client-directory-main b{font-size:13px}.client-directory-main small{font-size:9px}}
