@@ -406,11 +406,32 @@
       <div class="dashboard-stat"><span class="dashboard-stat-icon">↗</span><small>الأكثر مبيعاً</small><strong id="dashboardTopProduct">—</strong></div>
       <div class="dashboard-stat"><span class="dashboard-stat-icon">◷</span><small>ذروة الطلبات</small><strong id="dashboardPeakHour">—</strong></div>
     </div>
-    <div class="dashboard-grid">
-      <section class="dashboard-chart-card"><div class="dashboard-chart-head"><div><b>أفضل المنتجات</b><small>حسب عدد الوحدات المطلوبة</small></div><span>TOP 8</span></div><div class="dashboard-chart-wrap"><canvas id="topProductsChart"></canvas></div><div class="dashboard-empty" id="topProductsEmpty">لا توجد طلبات في هذا الشهر.</div></section>
-      <section class="dashboard-chart-card"><div class="dashboard-chart-head"><div><b>أوقات الذروة</b><small>عدد الطلبات حسب الساعة</small></div><span>24H</span></div><div class="dashboard-chart-wrap"><canvas id="peakHoursChart"></canvas></div><div class="dashboard-empty" id="peakHoursEmpty">لا توجد أوقات مسجلة بعد.</div></section>
+    <div class="dashboard-summary dashboard-summary-finance">
+      <div class="dashboard-stat finance-cost"><span class="dashboard-stat-icon">⇩</span><small>ثمن الشراء/التكلفة</small><strong id="dashboardCostTotal">0,00 DH</strong></div>
+      <div class="dashboard-stat finance-profit"><span class="dashboard-stat-icon">◆</span><small>الربح التقريبي</small><strong id="dashboardProfitTotal">0,00 DH</strong></div>
+      <div class="dashboard-stat finance-paid"><span class="dashboard-stat-icon">✓</span><small>الخلاص المحصل</small><strong id="dashboardPaidTotal">0,00 DH</strong></div>
+      <div class="dashboard-stat finance-due"><span class="dashboard-stat-icon">!</span><small>الباقي والديون</small><strong id="dashboardDueTotal">0,00 DH</strong></div>
     </div>
-    <div class="dashboard-note">ملاحظة: تعتمد الرسوم على الكوموندات المسجلة داخل التطبيق. إذا لم يتوفر وقت الطلب في البيانات القديمة، سيتم عرض الطلبات الجديدة التي تحتوي على توقيت التسجيل.</div>
+    <div class="dashboard-summary dashboard-summary-activity">
+      <div class="dashboard-stat"><span class="dashboard-stat-icon">#</span><small>القطع المباعة</small><strong id="dashboardUnitsTotal">0 قطعة</strong></div>
+      <div class="dashboard-stat"><span class="dashboard-stat-icon">♙</span><small>الكليان</small><strong id="dashboardClientsTotal">0</strong></div>
+      <div class="dashboard-stat"><span class="dashboard-stat-icon">⌂</span><small>المدن</small><strong id="dashboardCitiesTotal">0</strong></div>
+      <div class="dashboard-stat"><span class="dashboard-stat-icon">%</span><small>هامش الربح</small><strong id="dashboardMarginTotal">0.0%</strong></div>
+      <div class="dashboard-stat"><span class="dashboard-stat-icon">✓</span><small>كوموندات مخلصة</small><strong id="dashboardPaidOrders">0</strong></div>
+      <div class="dashboard-stat"><span class="dashboard-stat-icon">!</span><small>كوموندات فيها باقي</small><strong id="dashboardDueOrders">0</strong></div>
+      <div class="dashboard-stat"><span class="dashboard-stat-icon">＋</span><small>قطع مجانية</small><strong id="dashboardFreeUnits">0 قطعة</strong></div>
+    </div>
+    <div class="dashboard-grid">
+      <section class="dashboard-chart-card"><div class="dashboard-chart-head"><div><b>أفضل المنتجات</b><small>حسب عدد القطع وقيمة البيع</small></div><span>TOP 8</span></div><div class="dashboard-chart-wrap"><canvas id="topProductsChart"></canvas></div><div class="dashboard-empty" id="topProductsEmpty">لا توجد طلبات في هذا الشهر.</div></section>
+      <section class="dashboard-chart-card"><div class="dashboard-chart-head"><div><b>أوقات الذروة</b><small>عدد الطلبات حسب الساعة</small></div><span>24H</span></div><div class="dashboard-chart-wrap"><canvas id="peakHoursChart"></canvas></div><div class="dashboard-empty" id="peakHoursEmpty">لا توجد أوقات مسجلة بعد.</div></section>
+      <section class="dashboard-chart-card dashboard-chart-wide"><div class="dashboard-chart-head"><div><b>تطور النشاط التجاري</b><small>المبيعات والخلاص والباقي عبر آخر الأشهر</small></div><span>FINANCE</span></div><div class="dashboard-chart-wrap"><canvas id="financialChart"></canvas></div><div class="dashboard-empty" id="financialEmpty">لا توجد بيانات شهرية بعد.</div></section>
+    </div>
+    <div class="dashboard-report-grid">
+      <section class="dashboard-report-card"><div class="dashboard-report-head"><div><b>المنتوجات الأكثر مبيعًا</b><small>القطع، المبيعات، الخلاص والباقي</small></div><span>PRODUITS</span></div><div id="dashboardProductsList" class="dashboard-rank-list"></div></section>
+      <section class="dashboard-report-card"><div class="dashboard-report-head"><div><b>أحسن الكليان</b><small>حسب قيمة الطلبيات</small></div><span>CLIENTS</span></div><div id="dashboardClientsList" class="dashboard-rank-list"></div></section>
+      <section class="dashboard-report-card"><div class="dashboard-report-head"><div><b>المدن الأكثر بيعًا</b><small>المبيعات والخلاص والباقي</small></div><span>VILLES</span></div><div id="dashboardCitiesList" class="dashboard-rank-list"></div></section>
+    </div>
+    <div class="dashboard-note">ملاحظة: ثمن الشراء والربح تقريبيان حسب خانة تكلفة المنتوج الحالية أو تكلفة السطر إن كانت محفوظة. المبيعات تعتمد على مجموع الكوموندات، والخلاص والباقي يعتمدان على الأقساط وتغييرات الأثمنة المسجلة. المدن تُستخرج من معلومات الكليان المحفوظة.</div>
     <div class="section-file-actions dashboard-file-actions"><button id="exportDashboardExcel" class="section-excel-btn" type="button">⬇ Télécharger dashboard Excel</button><button id="restoreDashboardExcel" class="section-restore-btn" type="button">↥ Restoration</button></div>
   </div>
 </div>
@@ -476,7 +497,8 @@
     <div class="payment-context" id="paymentContext">—</div>
     <div class="payment-now"><span>تاريخ ووقت القسط</span><strong id="paymentNow">—</strong></div>
     <form id="paymentForm">
-      <label class="payment-only-toggle"><input id="paymentOnlyPriceToggle" type="checkbox"><span>تغيير الأثمنة فقط بدون تسجيل قسط</span></label>
+      <label class="payment-only-toggle"><input id="paymentOnlyPriceToggle" type="checkbox"><span><b>تغيير الثمن فقط</b><small>بدون تسجيل قسط وبدون تعمير مبلغ القسط</small></span></label>
+      <div id="paymentOnlyHint" class="payment-only-hint" hidden>الوضع مفعل: اختار المنتوج، كتب الثمن الجديد، ومن بعد حفظ وإرسال. ما خاصكش تعمر مبلغ القسط.</div>
       <label>رقم البون / N. Bon Commande
         <input id="paymentOrderCode" placeholder="Ex: CMD-2026-001" autocomplete="off" dir="ltr">
       </label>
