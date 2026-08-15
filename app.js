@@ -2523,7 +2523,7 @@ function assistantAddMessage(text,kind="bot"){
 }
 function assistantOpen(){const panel=$("siteAssistantPanel"),toggle=$("siteAssistantToggle");if(!panel||!toggle)return;panel.classList.add("show");panel.setAttribute("aria-hidden","false");toggle.setAttribute("aria-expanded","true");setTimeout(()=>$("siteAssistantInput")?.focus(),100)}
 function assistantClose(){const panel=$("siteAssistantPanel"),toggle=$("siteAssistantToggle");if(!panel||!toggle)return;panel.classList.remove("show");panel.setAttribute("aria-hidden","true");toggle.setAttribute("aria-expanded","false")}
-function assistantAsk(text){const input=$("siteAssistantInput"),value=String(text||input?.value||"").trim();if(!value)return;if(input)input.value="";assistantAddMessage(value,"user");setTimeout(()=>{const answer=typeof aiAgentAnswer==="function"?aiAgentAnswer(value):assistantAnswer(value);window.__assistantLastAnswer=answer;assistantAddMessage(answer,"bot")},100)}
+function assistantAsk(text){const input=$("siteAssistantInput"),value=String(text||input?.value||"").trim();if(!value)return;if(input)input.value="";assistantAddMessage(value,"user");setTimeout(()=>{const report=typeof window.aiAgentReportAnswer==="function"?window.aiAgentReportAnswer(value):null;const answer=report|| (typeof aiAgentAnswer==="function"?aiAgentAnswer(value):assistantAnswer(value));window.__assistantLastAnswer=answer;assistantAddMessage(answer,"bot")},100)}
 const assistantToggle=$("siteAssistantToggle"),assistantCloseButton=$("siteAssistantClose"),assistantForm=$("siteAssistantForm");
 assistantToggle?.addEventListener("click",()=>{if($("siteAssistantPanel")?.classList.contains("show"))assistantClose();else assistantOpen()});
 assistantCloseButton?.addEventListener("click",assistantClose);

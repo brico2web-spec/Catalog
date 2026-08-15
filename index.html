@@ -43,7 +43,7 @@
       <button id="menuCollections"><span class="mi collections"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="m7 15 3-4 3 2 5-7"/><path d="M17 6h1v1"/></svg></span><div><b>تتبع المستخلاصات</b><small>عند الاستلام · الأقساط · المجموع الإجمالي</small></div></button>
       <button id="menuClients"><span class="mi clients"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span><div><b>معلومات الزبون</b><small>الكليان · الشركة · ICE · واتساب</small></div></button>
       <button id="menuImportClients"><span class="mi excel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v5h4M8 12h8M8 16h8"/></svg></span><div><b>رفع ملف الزبناء</b><small>إضافة الكليان دفعة واحدة</small></div></button>
-      <div class="menu-section-title"><span>01</span> إدارة المنتوجات</div>
+      <div class="menu-section-title"><span>02</span> إدارة المنتوجات</div>
       <button id="menuAdd"><span class="mi add"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><div><b>إضافة منتوج</b><small>إضافة منتوج جديد</small></div></button>
       <button id="menuEdit"><span class="mi edit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2 2 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg></span><div><b>تعديل منتوج</b><small>تعديل المنتوج المحدد</small></div></button>
       <button id="menuDelete"><span class="mi delete"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 11v5m4-5v5"/></svg></span><div><b>حذف منتوج</b><small>حذف المنتوج المحدد</small></div></button>
@@ -523,6 +523,16 @@
     <button type="button" data-assistant-question="شنو كاين فالسلة ديالي؟">السلة</button>
     <button type="button" data-assistant-question="كيفاش نصيفط الطلب؟">صيفط الطلب</button>
   </div>
+  <div class="site-assistant-reports" aria-label="تقارير جاهزة">
+    <small>تقارير وتحليل سريع</small>
+    <button type="button" data-assistant-question="عطيني تقرير الأقساط شهر بشهر">الأقساط شهر بشهر</button>
+    <button type="button" data-assistant-question="عطيني إحصائيات البيع">إحصائيات البيع</button>
+    <button type="button" data-assistant-question="حلل ليا الكليان النشيطين واللي ما خدموش">الكليان</button>
+    <button type="button" data-assistant-question="عطيني مبيعات كل منتوج والمنتوج الضعيف">المنتوجات</button>
+    <button type="button" data-assistant-question="عطيني البيع حسب المدن">المدن</button>
+    <button type="button" data-assistant-question="عطيني الإحصائيات العامة">الإحصائيات العامة</button>
+    <button type="button" data-assistant-question="عطيني معلومات وفواتير الزبون">ملف الزبون</button>
+  </div>
   <form class="site-assistant-form" id="siteAssistantForm">
     <input id="siteAssistantInput" type="text" autocomplete="off" placeholder="كتب السؤال هنا..." aria-label="اكتب سؤالك للمساعد">
     <button type="submit" aria-label="إرسال السؤال">➤</button>
@@ -538,6 +548,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+<script src="ai-agent-reports.js?v=20260815-0933"></script>
 <script src="app.js"></script>
 
 <!-- إشعارات آجال الاستخلاص تظهر أسفل محتوى الصفحة -->
