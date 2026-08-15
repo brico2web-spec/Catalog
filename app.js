@@ -428,7 +428,15 @@ function card(p){
 /* Menu administration — accès direct, sans code PIN */
 $("menuBtn").onclick=e=>{e.stopPropagation();$("actionMenu").classList.toggle("show")};
 document.addEventListener("click",e=>{if(!$("actionMenu").contains(e.target)&&e.target!==$("menuBtn"))$("actionMenu").classList.remove("show")});
-$("menuAdd").onclick=()=>{$("actionMenu").classList.remove("show");openForm()};
+  $("menuInstallments").onclick=()=>{$("actionMenu").classList.remove("show");openCollections()};
+  $("menuPriceChanges").onclick=()=>{
+   $("actionMenu").classList.remove("show");
+   const visibleCard=carouselCards()[carouselIndex],visibleId=visibleCard?.dataset.id;
+   const targetId=selectedProductId||visibleId,p=products.find(x=>String(x.id)===String(targetId));
+   if(!p)return toast("ما كاين حتى منتوج باش تبدل الثمن");
+   selectedProductId=p.id;openForm(p);
+  };
+  $("menuAdd").onclick=()=>{$("actionMenu").classList.remove("show");openForm()};
 $("menuEdit").onclick=()=>{
  $("actionMenu").classList.remove("show");
  if(!selectedProductId)return toast("Sélectionnez d'abord un produit");
@@ -1507,68 +1515,29 @@ async function shareInvoiceRequestPDF(order){
  }
  const url=URL.createObjectURL(file);const a=document.createElement("a");a.href=url;a.download=result.name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),3000);toast("تم تحميل ملف طلب الفاتورة PDF");
 }
- async function shareOrderPDF(order){
- const scheduleText=paymentScheduleText(order);
- const nativePayload={
-   id:order.id,date:order.date,client:order.client,company:order.company||"",
-   ice:order.ice||"",paymentNumber:order.paymentNumber||"",paymentType:paymentTypeValue(order.paymentType),phone:order.phone||"",whatsapp:order.phone||"",total:Number(order.total||0),
-   paid:paymentTotal(order),due:Math.max(0,Number(order.total||0)-paymentTotal(order)),status:order.status||"unpaid",payments:getPaymentHistory(order).map(p=>({amount:Number(p.amount)||0,date:p.date,type:p.type||""})),
-   note:scheduleText,paymentTermDays:Number(order.paymentTermDays)||0,paymentTermMode:order.paymentTermMode||"days",paymentTermMinutes:Number(order.paymentTermMinutes)||null,dueDate:order.dueDate||"",
-    items:order.items.map(row=>{
-      const p=products.find(x=>x.id===row.id)||{};
-      const boxes=Number(row.qty)||0, units=Number(row.units ?? p.qty)||0;
-      const unitPrice=Number(row.unitPrice ?? p.price)||0;
-      const paidUnits=Number(row.paidUnits ?? (boxes*units))||0;
-      const freeUnits=Number(row.freeUnits ?? (hasPromo10Plus1(p)?Math.floor(paidUnits/10):0))||0;
-      return {name:row.name||p.name||"",boxes,units,paidUnits,freeUnits,deliveredUnits:paidUnits+freeUnits,unitPrice,lineTotal:Number(row.lineTotal ?? (unitPrice*paidUnits))||0,promotion:freeUnits>0?"10 + 1 Gratuit":""};
-    })
- };
- // Android native PDF: works offline inside the APK and shares the real PDF file.
- if(window.Android && typeof window.Android.createOrderPdf==="function"){
-   try{
-     window.Android.createOrderPdf(JSON.stringify(nativePayload));
-     toast("تم تسجيل الكوموند — جاري إنشاء Bon de commande PDF…");
-     return;
-   }catch(err){ console.error("Native PDF error",err); }
- }
- // Web fallback: generate PDF then share / open WhatsApp
- const result=await createOrderPDF(order);
- if(result){
-   const file=new File([result.blob],result.name,{type:"application/pdf"});
-   // 1. Try native share sheet (Android/iOS — user can pick WhatsApp)
-   if(navigator.share && (!navigator.canShare || navigator.canShare({files:[file]}))){
-     try{ await navigator.share({title:"Bon de commande — "+order.client, files:[file]}); return; }
-     catch(e){ if(e&&e.name==="AbortError") return; }
-   }
-   // 2. Fallback: download PDF then open WhatsApp with order summary
-   const url=URL.createObjectURL(result.blob);
-   const a=document.createElement("a"); a.href=url; a.download=result.name; a.click();
-   setTimeout(()=>URL.revokeObjectURL(url),8000);
-   // Build WhatsApp message with order summary
-   const phone=order.phone?String(order.phone).replace(/\D/g,""):"";
-   const lines=["🧾 *BON DE COMMANDE — 3D PEINTURES*","","👤 Client : "+order.client];
-   if(order.company) lines.push("🏢 Société : "+order.company);
-   if(order.ice)     lines.push("📋 ICE : "+order.ice);
-   lines.push("");
-   (order.items||[]).forEach(it=>{
-      const p=products.find(x=>x.id===(it.id||""))||{name:it.name||"",price:it.unitPrice||0,qty:it.units||0};
-      const boxes=Number(it.qty||it.boxes||0), units=Number(it.units||p.qty||0), price=Number(it.unitPrice||p.price||0);
-      const paidUnits=Number(it.paidUnits ?? (boxes*units))||0;
-      const freeUnits=Number(it.freeUnits)||0;
-      const deliveredUnits=paidUnits+freeUnits;
-      const total=paidUnits*price;
-      lines.push(`🔹 ${p.name||it.name} — ${boxes} boîte(s) × ${paidUnits} pièces payées = *${money(total)} DH*`);
-      if(freeUnits>0) lines.push(`🎁 Offre 10 + 1 : +${freeUnits} pièce(s) gratuite(s) · total livré : ${deliveredUnits} pièces`);
-   });
-   if(order.paymentType) lines.push("💳 Type de paiement : "+paymentTypeLabel(order.paymentType));
-   lines.push("","💰 *Total Payé : "+money(order.total)+" DH*","",...scheduleText.split("\n"));
-   const msg=encodeURIComponent(lines.join("\n"));
-   const waUrl=phone ? `https://wa.me/${phone}?text=${msg}` : `https://wa.me/?text=${msg}`;
-   setTimeout(()=>window.open(waUrl,"_blank"),600);
-   toast("PDF téléchargé — ouverture WhatsApp…");
-   return;
- }
- toast("Impossible de créer le PDF. Vérifiez la connexion.");
+async function createOrderImage(order){
+ try{
+  if(!window.html2canvas)throw new Error("html2canvas unavailable");
+  recalculateOrderPaymentState(order);
+  const deadline=deadlineState(order),isCodTerm=deadline.termKey==="cod",dueDateText=deadline.dueDate?deadline.dueDate.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"}):"—";
+  const dueNoticeHtml=isCodTerm?`<div style="margin-top:18px;padding:14px 16px;border:3px solid #b42318;border-radius:13px;background:#fff1f0;color:#b42318;text-align:center;font-size:21px;font-weight:900">طريقة الاستخلاص: عند الاستلام</div>`:`<div style="margin-top:18px;padding:14px 16px;border:3px solid #b42318;border-radius:13px;background:#fff1f0;color:#b42318;text-align:center;font-size:21px;font-weight:900">آخر أجل للاستخلاص: ${dueDateText}</div>`;
+  const d=new Date(order.date),date=d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"}),time=d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}),changes=getPriceChangeHistory(order),payments=getPaymentHistory(order),paid=paymentTotal(order),total=Number(order.total)||0,baseTotal=Number(order.baseTotal),hasChanges=changes.length>0,priceAdjustmentTotal=changes.reduce((sum,change)=>sum+priceChangeAdjustment(order,change),0);
+  const itemChangeRows=(row)=>changes.filter(change=>{const matched=priceChangeOrderItem(order,change);if(!matched)return false;const rowId=String(row.id||"").trim(),matchedId=String(matched.id||"").trim(),rowCode=String(row.code||"").trim().toLowerCase(),matchedCode=String(matched.code||"").trim().toLowerCase(),rowName=String(row.name||"").trim().toLowerCase(),matchedName=String(matched.name||"").trim().toLowerCase();return matched===row||(rowId&&matchedId&&rowId===matchedId)||(rowCode&&matchedCode&&rowCode===matchedCode)||(rowName&&matchedName&&rowName===matchedName)});
+  const rows=(Array.isArray(order.items)?order.items:[]).map(row=>{const p=products.find(x=>String(x.id)===String(row.id))||{},boxes=Number(row.qty??row.boxes)||0,units=Number(row.units??p.qty)||0,unitPrice=Number(row.unitPrice??p.price)||0,paidUnits=Number(row.paidUnits??(boxes*units))||0,freeUnits=Number(row.freeUnits??(hasPromo10Plus1(p)?Math.floor(paidUnits/10):0))||0,deliveredUnits=paidUnits+freeUnits,baseLine=Number(row.lineTotal??(unitPrice*paidUnits))||0,rowChanges=itemChangeRows(row),rowAdjustment=rowChanges.reduce((sum,change)=>sum+priceChangeAdjustment(order,change),0),adjustedLine=Math.max(0,baseLine+rowAdjustment),lastChange=rowChanges[rowChanges.length-1],oldMarkup=lastChange?`<span style="text-decoration:line-through;color:#98a2b3;margin-right:8px">${money(lastChange.oldPrice)} DH</span><b style="color:#087443">${money(lastChange.newPrice)} DH</b><small style="display:block;color:#087443;margin-top:3px">تغيير محسوب على ${priceChangeQuantity(order,lastChange)} وحدة</small>`:`<b>${money(unitPrice)} DH</b>`;return `<tr><td style="padding:12px;border-bottom:1px solid #e4e8ef;text-align:right"><b>${esc(row.name||p.name||"منتوج")}</b>${freeUnits?`<small style="display:block;color:#b42318;margin-top:4px">عرض 10 + 1 · مجاني: ${freeUnits} · مجموع التسليم: ${deliveredUnits}</small>`:""}</td><td style="padding:12px;border-bottom:1px solid #e4e8ef;text-align:center">${boxes}</td><td style="padding:12px;border-bottom:1px solid #e4e8ef;text-align:center">${units}</td><td style="padding:12px;border-bottom:1px solid #e4e8ef;text-align:center;font-weight:800">${paidUnits}</td><td style="padding:12px;border-bottom:1px solid #e4e8ef;text-align:center">${oldMarkup}</td><td style="padding:12px;border-bottom:1px solid #e4e8ef;text-align:center;font-weight:900">${money(adjustedLine)} DH</td></tr>`}).join("");
+  const paymentRows=payments.length?payments.map((payment,index)=>`<div style="display:flex;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid #ead9ad;border-radius:10px;background:#fffaf0;margin-top:7px"><span><b>قسط رقم ${index+1}</b><small style="display:block;color:#667085;margin-top:3px">${formatPaymentDate(payment.date)}</small></span><strong style="color:#173f78">${money(payment.amount)} DH</strong></div>`).join(""):`<div style="padding:10px;border:1px dashed #d8dee8;border-radius:10px;color:#98a2b3;text-align:center">مازال ما تسجل حتى قسط</div>`;
+  const changeRows=changes.length?changes.map(change=>{const adjustment=priceChangeAdjustment(order,change),quantity=priceChangeQuantity(order,change);return `<div style="display:flex;justify-content:space-between;gap:10px;padding:10px;border:1px solid #ead9ad;border-radius:10px;background:#fffaf0;margin-top:7px"><div><b>${esc(change.productName||"منتوج")}${change.productCode?` · ${esc(change.productCode)}`:""}</b><small style="display:block;color:#667085;margin-top:4px">الثمن: <span style="text-decoration:line-through">${money(change.oldPrice)} DH</span> → <b style="color:#087443">${money(change.newPrice)} DH</b> · الكمية: ${quantity}</small></div><strong style="color:${adjustment>0?"#b42318":"#087443"}">${adjustment>0?"+":"−"}${money(Math.abs(adjustment))} DH</strong></div>`}).join(""):`<div style="padding:10px;border:1px dashed #d8dee8;border-radius:10px;color:#98a2b3;text-align:center">ما تسجل حتى تغيير فالثمن</div>`;
+  const root=document.createElement("div");root.dir="rtl";root.style.cssText="position:fixed;left:-10000px;top:0;width:820px;background:#f5f7fb;color:#172033;padding:28px;font-family:Arial,'Noto Naskh Arabic',sans-serif;box-sizing:border-box;z-index:-1;direction:rtl;text-align:right";
+  root.innerHTML=`<div style="background:#06152f;color:#fff;border-radius:18px 18px 0 0;padding:22px;border-bottom:4px solid #d9b866"><div style="font-size:15px;letter-spacing:3px;color:#f5d77a;font-weight:900">3D PEINTURES</div><div style="font-size:28px;font-weight:900;margin-top:8px">Bon de commande</div><div style="display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:10px;padding:10px 12px;border:1px solid rgba(255,255,255,.32);border-radius:10px;background:rgba(255,255,255,.08)"><span style="font-size:12px;color:#f5d77a;font-weight:800">N. Bon Commande</span><b style="font-size:18px;direction:ltr;min-height:21px">${esc(order.orderCode||"")}</b></div><div style="font-size:13px;color:#d4dbea;margin-top:8px">${date} · ${time}</div></div><div style="background:#fff;border-radius:0 0 18px 18px;padding:22px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px"><div style="padding:12px;border:1px solid #e4e8ef;border-radius:12px;background:#f7f9fc"><span style="display:block;color:#98a2b3;font-size:11px">الزبون</span><b style="display:block;margin-top:5px;font-size:18px">${esc(order.client||"—")}</b>${order.company?`<small style="display:block;margin-top:4px">${esc(order.company)}</small>`:""}${order.phone?`<small style="display:block;margin-top:4px">${esc(order.phone)}</small>`:""}</div><div style="padding:12px;border:1px solid #e4e8ef;border-radius:12px;background:#f7f9fc"><span style="display:block;color:#98a2b3;font-size:11px">طريقة الأداء</span><b style="display:block;margin-top:5px;font-size:18px;color:#173f78">${order.paymentType?paymentTypeLabel(order.paymentType):"—"}</b></div></div><div style="font-size:18px;font-weight:900;color:#173f78;margin:16px 0 8px">تفاصيل المنتوجات</div><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#173f78;color:#fff"><th style="padding:11px;text-align:right">المنتوج</th><th style="padding:11px">العلب</th><th style="padding:11px">قطع/علبة</th><th style="padding:11px">مجموع القطع</th><th style="padding:11px">الثمن</th><th style="padding:11px">المجموع</th></tr></thead><tbody>${rows||`<tr><td colspan="6" style="padding:14px;text-align:center;color:#98a2b3">ما كاين حتى منتوج</td></tr>`}</tbody></table><div style="margin-top:16px;padding:14px;border:2px solid #173f78;border-radius:14px;background:#f7f9fc"><div style="display:flex;justify-content:space-between;gap:10px;font-size:17px"><span>Total payé</span><strong style="color:#173f78">${money(total)} DH</strong></div>${hasChanges?`<div style="display:flex;justify-content:space-between;gap:10px;margin-top:7px;color:#667085;font-size:12px"><span>الإجمالي قبل تغييرات الأثمنة</span><span style="text-decoration:line-through">${money(Number.isFinite(baseTotal)?baseTotal:total-priceAdjustmentTotal)} DH</span></div>`:""}<div style="display:flex;justify-content:space-between;gap:10px;margin-top:7px;color:#667085;font-size:12px"><span>مجموع الأقساط</span><span>${money(paid)} DH</span></div><div style="display:flex;justify-content:space-between;gap:10px;margin-top:7px;color:#b42318;font-size:14px;font-weight:900"><span>الباقي</span><span>${money(Math.max(0,total-paid))} DH</span></div></div><div style="margin-top:17px;padding:14px;border:1px solid #ead9ad;border-radius:14px;background:#fffdf4"><div style="font-size:17px;font-weight:900;color:#7a5a16">سجل الأقساط</div>${paymentRows}</div><div style="margin-top:17px;padding:14px;border:1px solid #ead9ad;border-radius:14px;background:#fffdf4"><div style="font-size:17px;font-weight:900;color:#7a5a16">تغييرات الأثمنة</div>${changeRows}</div>${dueNoticeHtml}<div style="margin-top:20px;padding:13px;border-top:2px solid #d9b866;text-align:center;font-size:17px;font-weight:900;color:#173f78">المرجو تحقق من المعلومات.</div></div>`;
+  document.body.appendChild(root);const canvas=await html2canvas(root,{scale:2,backgroundColor:"#f5f7fb",useCORS:true,logging:false});const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",.94));if(!blob)throw new Error("order image blob unavailable");const name=`3D-PEINTURES-bon-${String(order.client||"Client").replace(/[^a-zA-Z0-9À-ÿ_-]+/g,"-").slice(0,32)}-${Date.now()}.jpg`;root.remove();return {blob,name};
+ }catch(error){console.error("Order image error",error);return null}
+}
+async function shareOrderPDF(order){
+ recalculateOrderPaymentState(order);
+ const result=await createOrderImage(order);
+ if(!result){toast("تعذر إنشاء صورة Bon de commande");return}
+ const file=new File([result.blob],result.name,{type:"image/jpeg"});
+ if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){try{await navigator.share({files:[file],text:"المرجو تحقق من المعلومات."});toast("تم تجهيز صورة Bon de commande للزبون");return}catch(error){if(error?.name==="AbortError")return}}
+ downloadBlob(result.blob,result.name);const url=URL.createObjectURL(result.blob);window.open(url,"_blank");setTimeout(()=>URL.revokeObjectURL(url),60000);toast("تحلات صورة Bon de commande؛ قدر تشاركها مع الزبون");
 }
 async function saveOrder(e){
  e.preventDefault();
@@ -1583,10 +1552,10 @@ async function saveOrder(e){
  const selectedTerm=isCodTerm?0:(isTestTerm?0.0006944444444444445:([15,30].includes(Number(selectedTermValue))?Number(selectedTermValue):15));
  const fallbackTermNote=isCodTerm?"إستخلاص عند الإستلام / Paiement à la livraison":isTestTerm?"تجربة دقيقة واحدة / Test 1 minute":`مدة الاستخلاص: ${selectedTerm} يوماً / Durée de règlement : ${selectedTerm} jours`;
  const order={
-   id:makeId(),date:orderDate.toISOString(),client,
+   id:makeId(),orderCode:"",date:orderDate.toISOString(),client,
    company:clientObj.company||clientObj.societe||"",
    ice:clientObj.ice||"",paymentHolder:"",paymentNumber:"",paymentType:paymentTypeValue($("orderPaymentType")?.value||"cash"),phone:clientObj.phone||"",
-   total:x.total,paid:0,due:x.total,profit:x.profit,
+   total:x.total,baseTotal:x.total,paid:0,due:x.total,profit:x.profit,
    paymentTermDays:isCodTerm||isTestTerm?0:selectedTerm,paymentTermMode:isCodTerm?"cod":(isTestTerm?"test_1m":"days"),paymentTermMinutes:isTestTerm?1:null,dueDate:isCodTerm?"":new Date(orderDate.getTime()+selectedTerm*86400000).toISOString(),
    status:"unpaid",payments:[],note:fallbackTermNote,
    items:cart.map(row=>{
@@ -1623,7 +1592,14 @@ function getPaymentHistory(order){
  return [];
 }
 function paymentTotal(order){return getPaymentHistory(order).reduce((sum,p)=>sum+(Number(p.amount)||0),0)}
+function priceChangeOrderItem(order,change){const items=Array.isArray(order?.items)?order.items:[],id=String(change?.productId||""),code=String(change?.productCode||"").trim().toLowerCase(),name=String(change?.productName||"").trim().toLowerCase();return items.find(item=>id&&String(item.id||"")===id)||items.find(item=>code&&String(item.code||"").trim().toLowerCase()===code)||items.find(item=>name&&String(item.name||"").trim().toLowerCase()===name)||null}
+function priceChangeQuantity(order,change){const stored=Number(change?.quantity??change?.paidUnits);if(Number.isFinite(stored)&&stored>0)return stored;const item=priceChangeOrderItem(order,change);if(!item)return 1;return Math.max(1,Number(item.paidUnits??item.units??item.quantity??item.qty??item.boxes??1)||1)}
+function priceChangeUnitDifference(change){const value=Number(change?.difference);if(Number.isFinite(value))return value;return (Number(change?.newPrice)||0)-(Number(change?.oldPrice)||0)}
+function priceChangeAdjustment(order,change){const stored=Number(change?.adjustment);if(Number.isFinite(stored))return stored;return priceChangeUnitDifference(change)*priceChangeQuantity(order,change)}
+function priceChangeAdjustmentTotal(order){return getPriceChangeHistory(order).reduce((sum,change)=>sum+priceChangeAdjustment(order,change),0)}
+function syncOrderTotalWithPriceChanges(order){const current=Number(order?.total)||0,storedBase=Number(order?.baseTotal);if(!Number.isFinite(storedBase))order.baseTotal=current;const base=Number(order.baseTotal)||0,adjustment=priceChangeAdjustmentTotal(order);order.total=Math.max(0,base+adjustment);return {baseTotal:base,adjustment,total:order.total}}
 function recalculateOrderPaymentState(order){
+ syncOrderTotalWithPriceChanges(order);
  const paid=paymentTotal(order);
  order.paid=paid;
  order.due=Math.max(0,Number(order.total||0)-paid);
@@ -1636,13 +1612,19 @@ function formatPaymentDate(value){
 }
 function updatePaymentPreview(){
  const order=orders.find(o=>String(o.id)===String(activePaymentOrderId)); if(!order)return;
- const before=Math.max(0,Number(order.total||0)-paymentTotal(order));
+ const pendingAdjustment=paymentPriceChangeRows().reduce((sum,row)=>sum+(Number(row.adjustment)||0),0),previewTotal=Math.max(0,Number(order.total||0)+pendingAdjustment),before=Math.max(0,previewTotal-paymentTotal(order));
  const entered=Math.max(0,Number(String($("paymentAmount")?.value||0).replace(",","."))||0);
  const accepted=Math.min(entered,before);
  $("paymentBeforeDue").textContent=money(before)+" DH";
  $("paymentAfterTotal").textContent=money(paymentTotal(order)+accepted)+" DH";
  $("paymentAfterDue").textContent=money(Math.max(0,before-accepted))+" DH";
 }
+function paymentOrderProducts(){const order=orders.find(o=>String(o.id)===String(activePaymentOrderId)),seen=new Map();(Array.isArray(order?.items)?order.items:[]).forEach(item=>{const itemId=String(item.id||""),itemCode=String(item.code||"").trim().toLowerCase(),itemName=String(item.name||"").trim().toLowerCase(),product=products.find(p=>String(p.id)===itemId)||products.find(p=>itemCode&&String(productCode(p)||"").trim().toLowerCase()===itemCode)||products.find(p=>itemName&&String(p.name||"").trim().toLowerCase()===itemName);if(product&&!seen.has(String(product.id)))seen.set(String(product.id),{product,orderedPrice:Number(item.unitPrice??priceTiersFor(product)[0].price)||0})});return [...seen.values()]}
+function paymentPriceChangeRows(){return [...document.querySelectorAll("#paymentPriceChanges .payment-price-change-row")].map(row=>{const productId=row.querySelector("[data-payment-price-change-product]")?.value||"",product=products.find(p=>String(p.id)===String(productId)),oldValue=String(row.querySelector("[data-payment-price-change-old]")?.value||"").trim(),newValue=String(row.querySelector("[data-payment-price-change-new]")?.value||"").trim(),oldPrice=Number(oldValue.replace(",",".")),newPrice=Number(newValue.replace(",",".")),productName=product?.name||row.querySelector("[data-payment-price-change-product]")?.selectedOptions?.[0]?.textContent||"منتوج",productCodeValue=productCode(product)||"",quantity=priceChangeQuantity(orders.find(o=>String(o.id)===String(activePaymentOrderId)),{productId,productName,productCode:productCodeValue}),difference=newPrice-oldPrice;return {productId,product,productName,productCode:productCodeValue,oldPrice,newPrice,difference,quantity,adjustment:difference*quantity,oldValue,newValue}}).filter(row=>row.product&&row.oldValue!==""&&row.newValue!==""&&Number.isFinite(row.oldPrice)&&Number.isFinite(row.newPrice)&&row.oldPrice>=0&&row.newPrice>=0)}
+function updatePaymentPriceChangeTotal(){const rows=paymentPriceChangeRows(),total=rows.reduce((sum,row)=>sum+Math.abs(Number(row.adjustment)||0),0);if($("paymentPriceChangeTotal"))$("paymentPriceChangeTotal").textContent=`${money(total)} DH`;updatePaymentPreview();return rows}
+function addPaymentPriceChangeRow(values={}){const box=$("paymentPriceChanges"),entries=paymentOrderProducts();if(!box)return;if(!entries.length){box.innerHTML=`<div class="payment-price-empty">ما كاين حتى منتوج مسجل فهاد الكوموند.</div>`;return}box.querySelector(".payment-price-empty")?.remove();$("addPaymentPriceChange")?.removeAttribute("disabled");const selected=entries.find(entry=>String(entry.product.id)===String(values.productId))||entries[0],product=selected.product,current=Number(values.oldPrice??selected.orderedPrice??priceTiersFor(product)[0].price)||0,row=document.createElement("div");row.className="payment-price-change-row";row.innerHTML=`<div class="payment-price-change-product"><label>المنتوج المطلوب فالكوموند<select data-payment-price-change-product>${entries.map(entry=>{const p=entry.product;return `<option value="${esc(p.id)}" ${String(p.id)===String(product.id)?"selected":""}>${esc(p.name||"منتوج")}${productCode(p)?` · ${esc(productCode(p))}`:""}</option>`}).join("")}</select></label><button type="button" class="remove-price-change-btn" data-payment-price-change-remove aria-label="حذف تغيير الثمن">×</button></div><div class="payment-price-change-values"><label>الثمن القديم<input type="number" min="0" step="0.01" value="${current}" data-payment-price-change-old></label><label>الثمن الجديد<input type="number" min="0" step="0.01" value="${values.newPrice??""}" data-payment-price-change-new placeholder="مثلاً: 28"></label></div>`;box.appendChild(row);row.querySelector("[data-payment-price-change-remove]").onclick=()=>{row.remove();updatePaymentPriceChangeTotal()};row.querySelector("[data-payment-price-change-product]").onchange=e=>{const entry=entries.find(item=>String(item.product.id)===String(e.target.value));if(entry)row.querySelector("[data-payment-price-change-old]").value=entry.orderedPrice||priceTiersFor(entry.product)[0].price;updatePaymentPriceChangeTotal()};row.querySelectorAll("input").forEach(input=>input.oninput=updatePaymentPriceChangeTotal);updatePaymentPriceChangeTotal()}
+function clearPaymentPriceChanges(){const box=$("paymentPriceChanges"),button=$("addPaymentPriceChange"),entries=paymentOrderProducts();if(box)box.innerHTML=entries.length?"":`<div class="payment-price-empty">زيد تغيير ثمن، وغادي يبان غير المنتوج اللي موجود فالكوموند.</div>`;if(button)button.disabled=!entries.length;updatePaymentPriceChangeTotal()}
+function syncPaymentOnlyMode(){const only=!!$("paymentOnlyPriceToggle")?.checked,amountInput=$("paymentAmount"),label=$("paymentAmountLabel");if(amountInput){amountInput.disabled=only;amountInput.required=!only;if(only)amountInput.value=""}if(label)label.classList.toggle("price-only-active",only);updatePaymentPreview()}
 function paymentCustomerSummary(order,amount){
  const total=Number(order.total||0);
  const before=Math.max(0,total-paymentTotal(order));
@@ -1656,58 +1638,67 @@ function buildPaymentCustomerMessage(order,amount){
  const data=paymentCustomerSummary(order,amount);
  return [`ملخص أداء القسط`,`الزبون: ${order.client||"—"}`,`الإجمالي للبون: ${money(data.total)} DH`,`تاريخ آخر أجل للاستخلاص: ${data.dueDate}`,`مبلغ القسط: ${money(data.accepted)} DH`,`الباقي بعد الأداء: ${money(data.due)} DH`,`شكراً لكم.`].join("\n");
 }
-async function sharePaymentSummaryWithCustomer(){
- const order=orders.find(o=>String(o.id)===String(activePaymentOrderId));if(!order)return;
- const amount=Number(String($("paymentAmount")?.value||"").replace(",","."));
- const before=Math.max(0,Number(order.total||0)-paymentTotal(order));
- if(!Number.isFinite(amount)||amount<=0){alert("دخل مبلغ القسط أولاً.");$("paymentAmount")?.focus();return}
+async function sharePaymentSummaryWithCustomer(){return sharePaymentOperationImage()}
+async function sharePaymentOperationImage(context={}){
+ const orderId=context.orderId??activePaymentOrderId,order=orders.find(o=>String(o.id)===String(orderId));if(!order)return;
+ recalculateOrderPaymentState(order);
+ const amount=Number.isFinite(Number(context.amount))?Number(context.amount):Number(String($("paymentAmount")?.value||"").replace(",","."));
+ const priceChanges=Array.isArray(context.priceChanges)?context.priceChanges:getPriceChangeHistory(order),paymentHistory=getPaymentHistory(order);
+ const before=Number.isFinite(Number(context.beforeDue))?Math.max(0,Number(context.beforeDue)):Math.max(0,Number(order.total||0)-paymentTotal(order));
+ if(!Number.isFinite(amount)||amount<0){alert("دخل مبلغ القسط صحيح.");$("paymentAmount")?.focus();return}
+ if(amount<=0&&!priceChanges.length){alert("دخل مبلغ القسط أو زيد تغيير فالثمن.");return}
  if(amount>before+0.000001){alert(`المبلغ أكبر من الباقي: ${money(before)} DH`);return}
- const text=buildPaymentCustomerMessage(order,amount);
- const encoded=encodeURIComponent(text);
- const rawPhone=String(order.phone||"").replace(/\D/g,"");
- const waPhone=rawPhone.startsWith("0")?`212${rawPhone.slice(1)}`:rawPhone;
- const wa=waPhone?`https://wa.me/${waPhone}?text=${encoded}`:`https://wa.me/?text=${encoded}`;
- try{if(navigator.share){await navigator.share({title:"ملخص أداء القسط",text});toast("تم تجهيز ملخص القسط للزبون");return}}catch(e){}
- window.open(wa,"_blank");toast("تم تجهيز رسالة ملخص القسط");
+ const accepted=Math.min(amount,before),afterDue=Number.isFinite(Number(context.afterDue))?Math.max(0,Number(context.afterDue)):Math.max(0,before-accepted),totalPaidForImage=Number.isFinite(Number(context.totalPaidAfter))?Number(context.totalPaidAfter):paymentTotal(order)+accepted,adjustedTotal=Number(order.total)||0,operationTitle=context.priceOnly?"ملخص تغيير الأثمنة":"ملخص عملية الأداء",currentAmountLabel=context.priceOnly?"تغيير الثمن فقط":"القسط الحالي",now=new Date(),date=now.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"}),time=now.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+ const root=document.createElement("div");root.dir="rtl";root.style.cssText="position:fixed;left:-10000px;top:0;width:760px;background:#f5f7fb;color:#172033;padding:28px;font-family:Arial,'Noto Naskh Arabic',sans-serif;box-sizing:border-box;z-index:-1;direction:rtl;text-align:right";
+ const deadline=deadlineState(order),isCodTerm=deadline.termKey==="cod",dueDateText=deadline.dueDate?deadline.dueDate.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"}):"—",dueNoticeHtml=isCodTerm?`<div style="margin-top:18px;padding:14px 16px;border:3px solid #b42318;border-radius:13px;background:#fff1f0;color:#b42318;text-align:center;font-size:20px;font-weight:900">طريقة الاستخلاص: عند الاستلام</div>`:`<div style="margin-top:18px;padding:14px 16px;border:3px solid #b42318;border-radius:13px;background:#fff1f0;color:#b42318;text-align:center;font-size:20px;font-weight:900">آخر أجل للاستخلاص: ${dueDateText}</div>`;
+ const priceChangesTotal=priceChanges.reduce((sum,change)=>sum+Math.abs(priceChangeAdjustment(order,change)),0),paymentHistoryHtml=paymentHistory.length?paymentHistory.map((payment,index)=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:9px 10px;border:1px solid #e4e8ef;border-radius:10px;background:#f7f9fc;margin-top:7px"><span><b>قسط رقم ${index+1}</b><small style="display:block;color:#667085;margin-top:3px">${formatPaymentDate(payment.date)}</small></span><strong style="color:#173f78">${money(payment.amount)} DH</strong></div>`).join(""):`<div style="padding:10px;color:#98a2b3;text-align:center">مازال ما تسجل حتى قسط</div>`,changesHtml=priceChanges.length?priceChanges.map(change=>{const difference=priceChangeUnitDifference(change),quantity=priceChangeQuantity(order,change),adjustment=priceChangeAdjustment(order,change);return `<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:13px 14px;border:1px solid #ead9ad;border-radius:12px;background:#fffaf0;margin-top:8px"><div><b style="display:block;font-size:15px;color:#172033">${esc(change.productName)}${change.productCode?` · ${change.productCode}`:""}</b><span style="display:block;margin-top:5px;color:#667085;font-size:12px">الثمن القديم: ${money(change.oldPrice)} DH · الثمن الجديد: ${money(change.newPrice)} DH · الكمية: ${quantity}</span><span style="display:block;margin-top:4px;color:${adjustment>0?"#b42318":"#087443"};font-size:12px;font-weight:800">أثر التغيير على الكوموند: ${adjustment>0?"+":"−"}${money(Math.abs(adjustment))} DH</span></div><strong style="font-size:16px;color:${adjustment>0?"#b42318":"#087443"};direction:ltr">${adjustment>0?"+":"−"}${money(Math.abs(adjustment))} DH</strong></div>`}).join(""):"<div style=\"padding:13px;border:1px dashed #d8dee8;border-radius:12px;background:#fff;color:#98a2b3;text-align:center;font-size:12px\">ما تسجل حتى تغيير فالثمن مع هاد القسط.</div>";
+ root.innerHTML=`<div style="background:#06152f;color:#fff;border-radius:18px 18px 0 0;padding:20px 22px;border-bottom:4px solid #d9b866"><div style="font-size:15px;letter-spacing:3px;color:#f5d77a;font-weight:900">3D PEINTURES</div><div style="font-size:26px;font-weight:900;margin-top:8px">${operationTitle}</div><div style="margin-top:5px;color:#d4dbea;font-size:12px;direction:ltr;text-align:right">${date} · ${time}</div></div><div style="background:#fff;border-radius:0 0 18px 18px;padding:22px"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px"><div style="padding:13px;border:1px solid #e4e8ef;border-radius:12px;background:#f7f9fc"><span style="display:block;color:#98a2b3;font-size:11px">الزبون</span><b style="display:block;margin-top:5px;font-size:17px">${esc(order.client||"Client")}</b></div><div style="padding:13px;border:1px solid #e4e8ef;border-radius:12px;background:#f7f9fc"><span style="display:block;color:#98a2b3;font-size:11px">كود الطلبية</span><b style="display:block;margin-top:5px;font-size:17px;direction:ltr">${esc(order.orderCode||"")}</b></div></div><div style="border:2px solid #173f78;border-radius:14px;padding:16px;margin-bottom:14px"><div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center"><div><span style="display:block;color:#667085;font-size:11px">الإجمالي الجديد</span><b style="display:block;margin-top:5px;color:#173f78;font-size:19px">${money(adjustedTotal)} DH</b></div><div><span style="display:block;color:#667085;font-size:11px">${currentAmountLabel}</span><b style="display:block;margin-top:5px;color:#173f78;font-size:19px">${context.priceOnly?"—":`${money(accepted)} DH`}</b></div><div><span style="display:block;color:#667085;font-size:11px">مجموع الأقساط</span><b style="display:block;margin-top:5px;color:#173f78;font-size:19px">${money(totalPaidForImage)} DH</b></div><div><span style="display:block;color:#667085;font-size:11px">الباقي</span><b style="display:block;margin-top:5px;color:#b42318;font-size:19px">${money(afterDue)} DH</b></div></div></div><div style="font-size:17px;font-weight:900;color:#173f78;margin:18px 0 8px">سجل الأقساط السابقة</div><div style="padding:10px;border:1px solid #e4e8ef;border-radius:12px;background:#f7f9fc">${paymentHistoryHtml}</div><div style="font-size:17px;font-weight:900;color:#173f78;margin:18px 0 8px">تغيير أثمنة المنتوجات <span style="font-size:13px;color:#667085">(${money(priceChangesTotal)} DH)</span></div>${changesHtml}${dueNoticeHtml}<div style="margin-top:18px;padding-top:12px;border-top:1px solid #e4e8ef;text-align:center;color:#667085;font-size:11px;line-height:1.6">جميع المعلومات السابقة والجديدة ظاهرة في هذه الصورة.<br><b style="color:#173f78">المرجو تحقق من المعلومات.</b><br><b style="color:#173f78">3D PEINTURES</b></div></div>`;
+ document.body.appendChild(root);
+ try{if(!window.html2canvas)throw new Error("html2canvas unavailable");const canvas=await html2canvas(root,{scale:2,backgroundColor:"#f5f7fb",useCORS:true,logging:false});const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",.94));if(!blob)throw new Error("image blob unavailable");const name=`3D-PEINTURES-operation-${String(order.client||"client").replace(/[^a-zA-Z0-9À-ÿ_-]+/g,"-").slice(0,32)}-${Date.now()}.jpg`,file=new File([blob],name,{type:"image/jpeg"});
+  if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){await navigator.share({files:[file],text:"المرجو تحقق من المعلومات."});toast("تم تجهيز الصورة للمشاركة مع الزبون");return}
+  downloadBlob(blob,name);const url=URL.createObjectURL(blob);window.open(url,"_blank");setTimeout(()=>URL.revokeObjectURL(url),60000);toast("تحلات صورة العملية؛ قدر تشاركها مع الزبون");
+ }catch(err){console.error(err);toast("تعذر إنشاء صورة العملية؛ جرب ملخص النص")}finally{root.remove()}
 }
 function openPaymentModal(orderId){
  const order=orders.find(o=>String(o.id)===String(orderId)); if(!order)return;
  recalculateOrderPaymentState(order);
  const remaining=Math.max(0,Number(order.total||0)-paymentTotal(order));
- if(remaining<=0){toast("هاد الكوموند مخلصة كاملة");return}
- activePaymentOrderId=order.id;
- $("paymentContext").textContent=`${order.client||"Client"} · Total ${money(order.total)} DH`;
+  activePaymentOrderId=order.id;
+  clearPaymentPriceChanges();
+  if($("paymentOnlyPriceToggle"))$("paymentOnlyPriceToggle").checked=remaining<=0;
+  syncPaymentOnlyMode();
+  $("paymentContext").textContent=`${order.client||"Client"} · Total ${money(order.total)} DH`;
  $("paymentNow").textContent=formatPaymentDate(new Date());
+ const paymentOrderCode=$("paymentOrderCode");
+ if(paymentOrderCode)paymentOrderCode.value=String(order.orderCode||"");
  $("paymentAmount").value="";
  $("paymentAmount").max=String(remaining);
  updatePaymentPreview();
  $("paymentModal").classList.add("show");
  setTimeout(()=>$("paymentAmount")?.focus(),80);
 }
-function closePaymentModal(){activePaymentOrderId="";$("paymentModal").classList.remove("show")}
+ function closePaymentModal(){activePaymentOrderId="";clearPaymentPriceChanges();if($("paymentOnlyPriceToggle"))$("paymentOnlyPriceToggle").checked=false;syncPaymentOnlyMode();$("paymentModal").classList.remove("show")}
 function addPayment(orderId){openPaymentModal(orderId)}
 function savePaymentForm(e){
  e.preventDefault();
- const order=orders.find(o=>String(o.id)===String(activePaymentOrderId)); if(!order)return;
- const amount=Number(String($("paymentAmount").value||"").replace(",","."));
- const remaining=Math.max(0,Number(order.total||0)-paymentTotal(order));
- if(!Number.isFinite(amount)||amount<=0){alert("دخل مبلغ صحيح.");return}
- if(amount>remaining+0.000001){alert(`المبلغ أكبر من الباقي: ${money(remaining)} DH`);return}
- if(!Array.isArray(order.payments)){
-   order.payments=[];
-   const legacy=Number(order.paid)||0;
-   if(legacy>0)order.payments.push({id:"legacy",amount:legacy,date:order.updatedAt||order.date,legacy:true});
- }
- order.payments.push({id:makeId(),amount,date:new Date().toISOString(),type:order.paymentType||"cheque"});
- recalculateOrderPaymentState(order);
- order.updatedAt=new Date().toISOString();
- localStorage.setItem("3d_peintures_orders_v1",JSON.stringify(orders));
- const orderId=order.id;
- closePaymentModal();
- renderOrders();
- if($("collectionsModal")?.classList.contains("show"))renderCollections();
- if($("orderDetailModal")?.classList.contains("show"))openOrderDetail(orderId);
- toast(order.due<=0.000001?"الكوموند تخلصات كاملة":`تسجل القسط: ${money(amount)} DH`);
+ const order=orders.find(o=>String(o.id)===String(activePaymentOrderId));if(!order)return;
+ const rawAmount=String($("paymentAmount")?.value||"").trim(),hasAmount=rawAmount!=="",amount=hasAmount?Number(rawAmount.replace(",",".")):0;
+ const onlyPrice=!!$("paymentOnlyPriceToggle")?.checked;
+ const priceChangeRowCount=document.querySelectorAll("#paymentPriceChanges .payment-price-change-row").length,priceChanges=paymentPriceChangeRows(),changedPriceChanges=priceChanges.filter(change=>Math.abs(change.difference)>0.000001),pendingAdjustment=changedPriceChanges.reduce((sum,change)=>sum+(Number(change.adjustment)||0),0),remaining=Math.max(0,Number(order.total||0)+pendingAdjustment-paymentTotal(order));
+ if(!hasAmount&&!changedPriceChanges.length){alert("دخل مبلغ القسط أو زيد تغيير فالثمن.");return}
+ if(hasAmount&&(!Number.isFinite(amount)||amount<=0)){alert("دخل مبلغ قسط صحيح.");return}
+ if(hasAmount&&amount>remaining+0.000001){alert(`المبلغ أكبر من الباقي: ${money(remaining)} DH`);return}
+ if(priceChanges.length!==priceChangeRowCount){alert("كمل الثمن الجديد فكل تغيير أثمنة أو حدف السطر الناقص.");return}
+ const paymentDate=new Date().toISOString();
+ const newOrderCode=String($("paymentOrderCode")?.value||"").trim();
+ order.orderCode=newOrderCode;
+ if(hasAmount){if(!Array.isArray(order.payments)){order.payments=[];const legacy=Number(order.paid)||0;if(legacy>0)order.payments.push({id:"legacy",amount:legacy,date:order.updatedAt||order.date,legacy:true})}order.payments.push({id:makeId(),amount,date:paymentDate,type:order.paymentType||"cheque"})}
+ if(changedPriceChanges.length){if(!Array.isArray(order.priceChanges))order.priceChanges=[];changedPriceChanges.forEach(change=>order.priceChanges.push({id:makeId(),date:paymentDate,productId:change.productId,productName:change.productName,productCode:change.productCode,oldPrice:change.oldPrice,newPrice:change.newPrice,difference:change.difference,quantity:change.quantity,adjustment:change.adjustment}))}
+ recalculateOrderPaymentState(order);order.updatedAt=paymentDate;localStorage.setItem("3d_peintures_orders_v1",JSON.stringify(orders));
+ const orderId=order.id,afterDue=Math.max(0,Number(order.total||0)-paymentTotal(order)),totalPaidAfter=paymentTotal(order),imageContext={orderId,amount:hasAmount?amount:0,beforeDue:remaining,afterDue,totalPaidAfter,priceChanges:getPriceChangeHistory(order),priceOnly:onlyPrice||!hasAmount};
+ closePaymentModal();renderOrders();if($("collectionsModal")?.classList.contains("show"))renderCollections();if($("orderDetailModal")?.classList.contains("show"))openOrderDetail(orderId);
+ toast(hasAmount?(order.due<=0.000001?"الكوموند تخلصات كاملة":"تسجل القسط وتوجدات صورة الإرسال"):"تسجل تغيير الثمن وتوجدات صورة الإرسال");
+ sharePaymentOperationImage(imageContext);
 }
 function ensureOrderDeadline(order){
  const mode=String(order?.paymentTermMode||"");
@@ -1896,11 +1887,13 @@ function renderOrders(){
        ${due>0?`<button class="payment-btn" data-order-pay="${o.id}">💰 تسجيل قسط</button>`:`<span class="paid-label">✓ مخلصة</span>`}
        ${getPaymentHistory(o).length?`<small class="order-installment-summary">${getPaymentHistory(o).length} قسط · مجموع الأقساط ${money(paid)} DH</small>`:""}
        ${due>0?`<span class="deadline-chip ${deadline.overdue?"expired":""}">⏱ ${deadlineText(deadline)}</span>`:`<span class="deadline-chip paid">✓ تم الاستخلاص</span>`}
+       <button class="archive-send-btn" data-order-send="${o.id}" type="button">إرسال الكوموند</button>
      </div>
      <button class="order-delete" data-order-delete="${o.id}" title="حذف">×</button>
    </div>`;
  }).join("");
  document.querySelectorAll("[data-order-pay]").forEach(b=>b.onclick=(e)=>{e.stopPropagation();addPayment(b.dataset.orderPay)});
+ document.querySelectorAll("[data-order-send]").forEach(b=>b.onclick=async(e)=>{e.stopPropagation();b.disabled=true;b.textContent="جاري التجهيز...";try{const order=orders.find(o=>String(o.id)===String(b.dataset.orderSend));if(order)await shareOrderPDF(order)}finally{b.disabled=false;b.textContent="إرسال الكوموند"}});
  document.querySelectorAll("[data-order-delete]").forEach(b=>b.onclick=(e)=>{
    e.stopPropagation();
    if(confirm("حذف هاد الطلب من الأرشيف؟")){orders=orders.filter(o=>o.id!==b.dataset.orderDelete);localStorage.setItem("3d_peintures_orders_v1",JSON.stringify(orders));renderOrders();if($("collectionsModal")?.classList.contains("show"))renderCollections();toast("تم حذف الطلب")}
@@ -1927,54 +1920,46 @@ function collectionDateLabel(value){
  const d=new Date(value);if(Number.isNaN(d.getTime()))return "—";
  return d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
 }
+function getPriceChangeHistory(order){const raw=Array.isArray(order?.priceChanges)?order.priceChanges.filter(change=>Number.isFinite(Number(change?.newPrice))&&Number.isFinite(Number(change?.oldPrice))):[],groups=new Map();raw.forEach(change=>{const key=String(change.productId||change.productCode||change.productName||"منتوج").trim().toLowerCase(),existing=groups.get(key);if(!existing){groups.set(key,{...change})}else{const oldPrice=Number(existing.oldPrice)||0,newPrice=Number(change.newPrice)||0,quantity=priceChangeQuantity(order,change),difference=newPrice-oldPrice;groups.set(key,{...existing,...change,oldPrice,newPrice,difference,quantity,adjustment:difference*quantity,date:change.date||existing.date})}});return [...groups.values()]}
 function collectionTrackerRows(startAt=collectionCycleStart()){
- const startMs=new Date(startAt).getTime();
- const rows=[];
+ const startMs=new Date(startAt).getTime(),rows=[];
  orders.forEach(order=>{
-  const state=deadlineState(order);
-  if(state.termKey==="cod"){
-   const date=order.date,orderMs=new Date(date).getTime(),amount=Math.max(0,Number(order.total)||0);
-   if(amount>0&&orderMs>=startMs)rows.push({kind:"delivery",client:order.client||"Client",amount,date,orderId:order.id});
-   return;
-  }
+  const client=String(order.client||"Client").trim()||"Client";
   getPaymentHistory(order).forEach(payment=>{
    const date=payment.date||order.date,paymentMs=new Date(date).getTime(),amount=Math.max(0,Number(payment.amount)||0);
-   if(amount>0&&paymentMs>=startMs)rows.push({kind:"installment",client:order.client||"Client",amount,date,orderId:order.id});
+   if(amount>0&&paymentMs>=startMs)rows.push({kind:"installment",client,amount,date,orderId:order.id});
+  });
+  getPriceChangeHistory(order).forEach(change=>{
+   const date=change.date||order.updatedAt||order.date,changeMs=new Date(date).getTime(),oldPrice=Math.max(0,Number(change.oldPrice)||0),newPrice=Math.max(0,Number(change.newPrice)||0),difference=priceChangeUnitDifference(change),adjustment=priceChangeAdjustment(order,change),quantity=priceChangeQuantity(order,change);
+   if(Math.abs(adjustment)>0.000001&&changeMs>=startMs)rows.push({kind:"price-change",client,amount:Math.abs(adjustment),difference,adjustment,quantity,oldPrice,newPrice,productName:change.productName||"منتوج",productCode:change.productCode||"",date,orderId:order.id});
   });
  });
  return rows.sort((a,b)=>new Date(b.date)-new Date(a.date));
 }
 function collectionTotals(rows){
- const deliveryRows=rows.filter(row=>row.kind==="delivery");
- const installmentRows=rows.filter(row=>row.kind==="installment");
- const deliveryTotal=deliveryRows.reduce((sum,row)=>sum+(Number(row.amount)||0),0);
- const installmentsTotal=installmentRows.reduce((sum,row)=>sum+(Number(row.amount)||0),0);
- return {deliveryRows,installmentRows,deliveryTotal,installmentsTotal,grandTotal:deliveryTotal+installmentsTotal};
+ const installmentRows=rows.filter(row=>row.kind==="installment"),priceChangeRows=rows.filter(row=>row.kind==="price-change");
+ const installmentsTotal=installmentRows.reduce((sum,row)=>sum+(Number(row.amount)||0),0),priceChangesTotal=priceChangeRows.reduce((sum,row)=>sum+(Number(row.amount)||0),0);
+ return {installmentRows,priceChangeRows,installmentsTotal,priceChangesTotal};
 }
 function renderCollectionsHistory(){
  const list=$("collectionsHistory"),empty=$("collectionsHistoryEmpty");if(!list||!empty)return;
  const history=collectionHistory().sort((a,b)=>new Date(b.closedAt)-new Date(a.closedAt));
  empty.style.display=history.length?"none":"block";
- list.innerHTML=history.map(item=>`<div class="collection-history-row">
+ list.innerHTML=history.map(item=>{const installmentsTotal=Number(item.installmentsTotal)||0,priceChangesTotal=Number(item.priceChangesTotal)||0;return `<div class="collection-history-row">
    <div class="collection-history-date"><b>دورة مؤرشفة</b><small>${collectionDateLabel(item.from)} — ${collectionDateLabel(item.to||item.closedAt)}</small></div>
-   <div class="collection-history-metrics"><span>عند الاستلام<strong>${money(item.deliveryTotal)} DH</strong></span><span>الأقساط<strong>${money(item.installmentsTotal)} DH</strong></span><span class="history-grand">الإجمالي<strong>${money(item.grandTotal)} DH</strong></span></div>
- </div>`).join("");
+   <div class="collection-history-metrics"><span>الأقساط<strong>${money(installmentsTotal)} DH</strong></span><span>تغييرات الأثمنة<strong>${money(priceChangesTotal)} DH</strong></span></div>
+ </div>`}).join("");
 }
 function renderCollections(){
- const rows=collectionTrackerRows(),totals=collectionTotals(rows);
+ const rows=collectionTrackerRows(),totals=collectionTotals(rows),groups=new Map();
  $("collectionsCycleDate").textContent=collectionDateLabel(collectionCycleStart());
- $("collectionsDeliveryTotal").textContent=`${money(totals.deliveryTotal)} DH`;
  $("collectionsInstallmentsTotal").textContent=`${money(totals.installmentsTotal)} DH`;
- $("collectionsGrandTotal").textContent=`${money(totals.grandTotal)} DH`;
- $("collectionsDeliveryCount").textContent=`${totals.deliveryRows.length} كوموند`;
+ $("collectionsPriceChangesTotal").textContent=`${money(totals.priceChangesTotal)} DH`;
  $("collectionsInstallmentsCount").textContent=`${totals.installmentRows.length} قسط`;
- $("collectionsGrandCount").textContent=`${rows.length} عملية`;
+ $("collectionsPriceChangesCount").textContent=`${totals.priceChangeRows.length} تغيير`;
+ rows.forEach(row=>{const key=normalizeClientSearch(row.client)||"client",group=groups.get(key)||{client:row.client,rows:[],installments:0,priceChanges:0};group.rows.push(row);if(row.kind==="installment")group.installments+=Number(row.amount)||0;else group.priceChanges+=Number(row.amount)||0;groups.set(key,group)});
  const list=$("collectionsList"),empty=$("collectionsEmpty");
- if(list&&empty){empty.style.display=rows.length?"none":"block";list.innerHTML=rows.map(row=>`<div class="collection-row">
-   <span class="collection-kind ${row.kind}">${row.kind==="delivery"?"عند الاستلام":"قسط"}</span>
-   <div class="collection-main"><b>${esc(row.client)}</b><small>${formatPaymentDate(row.date)}</small></div>
-   <strong>${money(row.amount)} DH</strong>
- </div>`).join("")}
+ if(list&&empty){empty.style.display=groups.size?"none":"block";list.innerHTML=[...groups.values()].map(group=>`<section class="collection-client-card"><div class="collection-client-head"><div><b>${esc(group.client)}</b><small>${group.rows.length} عملية مسجلة</small></div><div class="collection-client-totals"><span>الأقساط<strong>${money(group.installments)} DH</strong></span><span>تغيير الأثمنة<strong>${money(group.priceChanges)} DH</strong></span></div></div><div class="collection-client-rows">${group.rows.map(row=>row.kind==="installment"?`<div class="collection-item installment"><span class="collection-kind installment">قسط</span><div class="collection-main"><b>${esc(group.client)}</b><small>${formatPaymentDate(row.date)}</small></div><strong>${money(row.amount)} DH</strong></div>`:`<div class="collection-item price-change"><span class="collection-kind price-change">ثمن</span><div class="collection-main"><b>${esc(row.productName)}${row.productCode?` · ${esc(row.productCode)}`:""}</b><small>${formatPaymentDate(row.date)} · ${money(row.oldPrice)} → ${money(row.newPrice)} DH</small></div><strong>${row.difference>0?"+":"−"}${money(Math.abs(row.difference))} DH</strong></div>`).join("")}</div></section>`).join("")}
  renderCollectionsHistory();
 }
 function resetCollections(){
@@ -1982,7 +1967,7 @@ function resetCollections(){
  if(!rows.length){toast("ما كاين حتى استخلاص في الدورة الحالية باش تصفرها");return}
  if(!confirm("واش بغيتي تصفر الدورة الحالية؟ غادي تبقى محفوظة في السجل القديم بلا أسماء الزبناء."))return;
  const closedAt=new Date().toISOString(),history=collectionHistory();
- history.unshift({id:makeId(),from:startAt,to:closedAt,closedAt,deliveryTotal:totals.deliveryTotal,installmentsTotal:totals.installmentsTotal,grandTotal:totals.grandTotal,deliveryCount:totals.deliveryRows.length,installmentsCount:totals.installmentRows.length});
+ history.unshift({id:makeId(),from:startAt,to:closedAt,closedAt,installmentsTotal:totals.installmentsTotal,priceChangesTotal:totals.priceChangesTotal,installmentsCount:totals.installmentRows.length,priceChangesCount:totals.priceChangeRows.length});
  localStorage.setItem(COLLECTIONS_HISTORY_KEY,JSON.stringify(history.slice(0,100)));
  localStorage.setItem(COLLECTIONS_CYCLE_KEY,closedAt);
  renderCollections();
@@ -2004,7 +1989,7 @@ function dashboardMonthLabel(key){
  return new Date(year,month-1,1).toLocaleDateString("fr-FR",{month:"long",year:"numeric"});
 }
 function dashboardOrdersForMonth(selectedMonth){
- return orders.filter(order=>monthKey(order.date)===selectedMonth);
+ return orders.filter(order=>monthKey(order.date)===selectedMonth).map(order=>{recalculateOrderPaymentState(order);return order});
 }
 function dashboardDestroyCharts(){
  if(topProductsChart){topProductsChart.destroy();topProductsChart=null}
@@ -2116,7 +2101,7 @@ function orderItemsForDisplay(order){
    const paidUnits=Number(row.paidUnits ?? (units*boxes)) || 0;
    const freeUnits=Number(row.freeUnits ?? (hasPromo10Plus1(p)?Math.floor(paidUnits/10):0)) || 0;
    const lineTotal=Number(row.lineTotal ?? (unitPrice*paidUnits)) || 0;
-   return {name,boxes,units,paidUnits,freeUnits,deliveredUnits:paidUnits+freeUnits,unitPrice,lineTotal,promotion:freeUnits>0?"10 + 1 Gratuit":""};
+   return {name,boxes,units,paidUnits,totalPieces:paidUnits,freeUnits,deliveredUnits:paidUnits+freeUnits,unitPrice,lineTotal,promotion:freeUnits>0?"10 + 1 Gratuit":""};
  });
 }
 function openOrderDetail(orderId){
@@ -2128,11 +2113,15 @@ function openOrderDetail(orderId){
  const d=new Date(o.date);
  const date=d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"});
  const time=d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
+ recalculateOrderPaymentState(o);
  const total=Number(o.total)||0;
  const payments=getPaymentHistory(o);
+ const priceChanges=getPriceChangeHistory(o);
  const paid=paymentTotal(o);
  const due=Math.max(0,total-paid);
  const items=orderItemsForDisplay(o);
+ const priceChangesTotal=priceChanges.reduce((sum,change)=>sum+Math.abs(priceChangeAdjustment(o,change)),0);
+ const priceChangesHtml=priceChanges.length?`<div class="detail-price-changes"><div class="detail-price-changes-head"><span>تغييرات أثمنة المنتوجات</span><strong>${money(priceChangesTotal)} DH</strong></div><div class="price-change-list">${priceChanges.map(change=>{const oldPrice=Number(change.oldPrice)||0,newPrice=Number(change.newPrice)||0,difference=priceChangeUnitDifference(change),quantity=priceChangeQuantity(o,change),adjustment=priceChangeAdjustment(o,change);return `<div class="price-change-row"><span class="price-change-index">↕</span><div><b>${esc(change.productName||"منتوج")}${change.productCode?` · ${esc(change.productCode)}`:""}</b><small>${formatPaymentDate(change.date)} · الثمن: ${money(oldPrice)} → ${money(newPrice)} DH · الكمية: ${quantity} · أثر العملية: ${adjustment>0?"+":"−"}${money(Math.abs(adjustment))} DH</small></div><strong class="${adjustment>0?"price-up":"price-down"}">${adjustment>0?"+":"−"}${money(Math.abs(adjustment))} DH</strong></div>`}).join("")}</div></div>`:"";
  $("orderDetailTitle").textContent="Commande de "+(o.client||"Client");
  $("orderDetailBody").innerHTML=`
    <div class="detail-client">
@@ -2143,12 +2132,13 @@ function openOrderDetail(orderId){
      <div><span>Date</span><strong>${date} · ${time}</strong></div>
    </div>
    <div class="detail-products">
-     <div class="detail-products-head"><span>Produit</span><span>Boîtes</span><span>Unités/boîte</span><span>Prix</span><span>Total</span></div>
+     <div class="detail-products-head"><span>Produit</span><span>Boîtes</span><span>Pièces/boîte</span><span>Total pièces</span><span>Prix</span><span>Total</span></div>
      ${items.length?items.map(it=>`
        <div class="detail-product-row">
          <strong>${esc(it.name)}${it.freeUnits>0?`<small class="detail-promo-note">🎁 +${it.freeUnits} gratuit · livré ${it.deliveredUnits}</small>`:""}</strong>
          <span>${it.boxes}</span>
          <span>${it.units}</span>
+         <span>${it.totalPieces}</span>
          <span>${money(it.unitPrice)} DH</span>
          <b>${money(it.lineTotal)} DH</b>
        </div>`).join(""):`<div class="detail-empty">Aucun produit enregistré dans cette commande.</div>`}
@@ -2158,10 +2148,14 @@ function openOrderDetail(orderId){
    <div class="detail-installments">
      <div class="detail-installments-head"><span>سجل الأقساط</span><strong>مجموع الأقساط: ${money(paid)} DH</strong></div>
      <div class="installment-list">${payments.length?payments.map((p,index)=>`<div class="installment-row"><span class="installment-index">${index+1}</span><div><b>قسط رقم ${index+1}</b><small class="installment-date">${formatPaymentDate(p.date)}</small></div><strong class="installment-amount">${money(p.amount)} DH</strong></div>`).join(""):`<div class="installment-empty">لم يتم تسجيل أي قسط بعد.</div>`}</div>
+     ${priceChangesHtml}
    </div>
+   <button class="customer-btn full" id="detailResendOrderImageBtn" type="button">🖼️ إعادة إرسال الصورة للزبون</button>
    <button class="gold-btn full" id="detailPaymentBtn" type="button">💰 إدخال ثمن القسط / أداء</button>
  `;
  $("orderDetailModal").classList.add("show");
+ const resendImageBtn=$("detailResendOrderImageBtn");
+ if(resendImageBtn) resendImageBtn.onclick=()=>shareOrderPDF(o);
  const payBtn=$("detailPaymentBtn");
  if(payBtn) payBtn.onclick=()=>{addPayment(o.id);openOrderDetail(o.id)};
 }
@@ -2326,7 +2320,8 @@ $("closePaymentModal").onclick=closePaymentModal;
 $("paymentModal").onclick=e=>{if(e.target===$("paymentModal"))closePaymentModal()};
 $("paymentForm").onsubmit=savePaymentForm;
 $("paymentAmount").oninput=updatePaymentPreview;
-$("paymentCustomerBtn").onclick=sharePaymentSummaryWithCustomer;
+$("paymentOnlyPriceToggle").onchange=syncPaymentOnlyMode;
+$("addPaymentPriceChange").onclick=()=>addPaymentPriceChangeRow();
 
 document.querySelectorAll('input[name="orderPaymentTermChoice"],input[name="orderPaymentTypeChoice"]').forEach(input=>input.addEventListener("change",syncOrderChoiceCards));
 $("orderClient").oninput=event=>renderClientSuggestions(event.target.value);

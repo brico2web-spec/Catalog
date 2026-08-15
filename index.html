@@ -38,6 +38,8 @@
     <button class="menu-btn" id="menuBtn" aria-label="Menu">⋮</button>
     <div class="action-menu" id="actionMenu">
       <div class="menu-section-title"><span>01</span> التسيير التجاري</div>
+      <button id="menuInstallments"><span class="mi collections"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="m7 15 3-4 3 2 5-7"/><path d="M17 6h1v1"/></svg></span><div><b>الأقساط</b><small>تتبع الأقساط والمستخلاصات</small></div></button>
+      <button id="menuPriceChanges"><span class="mi edit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2 2 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg></span><div><b>تغيير الأثمنة</b><small>تعديل ثمن المنتوج ومستويات الكمية</small></div></button>
       <button id="menuClientsDirectory"><span class="mi clients"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span><div><b>صفحة الزبناء</b><small>المدن · الكليان · تعديل وفوترة</small></div></button>
       <button id="menuOrders"><span class="mi orders"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></span><div><b>الطلبيات</b><small>الكوموندات · الخلاص · الربح</small></div></button>
       <button id="menuCollections"><span class="mi collections"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="m7 15 3-4 3 2 5-7"/><path d="M17 6h1v1"/></svg></span><div><b>تتبع المستخلاصات</b><small>عند الاستلام · الأقساط · المجموع الإجمالي</small></div></button>
@@ -419,11 +421,10 @@
       <div><small class="modal-kicker">SUIVI DES RÈGLEMENTS</small><h3>تتبع المستخلاصات</h3></div>
       <button class="close" id="closeCollections" aria-label="إغلاق تتبع المستخلاصات">×</button>
     </div>
-    <div class="collections-intro">هذا الملخص يجمع قيمة الكوموندات المبرمجة للاستخلاص عند الاستلام، وجميع الأقساط المسجلة في الكوموندات المؤجلة.</div>
+    <div class="collections-intro">هنا كيبانو غير الكليان اللي عندهم أقساط أو تغييرات أثمنة، وكل كليان بوحدو مع مجموع الأقساط وتفاصيل الثمن اللي تبدل.</div>
     <div class="collections-summary">
-      <div class="collection-card delivery"><small>المستخلصات عند الاستلام</small><strong id="collectionsDeliveryTotal">0,00 DH</strong><span id="collectionsDeliveryCount">0 كوموند</span></div>
-      <div class="collection-card installments"><small>مجموع الأقساط المؤداة</small><strong id="collectionsInstallmentsTotal">0,00 DH</strong><span id="collectionsInstallmentsCount">0 قسط</span></div>
-      <div class="collection-card total"><small>المجموع الإجمالي</small><strong id="collectionsGrandTotal">0,00 DH</strong><span id="collectionsGrandCount">0 عملية</span></div>
+      <div class="collection-card installments"><small>مجموع الأقساط</small><strong id="collectionsInstallmentsTotal">0,00 DH</strong><span id="collectionsInstallmentsCount">0 قسط</span></div>
+      <div class="collection-card price-changes"><small>قيمة تغييرات الأثمنة</small><strong id="collectionsPriceChangesTotal">0,00 DH</strong><span id="collectionsPriceChangesCount">0 تغيير</span></div>
     </div>
     <div class="collections-toolbar"><div><b>الدورة الحالية</b><small>من تاريخ <span id="collectionsCycleDate">—</span> · تفاصيل العمليات الحالية</small></div><div class="collections-toolbar-actions"><button id="refreshCollections" type="button">↻ تحديث</button><button id="resetCollections" class="collections-reset-btn" type="button">تصفير الدورة</button></div></div>
     <div id="collectionsList" class="collections-list"></div>
@@ -475,15 +476,24 @@
     <div class="payment-context" id="paymentContext">—</div>
     <div class="payment-now"><span>تاريخ ووقت القسط</span><strong id="paymentNow">—</strong></div>
     <form id="paymentForm">
-      <label>مبلغ القسط (DH)
-        <input id="paymentAmount" type="number" min="0.01" step="0.01" required placeholder="مثلاً: 500">
+      <label class="payment-only-toggle"><input id="paymentOnlyPriceToggle" type="checkbox"><span>تغيير الأثمنة فقط بدون تسجيل قسط</span></label>
+      <label>رقم البون / N. Bon Commande
+        <input id="paymentOrderCode" placeholder="Ex: CMD-2026-001" autocomplete="off" dir="ltr">
+      </label>
+      <label id="paymentAmountLabel">مبلغ القسط (DH) <small>اختياري إذا اخترت تغيير الأثمنة فقط</small>
+        <input id="paymentAmount" type="number" min="0.01" step="0.01" placeholder="مثلاً: 500">
       </label>
       <div class="payment-preview-grid">
         <div><span>الباقي قبل القسط</span><strong id="paymentBeforeDue">0,00 DH</strong></div>
         <div><span>مجموع الأقساط بعده</span><strong id="paymentAfterTotal">0,00 DH</strong></div>
         <div><span>الباقي بعد القسط</span><strong id="paymentAfterDue">0,00 DH</strong></div>
       </div>
-      <div class="payment-form-actions"><button class="gold-btn full" type="submit">💰 حفظ القسط</button><button id="paymentCustomerBtn" class="customer-btn full" type="button">📲 إرسال ملخص للزبون</button></div>
+      <section class="payment-price-change-box" aria-labelledby="paymentPriceChangeTitle">
+        <div class="payment-price-change-head"><div><b id="paymentPriceChangeTitle">تغيير ثمن خاص للزبون</b><small>غير المنتوجات اللي طلب الكليان فهاد الكوموند؛ تقدر تبدل الثمن بلا قسط.</small></div><strong id="paymentPriceChangeTotal">0,00 DH</strong></div>
+        <div id="paymentPriceChanges" class="payment-price-changes"></div>
+        <button id="addPaymentPriceChange" class="add-price-change-btn" type="button">＋ إضافة تغيير ثمن</button>
+      </section>
+      <div class="payment-form-actions"><button id="paymentSaveShareBtn" class="gold-btn full" type="submit">💾 حفظ وإرسال للزبون</button></div>
     </form>
   </div>
 </div>
@@ -548,7 +558,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-<script src="ai-agent-reports.js?v=20260815-0933"></script>
+<script src="ai-agent-reports.js?v=20260815-1512"></script>
 <script src="app.js"></script>
 
 <!-- إشعارات آجال الاستخلاص تظهر أسفل محتوى الصفحة -->

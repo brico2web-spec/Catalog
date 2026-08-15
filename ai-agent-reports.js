@@ -4,6 +4,10 @@
   const norm=value=>String(value||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f\u064B-\u065F]/g,"").replace(/\s+/g," ").trim();
   const amount=value=>Number(value)||0;
   const moneyValue=value=>`${amount(value).toFixed(2)}Dh`;
+  const changeMatchesItem=(change,item)=>{const id=String(change?.productId||""),code=norm(change?.productCode),name=norm(change?.productName);return (id&&String(item?.id||"")===id)||(code&&code===norm(item?.code))||(name&&name===norm(item?.name||item?.productName))};
+  const changeQuantity=(order,change)=>{const stored=amount(change?.quantity??change?.paidUnits);if(stored>0)return stored;const item=safeArray(order?.items).find(row=>changeMatchesItem(change,row));return Math.max(1,amount(item?.paidUnits??item?.units??item?.qty??item?.boxes)||1)};
+  const changeAdjustment=(order,change)=>{const stored=Number(change?.adjustment);if(Number.isFinite(stored))return stored;return (amount(change?.difference)||(amount(change?.newPrice)-amount(change?.oldPrice)))*changeQuantity(order,change)};
+  const orderAdjustment=order=>safeArray(order?.priceChanges).reduce((sum,change)=>sum+changeAdjustment(order,change),0);
   const dateValue=value=>{const d=new Date(value);return Number.isNaN(d.getTime())?null:d};
   const monthKey=value=>{const d=dateValue(value);return d?`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`:"بدون تاريخ"};
   const monthLabel=key=>{if(key==="بدون تاريخ")return key;const [y,m]=String(key).split("-").map(Number);const d=new Date(y,m-1,1);return d.toLocaleDateString("fr-FR",{month:"long",year:"numeric"})};
@@ -21,15 +25,17 @@
   const clientIndex=()=>{
     const map=new Map();safeArray(window.clients||clients).forEach(client=>{const name=clientName(client);if(name)map.set(norm(name),client)});return map;
   };
-  const orderState=order=>{try{if(typeof ensureOrderDeadline==="function")ensureOrderDeadline(order);if(typeof recalculateOrderPaymentState==="function")return recalculateOrderPaymentState(order)}catch(e){}return {paid:amount(order?.paid),due:Math.max(0,amount(order?.due??(amount(order?.total)-amount(order?.paid))))}};
+  const orderState=order=>{try{if(typeof ensureOrderDeadline==="function")ensureOrderDeadline(order)}catch(e){}try{if(typeof recalculateOrderPaymentState==="function")return recalculateOrderPaymentState(order)}catch(e){}return {paid:amount(order?.paid),due:Math.max(0,amount(order?.due??(amount(order?.total)-amount(order?.paid))))}};
   const orderCity=(order,index)=>{const direct=order?.city||order?.ville||order?.clientCity;if(direct)return String(direct).trim();const client=index.get(norm(order?.client||""));return client?clientCity(client):"بدون مدينة"};
   const rowsForProducts=()=>{
     const map=new Map();
     safeArray(window.orders||orders).forEach(order=>safeArray(order.items).forEach(item=>{
       const name=String(item.name||item.productName||item.code||item.id||"منتوج بدون اسم").trim();const key=norm(name)||"بدون اسم";
       const row=map.get(key)||{name,units:0,sales:0,orders:0};
+      const baseLine=amount(item.lineTotal??item.total??((amount(item.unitPrice)*amount(item.paidUnits??item.units??item.quantity??item.qty??item.boxes))));
+      const adjustment=safeArray(order.priceChanges).filter(change=>changeMatchesItem(change,item)).reduce((sum,change)=>sum+changeAdjustment(order,change),0);
       row.units+=amount(item.paidUnits??item.units??item.quantity??item.qty??item.boxes);
-      row.sales+=amount(item.lineTotal??item.total??((amount(item.unitPrice)*amount(item.paidUnits??item.units??item.quantity??item.qty??item.boxes))));row.orders++;map.set(key,row);
+      row.sales+=baseLine+adjustment;row.orders++;map.set(key,row);
     }));
     return [...map.values()].sort((a,b)=>b.sales-a.sales||b.units-a.units);
   };
