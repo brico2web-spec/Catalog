@@ -428,14 +428,6 @@ function card(p){
 /* Menu administration — accès direct, sans code PIN */
 $("menuBtn").onclick=e=>{e.stopPropagation();$("actionMenu").classList.toggle("show")};
 document.addEventListener("click",e=>{if(!$("actionMenu").contains(e.target)&&e.target!==$("menuBtn"))$("actionMenu").classList.remove("show")});
-  $("menuInstallments").onclick=()=>{$("actionMenu").classList.remove("show");openCollections()};
-  $("menuPriceChanges").onclick=()=>{
-   $("actionMenu").classList.remove("show");
-   const visibleCard=carouselCards()[carouselIndex],visibleId=visibleCard?.dataset.id;
-   const targetId=selectedProductId||visibleId,p=products.find(x=>String(x.id)===String(targetId));
-   if(!p)return toast("ما كاين حتى منتوج باش تبدل الثمن");
-   selectedProductId=p.id;openForm(p);
-  };
   $("menuAdd").onclick=()=>{$("actionMenu").classList.remove("show");openForm()};
 $("menuEdit").onclick=()=>{
  $("actionMenu").classList.remove("show");
@@ -454,8 +446,8 @@ $("menuClients").onclick=()=>{$("actionMenu").classList.remove("show");openClien
 $("menuImportClients").onclick=()=>{$("actionMenu").classList.remove("show");$("clientsExcelInput").click()};
 $("menuExportProductsJson").onclick=()=>{$("actionMenu").classList.remove("show");exportLightBackup()};
 $("menuImportProductsJson").onclick=()=>{$("actionMenu").classList.remove("show");const input=$("backupInput");if(input){input.value="";input.click()}};
-$("menuExportProductsFullJson").onclick=()=>{$("actionMenu").classList.remove("show");exportBackup()};
-$("menuImportProductsFullJson").onclick=()=>{$("actionMenu").classList.remove("show");const input=$("fullProductsJsonInput");if(input){input.value="";input.click()}};
+const fullExportButton=$("menuExportProductsFullJson");if(fullExportButton)fullExportButton.onclick=()=>{$("actionMenu").classList.remove("show");exportBackup()};
+const fullImportButton=$("menuImportProductsFullJson");if(fullImportButton)fullImportButton.onclick=()=>{$("actionMenu").classList.remove("show");const input=$("fullProductsJsonInput");if(input){input.value="";input.click()}};
 $("allExcelRestoreInput").onchange=e=>importFullArchiveExcel(e.target.files[0]);
 $("menuDashboard").onclick=()=>openDashboard();
 $("exportOrdersArchiveExcel").onclick=exportOrdersArchiveExcel;
@@ -483,29 +475,30 @@ function backupProductSnapshot(p,index,includeImage=true){
    promo10Plus1:hasPromo10Plus1(p)
   };
 }
-function exportBackup(){
+async function exportBackup(){
  const backup={
-   format:"3D_PEINTURES_PRODUCTS_IMAGES_JSON",
-   version:3,
-   createdAt:new Date().toISOString(),
-   catalogUpdatedAt:catalogLastUpdate(),
-   activeCategory:active,
-   products:products.map(backupProductSnapshot),
-   cart:Array.isArray(cart)?cart:[],
-   orders:Array.isArray(orders)?orders:[],
-   clients:Array.isArray(clients)?clients:[]
+  format:"3D_PEINTURES_PRODUCTS_IMAGES_JSON",
+  version:4,
+  createdAt:new Date().toISOString(),
+  catalogUpdatedAt:catalogLastUpdate(),
+  activeCategory:active,
+  products:(Array.isArray(products)?products:[]).map((p,i)=>backupProductSnapshot(p,i,true)),
+  cart:Array.isArray(cart)?cart:[],
+  orders:Array.isArray(orders)?orders:[],
+  clients:Array.isArray(clients)?clients:[]
  };
- const blob=new Blob([JSON.stringify(backup)],{type:"application/json;charset=utf-8"});
- const url=URL.createObjectURL(blob);
- const a=document.createElement("a");
- const d=new Date();
- const pad=n=>String(n).padStart(2,"0");
- a.href=url;
- a.download=`3D_PEINTURES_PRODUITS_IMAGES_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.json`;
- document.body.appendChild(a);a.click();a.remove();
- setTimeout(()=>URL.revokeObjectURL(url),3000);
- toast(`تم تحميل ${products.length} منتوج(ات) مع الصور والمعلومات بصيغة JSON`);
- }
+ const text=JSON.stringify(backup),d=new Date(),pad=n=>String(n).padStart(2,"0"),name=`3D_PEINTURES_PRODUITS_IMAGES_${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}.json`,fileType="application/json;charset=utf-8";
+ try{
+  const file=new File([text],name,{type:fileType});
+  if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){await navigator.share({title:"منتوجات وصور 3D PEINTURES",text:"نسخة المنتجات مع الصور والمعلومات",files:[file]});toast(`تمت مشاركة ${products.length} منتوج(ات) مع الصور`);return}
+ }catch(err){if(err?.name==="AbortError")return;console.warn("Full products share failed",err)}
+ try{
+  const blob=new Blob([text],{type:fileType}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;a.rel="noopener";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),5000);toast(`تم تحميل ${products.length} منتوج(ات) مع الصور والمعلومات`);return
+ }catch(err){console.warn("Full products download failed",err)}
+ if(openTextBackupWindow(text,name)){toast("تم فتح ملف المنتجات والصور؛ احفظه من النافذة");return}
+ if(await copyBackupToClipboard(text)){toast("تعذر التنزيل؛ تم نسخ ملف المنتجات والصور إلى الحافظة")}
+ else toast("تعذر تحميل الملف. جرب مرة أخرى أو استعمل النسخة الخفيفة.");
+}
 
 function exportProductsJson(){
  const payload={format:"3D_PEINTURES_PRODUCTS_BACKUP",version:1,createdAt:new Date().toISOString(),activeCategory:active,products:(Array.isArray(products)?products:[]).map((p,i)=>backupProductSnapshot(p,i,false))};
@@ -1520,7 +1513,7 @@ async function createOrderImage(order){
   if(!window.html2canvas)throw new Error("html2canvas unavailable");
   recalculateOrderPaymentState(order);
   const deadline=deadlineState(order),isCodTerm=deadline.termKey==="cod",dueDateText=deadline.dueDate?deadline.dueDate.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"}):"—";
-  const dueNoticeHtml=isCodTerm?`<div style="margin-top:18px;padding:14px 16px;border:3px solid #b42318;border-radius:13px;background:#fff1f0;color:#b42318;text-align:center;font-size:21px;font-weight:900">طريقة الاستخلاص: عند الاستلام</div>`:`<div style="margin-top:18px;padding:14px 16px;border:3px solid #b42318;border-radius:13px;background:#fff1f0;color:#b42318;text-align:center;font-size:21px;font-weight:900">آخر أجل للاستخلاص: ${dueDateText}</div>`;
+  const isFullyPaid=Math.max(0,Number(order.total||0)-paymentTotal(order))<=0.000001;const dueNoticeHtml=isFullyPaid?`<div style="margin-top:18px;padding:14px 16px;border:3px solid #17824b;border-radius:13px;background:#ecfdf3;color:#087443;text-align:center;font-size:22px;font-weight:950">✓ خالص بالكامل</div>`:isCodTerm?`<div style="margin-top:18px;padding:14px 16px;border:3px solid #b42318;border-radius:13px;background:#fff1f0;color:#b42318;text-align:center;font-size:21px;font-weight:900">طريقة الاستخلاص: عند الاستلام</div>`:`<div style="margin-top:18px;padding:14px 16px;border:3px solid #b42318;border-radius:13px;background:#fff1f0;color:#b42318;text-align:center;font-size:21px;font-weight:900">آخر أجل للاستخلاص: ${dueDateText}</div>`;
   const d=new Date(order.date),date=d.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"}),time=d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}),changes=getPriceChangeHistory(order),payments=getPaymentHistory(order),paid=paymentTotal(order),total=Number(order.total)||0,baseTotal=Number(order.baseTotal),hasChanges=changes.length>0,priceAdjustmentTotal=changes.reduce((sum,change)=>sum+priceChangeAdjustment(order,change),0);
   const itemChangeRows=(row)=>changes.filter(change=>{const matched=priceChangeOrderItem(order,change);if(!matched)return false;const rowId=String(row.id||"").trim(),matchedId=String(matched.id||"").trim(),rowCode=String(row.code||"").trim().toLowerCase(),matchedCode=String(matched.code||"").trim().toLowerCase(),rowName=String(row.name||"").trim().toLowerCase(),matchedName=String(matched.name||"").trim().toLowerCase();return matched===row||(rowId&&matchedId&&rowId===matchedId)||(rowCode&&matchedCode&&rowCode===matchedCode)||(rowName&&matchedName&&rowName===matchedName)});
   const rows=(Array.isArray(order.items)?order.items:[]).map(row=>{const p=products.find(x=>String(x.id)===String(row.id))||{},boxes=Number(row.qty??row.boxes)||0,units=Number(row.units??p.qty)||0,unitPrice=Number(row.unitPrice??p.price)||0,paidUnits=Number(row.paidUnits??(boxes*units))||0,freeUnits=Number(row.freeUnits??(hasPromo10Plus1(p)?Math.floor(paidUnits/10):0))||0,deliveredUnits=paidUnits+freeUnits,baseLine=Number(row.lineTotal??(unitPrice*paidUnits))||0,rowChanges=itemChangeRows(row),rowAdjustment=rowChanges.reduce((sum,change)=>sum+priceChangeAdjustment(order,change),0),adjustedLine=Math.max(0,baseLine+rowAdjustment),lastChange=rowChanges[rowChanges.length-1],oldMarkup=lastChange?`<span style="text-decoration:line-through;color:#98a2b3;margin-right:8px">${money(lastChange.oldPrice)} DH</span><b style="color:#087443">${money(lastChange.newPrice)} DH</b><small style="display:block;color:#087443;margin-top:3px">تغيير محسوب على ${priceChangeQuantity(order,lastChange)} وحدة</small>`:`<b>${money(unitPrice)} DH</b>`;return `<tr><td style="padding:12px;border-bottom:1px solid #e4e8ef;text-align:left"><b>${esc(row.name||p.name||"منتوج")}</b>${freeUnits?`<small style="display:block;color:#b42318;margin-top:4px">عرض 10 + 1 · مجاني: ${freeUnits} · مجموع التسليم: ${deliveredUnits}</small>`:""}</td><td style="padding:12px;border-bottom:1px solid #e4e8ef;text-align:center">${boxes}</td><td style="padding:12px;border-bottom:1px solid #e4e8ef;text-align:center">${units}</td><td style="padding:12px;border-bottom:1px solid #e4e8ef;text-align:center;font-weight:800">${paidUnits}</td><td style="padding:12px;border-bottom:1px solid #e4e8ef;text-align:center">${oldMarkup}</td><td style="padding:12px;border-bottom:1px solid #e4e8ef;text-align:center;font-weight:900">${money(adjustedLine)} DH</td></tr>`}).join("");
@@ -1662,7 +1655,7 @@ async function sharePaymentOperationImage(context={}){
  if(amount>before+0.000001){alert(`المبلغ أكبر من الباقي: ${money(before)} DH`);return}
  const accepted=Math.min(amount,before),afterDue=Number.isFinite(Number(context.afterDue))?Math.max(0,Number(context.afterDue)):Math.max(0,before-accepted),totalPaidForImage=Number.isFinite(Number(context.totalPaidAfter))?Number(context.totalPaidAfter):paymentTotal(order)+accepted,adjustedTotal=Number(order.total)||0,hasPaymentOperation=amount>0,hasPriceOperation=priceChanges.length>0,operationTitle=hasPaymentOperation&&hasPriceOperation?"ملخص القسط وتغيير الثمن":hasPaymentOperation?"ملخص عملية الأداء":"ملخص تغيير الأثمنة",currentAmountLabel=hasPaymentOperation?"القسط الحالي":"تغيير الثمن فقط",now=new Date(),date=now.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"}),time=now.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
  const root=document.createElement("div");root.dir="ltr";root.style.cssText="position:fixed;left:-10000px;top:0;width:760px;min-height:400px;background:#f5f7fb;color:#172033;padding:28px;font-family:Arial,'Noto Naskh Arabic',sans-serif;box-sizing:border-box;z-index:999999;visibility:visible;opacity:1;direction:ltr;text-align:left";
- const deadline=deadlineState(order),isCodTerm=deadline.termKey==="cod",dueDateText=deadline.dueDate?deadline.dueDate.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"}):"—",dueNoticeHtml=isCodTerm?`<div style="margin-top:18px;padding:14px 16px;border:3px solid #b42318;border-radius:13px;background:#fff1f0;color:#b42318;text-align:center;font-size:20px;font-weight:900">طريقة الاستخلاص: عند الاستلام</div>`:`<div style="margin-top:18px;padding:14px 16px;border:3px solid #b42318;border-radius:13px;background:#fff1f0;color:#b42318;text-align:center;font-size:20px;font-weight:900">آخر أجل للاستخلاص: ${dueDateText}</div>`;
+ const deadline=deadlineState(order),isCodTerm=deadline.termKey==="cod",dueDateText=deadline.dueDate?deadline.dueDate.toLocaleDateString("fr-FR",{day:"2-digit",month:"2-digit",year:"numeric"}):"—",isFullyPaid=afterDue<=0.000001,dueNoticeHtml=isFullyPaid?`<div style="margin-top:18px;padding:14px 16px;border:3px solid #17824b;border-radius:13px;background:#ecfdf3;color:#087443;text-align:center;font-size:22px;font-weight:950">✓ خالص بالكامل</div>`:isCodTerm?`<div style="margin-top:18px;padding:14px 16px;border:3px solid #b42318;border-radius:13px;background:#fff1f0;color:#b42318;text-align:center;font-size:20px;font-weight:900">طريقة الاستخلاص: عند الاستلام</div>`:`<div style="margin-top:18px;padding:14px 16px;border:3px solid #b42318;border-radius:13px;background:#fff1f0;color:#b42318;text-align:center;font-size:20px;font-weight:900">آخر أجل للاستخلاص: ${dueDateText}</div>`;
  const priceChangesTotal=priceChanges.reduce((sum,change)=>sum+Math.abs(priceChangeAdjustment(order,change)),0),paymentHistoryHtml=paymentHistory.length?paymentHistory.map((payment,index)=>`<div style="display:flex;justify-content:space-between;gap:8px;padding:9px 10px;border:1px solid #e4e8ef;border-radius:10px;background:#f7f9fc;margin-top:7px"><span><b>قسط رقم ${index+1}</b><small style="display:block;color:#667085;margin-top:3px">${formatPaymentDate(payment.date)}</small></span><strong style="color:#173f78">${money(payment.amount)} DH</strong></div>`).join(""):`<div style="padding:10px;color:#98a2b3;text-align:center">مازال ما تسجل حتى قسط</div>`,changesHtml=priceChanges.length?priceChanges.map(change=>{const difference=priceChangeUnitDifference(change),quantity=priceChangeQuantity(order,change),adjustment=priceChangeAdjustment(order,change);return `<div style="display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:13px 14px;border:1px solid #ead9ad;border-radius:12px;background:#fffaf0;margin-top:8px"><div><b style="display:block;font-size:15px;color:#172033">${esc(change.productName)}${change.productCode?` · ${change.productCode}`:""}</b><span style="display:block;margin-top:5px;color:#667085;font-size:12px">الثمن القديم: ${money(change.oldPrice)} DH · الثمن الجديد: ${money(change.newPrice)} DH · الكمية: ${quantity}</span><span style="display:block;margin-top:4px;color:${adjustment>0?"#b42318":"#087443"};font-size:12px;font-weight:800">أثر التغيير على الكوموند: ${adjustment>0?"+":"−"}${money(Math.abs(adjustment))} DH</span></div><strong style="font-size:16px;color:${adjustment>0?"#b42318":"#087443"};direction:ltr">${adjustment>0?"+":"−"}${money(Math.abs(adjustment))} DH</strong></div>`}).join(""):"<div style=\"padding:13px;border:1px dashed #d8dee8;border-radius:12px;background:#fff;color:#98a2b3;text-align:center;font-size:12px\">ما تسجل حتى تغيير فالثمن مع هاد القسط.</div>";
  const paymentSectionHtml=hasPaymentOperation?`<div style="font-size:17px;font-weight:900;color:#173f78;margin:18px 0 8px">سجل الأقساط السابقة</div><div style="padding:10px;border:1px solid #e4e8ef;border-radius:12px;background:#f7f9fc">${paymentHistoryHtml}</div>`:"";
  const changesSectionHtml=hasPriceOperation?`<div style="font-size:17px;font-weight:900;color:#173f78;margin:18px 0 8px">تغيير أثمنة المنتوجات <span style="font-size:13px;color:#667085">(${money(priceChangesTotal)} DH)</span></div>${changesHtml}`:"";
@@ -2135,7 +2128,7 @@ function openOrderDetail(orderId){
      ${priceChangesHtml}
    </div>
    <button class="customer-btn full" id="detailResendOrderImageBtn" type="button">🖼️ إعادة إرسال الصورة للزبون</button>
-   <button class="gold-btn full" id="detailPaymentBtn" type="button">💰 إدخال ثمن القسط / أداء</button>
+   ${due>0?`<button class="gold-btn full" id="detailPaymentBtn" type="button">💰 إدخال ثمن القسط / أداء</button>`:`<button class="paid-order-btn full" type="button" disabled aria-label="البون خالص">✓ البون خالص</button>`}
  `;
  $("orderDetailModal").classList.add("show");
  const resendImageBtn=$("detailResendOrderImageBtn");
