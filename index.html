@@ -38,20 +38,21 @@
     <button class="menu-btn" id="menuBtn" aria-label="Menu">⋮</button>
     <div class="action-menu" id="actionMenu">
       <div class="menu-section-title"><span>01</span> التسيير التجاري</div>
+      <button id="menuClientsDirectory"><span class="mi clients"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span><div><b>صفحة الزبناء</b><small>المدن · الكليان · تعديل وفوترة</small></div></button>
       <button id="menuOrders"><span class="mi orders"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></span><div><b>الطلبيات</b><small>الكوموندات · الخلاص · الربح</small></div></button>
       <button id="menuCollections"><span class="mi collections"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5"/><path d="M4 19h16"/><path d="m7 15 3-4 3 2 5-7"/><path d="M17 6h1v1"/></svg></span><div><b>تتبع المستخلاصات</b><small>عند الاستلام · الأقساط · المجموع الإجمالي</small></div></button>
       <button id="menuClients"><span class="mi clients"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></svg></span><div><b>معلومات الزبون</b><small>الكليان · الشركة · ICE · واتساب</small></div></button>
       <button id="menuImportClients"><span class="mi excel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h10l4 4v14H5z"/><path d="M15 3v5h4M8 12h8M8 16h8"/></svg></span><div><b>رفع ملف الزبناء</b><small>إضافة الكليان دفعة واحدة</small></div></button>
-      <div class="menu-section-title"><span>02</span> إدارة المنتوجات</div>
+      <div class="menu-section-title"><span>01</span> إدارة المنتوجات</div>
       <button id="menuAdd"><span class="mi add"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><div><b>إضافة منتوج</b><small>إضافة منتوج جديد</small></div></button>
       <button id="menuEdit"><span class="mi edit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2 2 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg></span><div><b>تعديل منتوج</b><small>تعديل المنتوج المحدد</small></div></button>
       <button id="menuDelete"><span class="mi delete"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 11v5m4-5v5"/></svg></span><div><b>حذف منتوج</b><small>حذف المنتوج المحدد</small></div></button>
-      <div class="menu-section-title"><span>03</span> تحميل واستيراد</div>
+      <div class="menu-section-title"><span>02</span> تحميل واستيراد</div>
       <button id="menuExportProductsJson"><span class="mi excel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 20h14"/><path d="M8 7h8"/></svg></span><div><b>نسخة احتياطية خفيفة</b><small>المنتجات · الكوموندات · الديون · الأقساط · المستخلاصات بدون صور</small></div></button>
       <button id="menuImportProductsJson"><span class="mi import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4 4 4M5 20h14"/><path d="M8 12h8"/></svg></span><div><b>رفع نسخة احتياطية خفيفة</b><small>استرجاع البيانات التجارية بدون صور</small></div></button>
       <button id="menuExportProductsFullJson"><span class="mi excel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 20h14"/><path d="M8 7h8"/></svg></span><div><b>تحميل المنتجات والصور</b><small>المعلومات · الأسعار · الأقسام · الصور</small></div></button>
       <button id="menuImportProductsFullJson"><span class="mi import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4 4 4M5 20h14"/><path d="M8 12h8"/></svg></span><div><b>رفع المنتجات والصور</b><small>إرجاع صور ومعلومات المنتجات إلى التطبيق</small></div></button>
-      <div class="menu-section-title"><span>04</span> التحليل</div>
+      <div class="menu-section-title"><span>03</span> التحليل</div>
       <button id="menuDashboard"><span class="mi dashboard"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16"/><path d="m7 15 3-4 3 2 5-7"/><path d="M17 6h1v1"/></svg></span><div><b>إحصائيات عامة</b><small>المبيعات · المنتجات · أوقات الذروة</small></div></button>
       <input id="allExcelRestoreInput" type="file" accept=".xlsx,.xls" hidden>
       <input id="fullProductsJsonInput" type="file" accept=".json,application/json" hidden>
@@ -344,7 +345,6 @@
       <label>WhatsApp<input id="clientWhatsapp" type="tel" placeholder="06XXXXXXXX"></label>
       <button class="gold-btn full" type="submit">✓ Enregistrer le client</button>
     </form>
-    <button class="clients-directory-toggle" id="clientsDirectoryToggle" type="button">👥 الزبناء</button>
     <button class="client-stats-toggle" id="clientStatsToggle" type="button">📊 كشف الزبناء والإحصائيات</button>
     <div class="client-stats-panel" id="clientStatsPanel">
       <div class="client-stats-toolbar">
@@ -381,8 +381,8 @@
       <div><small class="modal-kicker">CLIENTS</small><h3>الزبناء</h3></div>
       <button class="close" id="closeClientsDirectory" aria-label="إغلاق صفحة الزبناء">×</button>
     </div>
-    <div class="clients-directory-summary"><strong id="clientsDirectoryCount">0</strong><span>زبون مسجل</span><small>بحث سريع بالاسم أو الشركة أو ICE</small></div>
-    <div class="client-manager-search clients-directory-search"><span aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="10.8" cy="10.8" r="6.4"></circle><path d="m16 16 5 5"></path></svg></span><input id="clientsDirectorySearch" type="search" placeholder="قلب بالاسم أو الشركة أو ICE..." autocomplete="off"><button id="clearClientsDirectorySearch" type="button" aria-label="مسح بحث الزبناء">×</button></div>
+    <div class="clients-directory-summary"><strong id="clientsDirectoryCount">0</strong><span>زبون مسجل</span><small>المدن وعدد الزبناء · بلا إظهار الأسماء</small></div>
+    <div class="client-manager-search clients-directory-search"><span aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><circle cx="10.8" cy="10.8" r="6.4"></circle><path d="m16 16 5 5"></path></svg></span><input id="clientsDirectorySearch" type="search" placeholder="قلب باسم المدينة أو الشركة أو ICE..." autocomplete="off"><button id="clearClientsDirectorySearch" type="button" aria-label="مسح بحث المدن">×</button></div>
     <div id="clientsDirectoryList" class="clients-directory-list"></div>
   </div>
 </div>
@@ -502,6 +502,33 @@
   </div>
 </div>
 <div class="cart-overlay" id="cartOverlay"></div>
+
+<!-- AI Agent 3D PEINTURES — وكيل محلي بالدارجة المغربية -->
+<button class="site-assistant-toggle" id="siteAssistantToggle" type="button" aria-label="حل AI Agent 3D PEINTURES" aria-expanded="false">
+  <span class="site-assistant-spark" aria-hidden="true">✦</span><span>AI Agent 3D</span>
+</button>
+<aside class="site-assistant-panel" id="siteAssistantPanel" aria-hidden="true" aria-label="AI Agent 3D PEINTURES">
+  <div class="site-assistant-head">
+    <div class="site-assistant-identity"><span class="site-assistant-avatar" aria-hidden="true">✦</span><div><b>AI Agent 3D PEINTURES</b><small>وكيل محلي كيقرا معلومات الموقع والملفات</small></div></div>
+    <button class="site-assistant-close" id="siteAssistantClose" type="button" aria-label="إغلاق المساعد">×</button>
+  </div>
+  <div class="site-assistant-status"><i></i> كيخدم محليًا بلا API خارجي</div>
+  <div class="site-assistant-filebar"><button id="assistantFileButton" type="button">📎 رفع ملف</button><input id="assistantFileInput" type="file" accept=".xlsx,.xls,.csv,.pdf,.json,application/json,application/pdf" hidden><span id="assistantFileName">Excel · PDF · JSON</span></div>
+  <div class="site-assistant-messages" id="siteAssistantMessages" role="log" aria-live="polite">
+    <div class="assistant-message assistant-message-bot">سلام! أنا AI Agent 3D PEINTURES. سولني على المنتوجات، الثمن، العروض، السلة، الطلبيات، الأقساط، الملفات ولا كيفاش تستعمل الموقع.</div>
+  </div>
+  <div class="site-assistant-quick" aria-label="أسئلة سريعة">
+    <button type="button" data-assistant-question="شنو هما المنتوجات لي كاينين؟">المنتوجات</button>
+    <button type="button" data-assistant-question="شنو هما العروض والخصومات؟">العروض</button>
+    <button type="button" data-assistant-question="شنو كاين فالسلة ديالي؟">السلة</button>
+    <button type="button" data-assistant-question="كيفاش نصيفط الطلب؟">صيفط الطلب</button>
+  </div>
+  <form class="site-assistant-form" id="siteAssistantForm">
+    <input id="siteAssistantInput" type="text" autocomplete="off" placeholder="كتب السؤال هنا..." aria-label="اكتب سؤالك للمساعد">
+    <button type="submit" aria-label="إرسال السؤال">➤</button>
+  </form>
+</aside>
+
 <div class="toast" id="toast"></div>
 <input type="file" id="backupInput" accept=".json,.3dbackup,application/json" hidden>
 <input type="file" id="productsJsonInput" accept=".json,application/json" hidden>
@@ -510,6 +537,7 @@
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 <script src="app.js"></script>
 
 <!-- إشعارات آجال الاستخلاص تظهر أسفل محتوى الصفحة -->

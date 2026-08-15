@@ -1248,10 +1248,19 @@ async function shareClientBillingPDF(client){
 function normalizeClientSearch(value){return String(value||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim()}
 function renderClientsDirectory(){
  const box=$("clientsDirectoryList"),count=$("clientsDirectoryCount");if(!box)return;
- const query=normalizeClientSearch($("clientsDirectorySearch")?.value||"");
- const visibleClients=clients.filter(c=>!query||[c.name,c.company,c.city,c.ville,c.address,c.ice,c.phone,c.paymentHolder,c.paymentNumber,c.paymentName,c.chequeHolder,c.chequeNumber,c.chequeName,c.cambiale].some(value=>normalizeClientSearch(value).includes(query)));
+ const query=normalizeClientSearch($("clientsDirectorySearch")?.value||""),groups=new Map();
+ (Array.isArray(clients)?clients:[]).forEach(client=>{
+  const city=String(client.city||client.ville||"بدون مدينة").trim()||"بدون مدينة",haystack=[city,client.company,client.ice,client.phone,client.address].map(normalizeClientSearch).join(" ");
+  if(query&&!haystack.includes(query))return;
+  const key=normalizeClientSearch(city)||"بدون مدينة",group=groups.get(key)||{city,clients:0,companies:new Set(),orders:0,due:0,members:[]};group.clients++;group.members.push(client);
+  if(client.company||client.societe)group.companies.add(String(client.company||client.societe).trim());
+  (Array.isArray(orders)?orders:[]).filter(order=>normalizeClientSearch(order.client)===normalizeClientSearch(client.name)).forEach(order=>{group.orders++;try{group.due+=Math.max(0,Number(recalculateOrderPaymentState(order).due)||0)}catch(e){group.due+=Math.max(0,(Number(order.total)||0)-(Number(order.paid)||0))}});
+  groups.set(key,group);
+ });
  if(count)count.textContent=String(clients.length);
- box.innerHTML=visibleClients.map(c=>`<div class="client-directory-row"><div class="client-directory-main"><b>${esc(c.name||"زبون بدون اسم")}</b><small>${esc(c.city||c.ville||"")}${c.company?` · ${esc(c.company)}`:""}${c.ice?` · ICE ${esc(c.ice)}`:""}${c.phone?` · WhatsApp ${esc(c.phone)}`:""}</small></div><div class="client-directory-actions"><button type="button" data-directory-invoice="${esc(c.id)}">📄 Infos facturation</button><button type="button" data-directory-edit="${esc(c.id)}">تعديل</button></div></div>`).join("")||`<div class="cart-empty">${query?"ما لقيتش زبون مطابق للبحث.":"مازال ما تسجل حتى زبون."}</div>`;
+ const rows=[...groups.values()].sort((a,b)=>b.clients-a.clients||a.city.localeCompare(b.city,"fr"));
+ box.innerHTML=rows.length?rows.map((group,cityIndex)=>`<div class="client-city-card"><button class="client-city-toggle" type="button" data-city-index="${cityIndex}"><span class="client-city-heading"><span class="client-city-icon">⌂</span><span><b>${esc(group.city)}</b><small>ضغط باش تشوف الكليان ديال هاد المدينة</small></span><strong>${group.clients}</strong><em>⌄</em></span></button><div class="client-city-metrics"><span><b>${group.clients}</b><small>زبناء</small></span><span><b>${group.orders}</b><small>طلبيات</small></span><span><b>${money(group.due)} DH</b><small>الباقي</small></span></div><div class="client-city-members" data-city-members="${cityIndex}" hidden>${group.members.map(client=>`<div class="client-city-client"><div><b>${esc(client.name||"زبون بدون اسم")}</b><small>${esc(client.company||client.ice||client.phone||"")}</small></div><div class="client-directory-actions"><button type="button" data-directory-invoice="${esc(client.id)}">📄 Infos facturation</button><button type="button" data-directory-edit="${esc(client.id)}">تعديل</button></div></div>`).join("")}</div></div>`).join(""): `<div class="cart-empty">${query?"ما لقيتش مدينة أو شركة مطابقة للبحث.":"مازال ما تسجل حتى زبون."}</div>`;
+ box.querySelectorAll(".client-city-toggle").forEach(btn=>btn.onclick=()=>{const panel=box.querySelector(`[data-city-members="${btn.dataset.cityIndex}"]`);if(!panel)return;const open=!panel.hidden;panel.hidden=open;btn.classList.toggle("is-open",!open)});
  box.querySelectorAll("[data-directory-edit]").forEach(btn=>btn.onclick=()=>{const c=clients.find(x=>String(x.id)===String(btn.dataset.directoryEdit));if(!c)return;closeClientsDirectory();openClientModal(c.name);$("clientEditId").value=c.id;$("clientName").value=c.name||"";$("clientCompany").value=c.company||"";$("clientCity").value=c.city||c.ville||"";$("clientICE").value=c.ice||"";$("clientPaymentHolder").value=c.paymentHolder||c.chequeHolder||c.paymentName||"";$("clientPaymentNumber").value=c.paymentNumber||c.chequeNumber||"";$("clientPaymentType").value=paymentTypeValue(c.paymentType||c.paymentMode||c.modePaiement);$("clientWhatsapp").value=c.phone||""});
  box.querySelectorAll("[data-directory-invoice]").forEach(btn=>btn.onclick=()=>{const c=clients.find(x=>String(x.id)===String(btn.dataset.directoryInvoice));if(c)shareClientBillingPDF(c)});
 }
@@ -2328,7 +2337,7 @@ document.addEventListener("pointerdown",event=>{if(!event.target.closest(".clien
 $("closeClientModal").onclick=closeClientModal;
 $("clientModal").onclick=e=>{if(e.target===$("clientModal"))closeClientModal()};
 $("clientForm").onsubmit=saveClientForm;
-$("clientsDirectoryToggle").onclick=openClientsDirectory;
+$("menuClientsDirectory").onclick=()=>{$("actionMenu").classList.remove("show");openClientsDirectory()};
 $("closeClientsDirectory").onclick=closeClientsDirectory;
 $("clientsDirectoryModal").onclick=e=>{if(e.target===$("clientsDirectoryModal"))closeClientsDirectory()};
 $("clientsDirectorySearch").oninput=()=>{$("clearClientsDirectorySearch").style.display=$("clientsDirectorySearch").value?"block":"none";renderClientsDirectory()};
@@ -2431,4 +2440,210 @@ function paymentScheduleHtml(order,state=deadlineState(order),style="card"){
   if(!data.isCredit)return `<div style="text-align:center;font-weight:800;color:#d00000;font-size:16px;line-height:1.25;border:2px solid #d00000;border-radius:9px;padding:9px 12px;background:#fff5f5">إستخلاص عند الإستلام / Paiement à la livraison</div>`;
  const rows=data.history.length?data.history.map((payment,index)=>`<div style="display:flex;justify-content:space-between;gap:12px;padding:5px 0;border-bottom:1px solid #f1dada;color:#d00000;font-size:13px;font-weight:400"><span>${index+1}. ${esc(formatPaymentDate(payment.date))}</span><span>${money(payment.amount)} DH</span></div>`).join(""):`<div style="color:#d00000;font-size:13px;font-weight:400">لم تسجل أي دفعة / Aucun paiement enregistré</div>`;
  return `<div style="border:3px solid #d00000;border-radius:12px;padding:14px 18px;background:#fff5f5;color:#d00000;line-height:1.45"><div style="text-align:center;font-size:13px;font-weight:400;margin-bottom:7px">تواريخ الدفعات / Dates des paiements</div>${summary}<div style="margin-top:7px;font-size:13px;color:#d00000;font-weight:400">${rows}</div>${remainder}</div>`;
+}
+
+
+/* ===== مساعد 3D PEINTURES المبرمج بالدارجة المغربية ===== */
+function assistantNormalize(value){
+  return String(value||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[إأآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").replace(/[؟?!,.؛:()\[\]{}+_=\-]/g," ").replace(/\s+/g," ").trim();
+}
+function assistantHas(q,words){return words.some(word=>q.includes(assistantNormalize(word)))}
+function assistantProductFromQuestion(text){
+  const q=assistantNormalize(text);
+  let found=products.find(p=>{
+    const name=assistantNormalize(p.name),code=assistantNormalize(productCode(p));
+    return (name&&q.includes(name))||(code&&q.includes(code));
+  });
+  if(found)return found;
+  const tokens=q.split(" ").filter(t=>t.length>=3&&!/^(شنو|اشنو|بغيت|عطيني|عندي|واش|الثمن|السعر|ديال|منتوج|المنتوج|قطعه|قطعة|وحده|وحدة|عندكم|كاين|كاينين|هو|هي|من|ف|في|على|لي|اللي|هاد|هدا|هذا)$/.test(t));
+  if(!tokens.length)return null;
+  return products.find(p=>tokens.filter(t=>assistantNormalize(`${p.name} ${productCode(p)}`).includes(t)).length>=Math.min(2,tokens.length));
+}
+function assistantCartTotal(){
+  let total=0,units=0;
+  (Array.isArray(cart)?cart:[]).forEach(row=>{const p=products.find(x=>String(x.id)===String(row.id));if(!p)return;const qty=Math.max(1,Number(row.qty)||1),promo=promoForBoxes(p,qty),price=unitPriceForQuantity(p,promo.paidUnits);total+=price*promo.paidUnits;units+=promo.paidUnits});
+  return {total,units,count:Array.isArray(cart)?cart.length:0};
+}
+function assistantOrderTotals(){
+  const rows=Array.isArray(orders)?orders:[];
+  return {count:rows.length,total:rows.reduce((s,o)=>s+(Number(o.total)||0),0),paid:rows.reduce((s,o)=>s+(Number(o.paid)||0),0),due:rows.reduce((s,o)=>s+(Number(o.due)||0),0)};
+}
+function assistantProductAnswer(product,text){
+  const q=assistantNormalize(text),tiers=priceTiersFor(product).slice(0,6),numberMatch=q.match(/\b(\d{1,5})\b/),requestedQty=numberMatch?Math.max(1,Number(numberMatch[1])):null;
+  const currentPrice=requestedQty?unitPriceForQuantity(product,requestedQty):(tiers[0]?.price||product.price||product.salePrice||0);
+  const lines=[`المنتوج هو: ${product.name||"بلا اسم"}.`,productCode(product)?`الكود ديالو: ${productCode(product)}.`:"",`الثمن دابا: ${money(currentPrice)} DH للقطعة${requestedQty?` فكمية ${requestedQty} قطعة`:""}.`,product.qty?`العلبة فيها ${Number(product.qty)||0} قطعة.`:"",isAvailable(product)?"المنتوج متوفر دابا.":"هاد المنتوج ما متوفرش دابا."];
+  if(tiers.length){lines.push("الأثمنة حسب الكمية:");lines.push(tiers.map(t=>`${t.maxQty==null?`${t.minQty} وفوق`:`من ${t.minQty} حتى ${t.maxQty} قطعة`}: ${money(t.price)} DH للقطعة`).join("\n"));}
+  if(hasPromo10Plus1(product))lines.push("كاين عرض 10 + 1 مجاناً: خذ 10 قطع وكسب قطعة زايدة مجاناً.");
+  return lines.filter(Boolean).join("\n");
+}
+function assistantAnswer(text){
+  const original=String(text||"").trim(),q=assistantNormalize(original);
+  if(!q)return "كتب ليا السؤال ديالك باش نعاونك.";
+  if(assistantHas(q,["سلام","مرحبا","اهلا","bonjour","hello","salam"]))return "وعليكم السلام! أنا هنا باش نعاونك فكلشي متعلق بالموقع. سولني على منتوج، ثمن، عرض، طلبية، قسط ولا فاتورة.";
+  if(assistantHas(q,["شنو كتقدر","شنو تقدر","المساعد","كيفاش تسول","مساعدة","help"]))return "نقدر نجاوبك على المنتوجات والأقسام، الأثمنة حسب الكمية، العروض، السلة، إرسال الطلب، الطلبيات، الزبناء، الفواتير، الأقساط، المستخلاصات، الإحصائيات، والنسخ الاحتياطية. غير سولني بطريقة عادية.";
+
+  const product=assistantProductFromQuestion(original);
+  if(product&&(assistantHas(q,["ثمن","سعر","prix","price","بشحال","شحال","منتوج","المنتوج","كود","متوفر","علبه","قطعه","قطعة"])||q.includes(assistantNormalize(product.name))))return assistantProductAnswer(product,original);
+
+  if(assistantHas(q,["المنتوجات","المنتوج","catalogue","كتالوج","شنو كاين","شنو عندكم"])&&!assistantHas(q,["السله","السلة","panier","cart"])){
+    const available=products.filter(isAvailable),cats=[...new Set(products.map(p=>p.category||"PRODUITS"))];
+    return `كاينين دابا ${products.length} منتوج فالموقع، منهم ${available.length} متوفرين. الأقسام هي: ${cats.join("، ")}. إلى بغيتي معلومات على شي منتوج، كتب ليا السمية ولا الكود ديالو.`;
+  }
+  if(assistantHas(q,["عرض","عروض","خصم","خصومات","promo","10+1","مجانا","مجاني"])){
+    const promoProducts=products.filter(hasPromo10Plus1),tierProducts=products.filter(p=>priceTiersFor(p).length);
+    return `العروض والخصومات كتبدل حسب المنتوج والكمية. كاينين ${tierProducts.length} منتوج عندهم أثمنة متدرجة حسب الكمية${promoProducts.length?`، و${promoProducts.length} منتوج عندهم عرض 10 + 1 مجاناً`:""}. كتب ليا اسم المنتوج باش نعطيك الحساب مضبوط.`;
+  }
+  if(assistantHas(q,["السله","السلة","panier","cart","شنو شريت","المشتريات"])){
+    const c=assistantCartTotal();
+    return c.count?`السلة فيها ${c.count} منتوج، بمجموع ${c.units} قطعة. المجموع المحسوب هو ${money(c.total)} DH. حل السلة من زر 🛒 باش تشوف التفاصيل وتكمل الطلب.`:"السلة خاوية دابا. اختار شي منتوج وضغط على زر الإضافة للسلة.";
+  }
+  if(assistantHas(q,["صيفط الطلب","ارسال الطلب","نرسل الطلب","إرسال الطلب","واتساب","whatsapp","الشركه","الشركة"]))return "من بعد ما تعمر السلة، حلها من زر 🛒 وضغط على زر إرسال الطلب إلى الشركة وإلى الزبون. غادي يتوجد ليك ملخص الطلب للمشاركة أو واتساب.";
+  if(assistantHas(q,["طلبيه","الطلبيات","طلبية","commandes","orders","كوموند"])){
+    const o=assistantOrderTotals();
+    return `مسجلين دابا ${o.count} طلبية. مجموع الطلبيات هو ${money(o.total)} DH، والمخلص ${money(o.paid)} DH، والباقي ${money(o.due)} DH. دخل من القائمة على الطلبيات باش تشوف التفاصيل.`;
+  }
+  if(assistantHas(q,["قسط","الاقساط","الأقساط","دين","الديون","الباقي","استخلاص","مستخلاص","المستخلاصات"])){
+    const o=assistantOrderTotals(),payments=(Array.isArray(orders)?orders:[]).reduce((n,item)=>n+getPaymentHistory(item).length,0);
+    return `تتبع الأقساط والمستخلاصات كاين فالقائمة. دابا مجموع الأقساط المسجلين هو ${payments} عملية، والباقي الإجمالي فالكوموندات هو ${money(o.due)} DH. من تتبع المستخلاصات تقدر تشوف عند الاستلام، الأقساط، والإجمالي وتقدر تصفر الدورة مع بقاء السجل القديم.`;
+  }
+  if(assistantHas(q,["زبون","الزبناء","زبناء","client","clients","كليان","الكليان"]))return `مسجلين دابا ${Array.isArray(clients)?clients.length:0} زبون. من الإدارة دخل لمعلومات الزبون، ومن تما ضغط على زر الزبناء باش تشوف القائمة وتستعمل البحث السريع، التعديل، ومعلومات الفوترة.`;
+  if(assistantHas(q,["فاتوره","الفاتوره","الفاتورة","facture","فوترة","infos facturation"]))return "معلومات الفوترة والفواتير كاينة فصفحة الزبناء. اختار الزبون وضغط على Infos facturation باش تجهز وترسل الفاتورة أو معلومات الفوترة.";
+  if(assistantHas(q,["اضافه منتوج","إضافة منتوج","زيد منتوج","منتوج جديد"]))return "باش تزيد منتوج، حل القائمة ⋮ واختار إضافة منتوج. عمر السمية والكود والقسم والصورة والأثمنة حسب الكمية، ومن بعد حفظ.";
+  if(assistantHas(q,["تعديل منتوج","عدل منتوج","modifier","بدل المنتوج"]))return "باش تعدل منتوج، اختارو من الكاروسيل، حل القائمة ⋮، واختار تعديل منتوج. من تما بدل المعلومات أو الأثمنة وحفظ.";
+  if(assistantHas(q,["حذف منتوج","حدف منتوج","supprimer","مسح منتوج"]))return "باش تحيد منتوج، اختارو من الكاروسيل، حل القائمة ⋮، واختار حذف منتوج، ومن بعد أكد العملية.";
+  if(assistantHas(q,["احصائيات","الإحصائيات","dashboard","لوحه التحكم","المبيعات","أوقات الذروة"]))return "الإحصائيات العامة كاينة فالقائمة. كتوريك عدد الطلبيات، مجموع المبيعات، أكثر المنتوجات طلباً، وأوقات الذروة حسب الشهر.";
+  if(assistantHas(q,["تحميل","رفع","استرجاع","نسخه احتياطيه","نسخة احتياطية","backup","ملف"]))return "فقسم تحميل واستيراد كاين النسخ الخفيف للبيانات بلا صور، وكاين تحميل ورفع المنتجات بالصور والمعلومات. استعمل النسخة الكاملة إلا بغيتي تنقل الكتالوج كامل، والنسخة الخفيفة إلا بغيتي تتفادى ثقل الملفات فالهاتف.";
+  if(assistantHas(q,["بحث","قلب","القسم","اقسام","الأقسام"]))return "تقدر تقلب على المنتوج من أيقونة المكبرة اللي فوق، وتقدر تختار القسم من الأزرار اللي تحت السلايدر. البحث كيخدم بالسمية أو الكود.";
+  return "ما فهمتش السؤال مزيان، ولكن نقدر نعاونك فالثمن، المنتوجات، العروض، السلة، الطلبية، الزبناء، الفاتورة، الأقساط، المستخلاصات، الإحصائيات، والنسخ الاحتياطية. عاود كتب السؤال بطريقة أخرى.";
+}
+function assistantFormatMessage(text){return esc(text).replace(/(\d[\d\s., ]*?)\s*(?:DH|Dh)\b/gi,(match,raw)=>{const value=Number(String(raw).replace(/[\s ]/g,"").replace(",","."));return Number.isFinite(value)?`<b class="assistant-money">${value.toFixed(2)}Dh</b>`:match}).replace(/\n/g,"<br>")}
+function assistantAddMessage(text,kind="bot"){
+  const box=$("siteAssistantMessages");if(!box)return;
+  const item=document.createElement("div");item.className=`assistant-message assistant-message-${kind}`;item.innerHTML=assistantFormatMessage(text);box.appendChild(item);box.scrollTop=box.scrollHeight;
+}
+function assistantOpen(){const panel=$("siteAssistantPanel"),toggle=$("siteAssistantToggle");if(!panel||!toggle)return;panel.classList.add("show");panel.setAttribute("aria-hidden","false");toggle.setAttribute("aria-expanded","true");setTimeout(()=>$("siteAssistantInput")?.focus(),100)}
+function assistantClose(){const panel=$("siteAssistantPanel"),toggle=$("siteAssistantToggle");if(!panel||!toggle)return;panel.classList.remove("show");panel.setAttribute("aria-hidden","true");toggle.setAttribute("aria-expanded","false")}
+function assistantAsk(text){const input=$("siteAssistantInput"),value=String(text||input?.value||"").trim();if(!value)return;if(input)input.value="";assistantAddMessage(value,"user");setTimeout(()=>{const answer=typeof aiAgentAnswer==="function"?aiAgentAnswer(value):assistantAnswer(value);window.__assistantLastAnswer=answer;assistantAddMessage(answer,"bot")},100)}
+const assistantToggle=$("siteAssistantToggle"),assistantCloseButton=$("siteAssistantClose"),assistantForm=$("siteAssistantForm");
+assistantToggle?.addEventListener("click",()=>{if($("siteAssistantPanel")?.classList.contains("show"))assistantClose();else assistantOpen()});
+assistantCloseButton?.addEventListener("click",assistantClose);
+assistantForm?.addEventListener("submit",event=>{event.preventDefault();assistantAsk()});
+document.querySelectorAll("[data-assistant-question]").forEach(button=>button.addEventListener("click",()=>assistantAsk(button.dataset.assistantQuestion)));
+document.addEventListener("pointerdown",event=>{const panel=$("siteAssistantPanel"),toggle=$("siteAssistantToggle");if(panel?.classList.contains("show")&&!panel.contains(event.target)&&event.target!==toggle)assistantClose()});
+document.addEventListener("keydown",event=>{if(event.key==="Escape"&&$("siteAssistantPanel")?.classList.contains("show"))assistantClose()});
+
+
+/* ===== AI Agent: Excel / PDF / JSON + الصوت ===== */
+function assistantFileSummaryText(name,type,details){return `قريت الملف ${name} بنجاح.\n${details}\nالملف بقى غير فهاد الجهاز وما تصيفط حتى لشي خدمة خارجية.`}
+async function assistantReadExcelFile(file){
+  if(!window.XLSX)throw new Error("مكتبة Excel مازال ما تحملاش");
+  const buffer=await file.arrayBuffer(),wb=XLSX.read(buffer,{type:"array"});
+  const sheets=wb.SheetNames||[],parts=[];
+  sheets.slice(0,10).forEach(name=>{const rows=XLSX.utils.sheet_to_json(wb.Sheets[name],{header:1,defval:""});const nonEmpty=rows.filter(row=>row.some(cell=>String(cell).trim()));const head=(nonEmpty[0]||[]).filter(Boolean).slice(0,7).join(" · ");parts.push(`- الورقة ${name}: ${Math.max(0,nonEmpty.length-1)} سطر${head?`، العناوين: ${head}`:""}`)});
+  return assistantFileSummaryText(file.name,"Excel",`فيه ${sheets.length} ورقة.\n${parts.join("\n")}\nإلى بغيتي، سولني على اسم الورقة ولا نوع المعلومات اللي بغيتي نفهمها.`);
+}
+async function assistantReadPdfFile(file){
+  if(!window.pdfjsLib)throw new Error("قارئ PDF مازال ما تحملاش");
+  if(window.pdfjsLib.GlobalWorkerOptions)window.pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+  const data=new Uint8Array(await file.arrayBuffer()),pdf=await window.pdfjsLib.getDocument({data}).promise,pages=[],maxPages=Math.min(pdf.numPages,5);
+  for(let pageNo=1;pageNo<=maxPages;pageNo++){const page=await pdf.getPage(pageNo),content=await page.getTextContent(),text=content.items.map(item=>item.str||"").join(" ").replace(/\s+/g," ").trim();if(text)pages.push(`الصفحة ${pageNo}: ${text.slice(0,700)}`)}
+  const note=pages.length?pages.join("\n\n"):"ما لقيتش نص قابل للقراءة فهاد PDF؛ ممكن يكون عبارة عن صور ممسوحة بالسكانير.";
+  return assistantFileSummaryText(file.name,"PDF",`عدد الصفحات: ${pdf.numPages}. خديت أول ${maxPages} صفحات للمعاينة:\n${note}`);
+}
+async function assistantReadJsonFile(file){
+  const data=JSON.parse(await file.text()),productsData=Array.isArray(data)?data:(Array.isArray(data.products)?data.products:[]),ordersData=Array.isArray(data.orders)?data.orders:[],clientsData=Array.isArray(data.clients)?data.clients:[],cartData=Array.isArray(data.cart)?data.cart:[];
+  const format=data?.format||"ملف JSON عادي";
+  return assistantFileSummaryText(file.name,"JSON",`نوع الملف: ${format}.\nالمنتوجات: ${productsData.length} · الطلبيات: ${ordersData.length} · الزبناء: ${clientsData.length} · السلة: ${cartData.length}.\nإلى كان الملف نسخة 3D PEINTURES، استعمل زر الرفع الرسمي من الإدارة للاسترجاع؛ أنا نقدر نشرح ليك المحتوى قبل الاسترجاع.`);
+}
+async function assistantProcessFile(file){
+  if(!file)return;
+  const label=$("assistantFileName");if(label)label.textContent=file.name;
+  assistantAddMessage(`رفعت الملف: ${file.name}`,"user");
+  try{
+    const lower=file.name.toLowerCase(),result=lower.endsWith(".pdf")?await assistantReadPdfFile(file):lower.endsWith(".json")?await assistantReadJsonFile(file):await assistantReadExcelFile(file);
+    assistantAddMessage(result,"bot");
+    window.__assistantLastAnswer=result;
+  }catch(error){console.error("AI Agent file reader error",error);assistantAddMessage(`ما قدرتش نقرا هاد الملف. تأكد من الصيغة ديالو وأنه ماشي خاسر. السبب: ${error.message||"خطأ غير معروف"}.`,"bot")}
+}
+const assistantFileButton=$("assistantFileButton"),assistantFileInput=$("assistantFileInput");
+assistantFileButton?.addEventListener("click",()=>assistantFileInput?.click());
+assistantFileInput?.addEventListener("change",event=>{const file=event.target.files?.[0];assistantProcessFile(file);event.target.value=""});
+
+let assistantRecognition=null;
+function assistantStartVoice(){
+  const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition,button=$("assistantMicButton");
+  if(!SpeechRecognition){assistantAddMessage("الميكروفون ما مدعومش فهاد المتصفح أو WebView. كتب السؤال هنا، وغادي نجاوبك عادي.","bot");return}
+  if(assistantRecognition){assistantRecognition.stop();return}
+  assistantRecognition=new SpeechRecognition();assistantRecognition.lang="ar-MA";assistantRecognition.interimResults=false;assistantRecognition.continuous=false;
+  assistantRecognition.onstart=()=>{button?.classList.add("is-recording");if(button)button.textContent="⏹️ كنسمع ليك..."};
+  assistantRecognition.onresult=event=>{const text=event.results?.[0]?.[0]?.transcript||"";if(text){const input=$("siteAssistantInput");if(input)input.value=text;assistantAsk(text)}};
+  assistantRecognition.onerror=event=>assistantAddMessage(event.error==="not-allowed"?"خاصك تسمح للموقع باستعمال الميكروفون باش تسجل صوتك.":"ما سمعتش الصوت مزيان، عاود المحاولة ولا كتب السؤال.","bot");
+  assistantRecognition.onend=()=>{button?.classList.remove("is-recording");if(button)button.textContent="🎙️ تسجيل صوتي";assistantRecognition=null};
+  assistantRecognition.start();
+}
+function assistantSpeakLatest(){
+  const button=$("assistantSpeakButton"),messages=Array.from(document.querySelectorAll("#siteAssistantMessages .assistant-message-bot")),last=messages[messages.length-1];
+  if(!last)return;
+  if(!window.speechSynthesis||!window.SpeechSynthesisUtterance){assistantAddMessage("الصوت ما مدعومش فهاد الجهاز؛ الجواب مكتوب قدامك.","bot");return}
+  window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(last.textContent||"");utterance.lang="ar-MA";utterance.rate=.93;utterance.pitch=1;utterance.onstart=()=>{button?.classList.add("is-speaking");if(button)button.textContent="⏸️ كيتقرا الجواب"};utterance.onend=()=>{button?.classList.remove("is-speaking");if(button)button.textContent="🔊 سمع الجواب"};window.speechSynthesis.speak(utterance);
+}
+$("assistantMicButton")?.addEventListener("click",assistantStartVoice);
+$("assistantSpeakButton")?.addEventListener("click",assistantSpeakLatest);
+
+
+/* ===== فهم حر وتحليل AI Agent من بيانات الموقع ===== */
+function aiAgentWords(q){return assistantNormalize(q).split(" ").filter(Boolean)}
+function aiAgentHas(q,words){const normalized=assistantNormalize(q);return words.some(word=>normalized.includes(assistantNormalize(word)))}
+function aiAgentMoney(v){return `${(Number(v)||0).toFixed(2)}Dh`}
+function aiAgentClientKey(name){return assistantNormalize(name).replace(/\s+/g," ").trim()}
+function aiAgentClientRows(){
+  const map=new Map();
+  (Array.isArray(clients)?clients:[]).forEach(client=>{const name=String(client.name||client.company||client.societe||"").trim();if(name)map.set(aiAgentClientKey(name),{name,company:client.company||client.societe||"",orders:0,sales:0,paid:0,due:0,overdue:0,lastDate:""})});
+  (Array.isArray(orders)?orders:[]).forEach(order=>{const name=String(order.client||"").trim();if(!name)return;const key=aiAgentClientKey(name),row=map.get(key)||{name,company:order.company||"",orders:0,sales:0,paid:0,due:0,overdue:0,lastDate:""};let state={paid:Number(order.paid)||0,due:Number(order.due)||Math.max(0,(Number(order.total)||0)-(Number(order.paid)||0))};try{ensureOrderDeadline(order);state=recalculateOrderPaymentState(order)}catch(e){}const total=Number(order.total)||0,deadline=(()=>{try{return deadlineState(order)}catch(e){return {overdue:false}}})();row.orders++;row.sales+=total;row.paid+=Number(state.paid)||0;row.due+=Math.max(0,Number(state.due)||0);if(deadline.overdue&&row.due>0)row.overdue+=Math.max(0,Number(state.due)||0);if(order.date&&(!row.lastDate||new Date(order.date)>new Date(row.lastDate)))row.lastDate=order.date;map.set(key,row)});
+  return [...map.values()].map(row=>({...row,balance:Math.max(0,row.due)}));
+}
+function aiAgentFindClient(text){
+  const q=assistantNormalize(text),rows=aiAgentClientRows();
+  let exact=rows.find(row=>row.name&&q.includes(aiAgentClientKey(row.name)));if(exact)return exact;
+  const tokens=aiAgentWords(q).filter(token=>token.length>=3&&!/^(شنو|اشنو|بغيت|عطيني|اسم|سمية|الاسم|زبون|الزبون|زبناء|الزبناء|لي|اللي|عليه|عند|معايا|خدام|خدامين|واش|فين|شحال|ديال|عندو|عندها|من|هو|هي)$/.test(token));
+  return rows.find(row=>tokens.some(token=>aiAgentClientKey(row.name).includes(token)||aiAgentClientKey(row.company).includes(token)))||null;
+}
+function aiAgentClientsOverview(text){
+  const rows=aiAgentClientRows(),q=assistantNormalize(text),asksDebt=aiAgentHas(q,["دين","ديون","الباقي","ماخلص","مخلصش","عليه","متاخر","متأخر","باقي"])||aiAgentHas(q,["فلوس","خلص"])&&aiAgentHas(q,["على","عليه","عند"]);
+  if(!rows.length)return "مازال ما كاين حتى زبون مسجل فالموقع. الرأي ديالي: خاص أولاً تدخل معلومات الزبناء باش يولي التتبع والتحليل مفيد.";
+  const selected=asksDebt?rows.filter(row=>row.balance>0).sort((a,b)=>b.balance-a.balance):rows.slice().sort((a,b)=>b.sales-a.sales);
+  const title=asksDebt?"الزبناء اللي باقي عليهم الباقي:":"هادو هما الزبناء المسجلين:";
+  const lines=selected.slice(0,20).map((row,index)=>`${index+1}. ${row.name}${row.company?` (${row.company})`:""} · ${row.orders} طلبية · المبيعات ${aiAgentMoney(row.sales)} · المخلص ${aiAgentMoney(row.paid)} · الباقي ${aiAgentMoney(row.balance)}`);
+  const totalDue=rows.reduce((sum,row)=>sum+row.balance,0),top=rows.slice().sort((a,b)=>b.sales-a.sales)[0];
+  const opinion=asksDebt?(selected.length?`الرأي ديالي: الأولوية فالمتابعة هي ${selected[0].name} حيث عليه ${aiAgentMoney(selected[0].balance)}، ومن الأحسن تبدا به فالتذكير. مجموع الباقي كامل هو ${aiAgentMoney(totalDue)}.` :"الرأي ديالي: ما باين حتى زبون عليه باقي حسب المعطيات الحالية."):(top?`الرأي ديالي: ${top.name} هو الأكثر نشاطًا فالمبيعات بمجموع ${aiAgentMoney(top.sales)}.` :"الرأي ديالي: البيانات مازال قليلة باش نعطي ترتيب قوي.");
+  return `${title}\n${lines.join("\n")}\n\n${opinion}`;
+}
+function aiAgentSpecificClient(text,client){
+  const opinion=client.balance>0?`الرأي ديالي: خاص متابعة هاد الزبون فالأداء حيث باقي عليه ${aiAgentMoney(client.balance)}.`:"الرأي ديالي: الحساب ديالو مسوى دابا وما باينش عليه باقي.";
+  return `${client.name}${client.company?` تابع لشركة ${client.company}`:""}. عندو ${client.orders} طلبية، مجموع المبيعات ${aiAgentMoney(client.sales)}، المخلص ${aiAgentMoney(client.paid)}، والباقي ${aiAgentMoney(client.balance)}.\n${opinion}`;
+}
+function aiAgentProductOpinion(text){
+  const rows=Array.isArray(orders)?orders:[],stats=new Map();rows.forEach(order=>(Array.isArray(order.items)?order.items:[]).forEach(item=>{const key=assistantNormalize(item.name||item.code||item.id||"");if(!key)return;const row=stats.get(key)||{name:item.name||item.code||"منتوج",units:0,sales:0,orders:0};row.units+=Number(item.units)||Number(item.qty)||Number(item.boxes)||0;row.sales+=Number(item.lineTotal??item.total??0)||0;row.orders++;stats.set(key,row)}));
+  const top=[...stats.values()].sort((a,b)=>b.units-a.units||b.sales-a.sales);
+  if(!top.length)return "مازال ما كايناش طلبيات كافية باش نحلل أكثر المنتوجات طلبًا. الرأي ديالي: خليك تابع مستويات الخصم والتوفر باش تجمع بيانات مزيانة.";
+  const lines=top.slice(0,5).map((row,index)=>`${index+1}. ${row.name} · ${row.units} وحدة · ${aiAgentMoney(row.sales)}`);
+  return `أكثر المنتوجات طلبًا حسب الطلبيات:\n${lines.join("\n")}\n\nالرأي ديالي: ${top[0].name} هو اللي باين عليه الطلب أكثر؛ من الأحسن تراقب المخزون ديالو وتخلي العرض ديالو واضح للزبناء.`;
+}
+function aiAgentBusinessOverview(){
+  const totals=assistantOrderTotals(),clientsRows=aiAgentClientRows(),due=clientsRows.reduce((s,row)=>s+row.balance,0),available=products.filter(isAvailable).length,topClient=clientsRows.slice().sort((a,b)=>b.sales-a.sales)[0];
+  return `ملخص الموقع دابا:\n- المنتجات: ${products.length}، المتوفر منهم ${available}.\n- الزبناء: ${clientsRows.length}.\n- الطلبيات: ${totals.count}.\n- المبيعات: ${aiAgentMoney(totals.total)}.\n- المخلص: ${aiAgentMoney(totals.paid)}.\n- الباقي: ${aiAgentMoney(due||totals.due)}.\n\nالرأي ديالي: ${due>0?`أهم حاجة دابا هي متابعة الباقي ديال الزبناء، حيث كاين ${aiAgentMoney(due)} خاصو التتبع.` :topClient?`النشاط باين مزيان، و${topClient.name} هو أكثر زبون من ناحية المبيعات.` :"خاص تزيد تسجل الطلبيات والزبناء باش يبان تحليل دقيق."}`;
+}
+function aiAgentAnswer(text){
+  const q=assistantNormalize(text),client=aiAgentFindClient(text);
+  if(aiAgentHas(q,["شنو كتقدر","شنو تقدر","كيفاش خدام","المساعد","agent","معلومة","معلومات الموقع","رأيك","رايك","حلل","تحليل"])&&q.split(" ").length<=7)return aiAgentBusinessOverview();
+  if(aiAgentHas(q,["اسم الزبون","سمية الزبون","اسم الزبناء","سمية الزبناء","الزبناء اللي","الزبون اللي","شكون الزبون","شكون هما الزبناء","الزبناء لي","الزبون لي"]))return aiAgentClientsOverview(text);
+  if(aiAgentHas(q,["دين","ديون","الباقي","ماخلص","مخلصش","متاخر","متأخر","فلوس الزبناء","على الزبناء"]))return aiAgentClientsOverview(text);
+  if(client&&aiAgentHas(q,["عندو","عليه","حساب","طلبية","مخلص","باقي","فلوس","معلومات","شنو دار"]))return aiAgentSpecificClient(text,client);
+  if(aiAgentHas(q,["اكثر منتوج","أكثر منتوج","المنتوج اللي كيتباع","المنتوج لي كيتباع","الطلب على المنتوج","شنو كيتباع أكثر","شكون كيتباع"]))return aiAgentProductOpinion(text);
+  if(aiAgentHas(q,["المبيعات","المداخيل","الربح","المجموع العام","الحساب العام","الوضعية","الرصيد","كيف داير الموقع","شنو واقع"]))return aiAgentBusinessOverview();
+  if(client&&aiAgentHas(q,["شكون","اسم","سمية","الزبون","زبون"]))return aiAgentSpecificClient(text,client);
+  if(aiAgentHas(q,["الزبناء","زبناء","كليان","clients","client"]))return aiAgentClientsOverview(text);
+  const old=assistantAnswer(text);
+  if(old.startsWith("ما فهمتش السؤال"))return `${aiAgentBusinessOverview()}\n\nإلى كنتي كتعني زبون معين، كتب السمية ديالو. وإلى بغيتي لائحة الزبناء اللي عليهم الباقي، كتب: شكون الزبناء اللي باقي عليهم الفلوس؟`;
+  return old;
 }
