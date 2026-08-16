@@ -48,6 +48,9 @@
       <button id="menuEdit"><span class="mi edit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2 2 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg></span><div><b>تعديل منتوج</b><small>تعديل المنتوج المحدد</small></div></button>
        <button id="menuDelete"><span class="mi delete"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 11v5m4-5v5"/></svg></span><div><b>حذف منتوج</b><small>حذف المنتوج المحدد</small></div></button>
        <button id="menuReturns"><span class="mi returns"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7H5v4"/><path d="M5 11a7 7 0 1 0 2-5"/><path d="M12 9v4l3 2"/></svg></span><div><b>رجوع السلع</b><small>إرجاعات البونات · الكليان · المجموع</small></div></button>
+       <button id="menuCompanyInvoices"><span class="mi invoices"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12v18H6z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg></span><div><b>فواتير الشركة</b><small>تسجيل الفواتير · جاهزة · قيد المعالجة</small></div></button>
+       <button id="menuPriceChangesArchive"><span class="mi price-archive"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 19V5"/><path d="M5 19h14"/><path d="m8 15 3-4 3 2 4-6"/><path d="M17 7h2v2"/></svg></span><div><b>أرشيف تغير الأثمنة</b><small>المنتوج · الثمن القديم والجديد · الكليان</small></div></button>
+       <button id="menuDiscountsArchive"><span class="mi discount-archive"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9"/><path d="M18 15v5M15.5 17.5h5"/></svg></span><div><b>أرشيف Remise</b><small>التخفيضات الكاملة · الكليان · التاريخ</small></div></button>
        <div class="menu-section-title"><span>02</span> تحميل واستيراد</div>
       <button id="menuExportProductsJson"><span class="mi excel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 20h14"/><path d="M8 7h8"/></svg></span><div><b>نسخة احتياطية خفيفة</b><small>المنتجات · الكوموندات · الديون · الأقساط · المستخلاصات بدون صور</small></div></button>
       <button id="menuImportProductsJson"><span class="mi import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4 4 4M5 20h14"/><path d="M8 12h8"/></svg></span><div><b>رفع نسخة احتياطية خفيفة</b><small>استرجاع البيانات التجارية بدون صور</small></div></button>
@@ -408,6 +411,78 @@
   </div>
 </div>
 
+<!-- صفحة فواتير الشركة -->
+<div class="modal" id="companyInvoicesModal">
+  <div class="modal-card company-invoices-modal-card">
+    <div class="modal-head">
+      <div><small class="modal-kicker">COMPANY INVOICES</small><h3>فواتير الشركة</h3></div>
+      <button class="close" id="closeCompanyInvoices" aria-label="إغلاق فواتير الشركة">×</button>
+    </div>
+    <div class="company-invoices-intro">قلب على الكليان وخذ معلوماتو، ربط الطلبية إذا كانت موجودة، ثم أرسل الفاتورة للشركة. كل فاتورة كتبقى محفوظة لتحت فـ <b>أرشيف فواتير الشركة</b>، وتقدر تبدّل حالتها بين <b>جاهزة</b> و<b>قيد المعالجة</b>.</div>
+    <div class="company-invoices-summary">
+      <div class="company-invoice-stat"><small>عدد الفواتير</small><strong id="companyInvoicesCount">0</strong></div>
+      <div class="company-invoice-stat company-invoice-stat-ready"><small>جاهزة</small><strong id="companyInvoicesReceived">0</strong></div>
+      <div class="company-invoice-stat company-invoice-stat-processing"><small>قيد المعالجة</small><strong id="companyInvoicesPending">0</strong></div>
+    </div>
+    <form id="companyInvoiceForm" class="company-invoice-form">
+      <div class="company-invoice-form-title">إضافة فاتورة للشركة</div>
+      <div class="company-invoice-client-picker">
+        <div class="company-invoice-client-title">بحث على الكليان ومعلوماتو</div>
+        <div class="company-invoice-client-search"><span aria-hidden="true">⌕</span><input id="companyInvoiceClientSearch" type="search" placeholder="كتب اسم الكليان، الشركة، المدينة، ICE أو الهاتف..." autocomplete="off"><button id="clearCompanyInvoiceClientSearch" type="button" aria-label="مسح بحث الكليان">×</button></div>
+        <div id="companyInvoiceClientResults" class="company-invoice-client-results" hidden></div>
+        <div id="companyInvoiceSelectedClient" class="company-invoice-selected-client" hidden></div>
+        <label class="company-invoice-order-label">الطلبية المرتبطة بالفاتورة <select id="companyInvoiceOrderId"><option value="">معلومات الكليان فقط بلا طلبية</option></select></label>
+        <div id="companyInvoiceOrderPreview" class="company-invoice-order-preview" hidden></div>
+      </div>
+      <button class="company-invoice-save" type="submit">إرسال الفاتورة</button>
+    </form>
+    <div class="company-invoices-list-head"><b>أرشيف فواتير الشركة</b><small>معلومات الكليان فقط · بدّل الحالة إلى جاهزة أو قيد المعالجة</small></div>
+    <div class="company-invoice-archive-search"><span aria-hidden="true">⌕</span><input id="companyInvoiceArchiveSearch" type="search" placeholder="قلب فالأرشيف باسم الكليان..." autocomplete="off"><button id="clearCompanyInvoiceArchiveSearch" type="button" aria-label="مسح بحث أرشيف الكليان">×</button></div>
+    <div id="companyInvoicesList" class="company-invoices-list"></div>
+    <div id="companyInvoicesEmpty" class="company-invoices-empty">مازال ما تسجل حتى فاتورة للشركة.</div>
+  </div>
+</div>
+
+<!-- أرشيف تغييرات الأثمنة -->
+<div class="modal" id="priceChangesArchiveModal">
+  <div class="modal-card operations-archive-modal-card price-changes-archive-modal-card">
+    <div class="modal-head">
+      <div><small class="modal-kicker">PRICE CHANGES ARCHIVE</small><h3>أرشيف تغير الأثمنة</h3></div>
+      <button class="close" id="closePriceChangesArchive" aria-label="إغلاق أرشيف تغير الأثمنة">×</button>
+    </div>
+    <div class="operations-archive-intro">هنا كيبانو جميع تغييرات الأثمنة المسجلة فالكوموندات، مع الكليان، المنتوج، الثمن القديم والجديد، الكمية، أثر التغيير والتاريخ.</div>
+    <div class="operations-archive-summary">
+      <div><small>العمليات</small><strong id="priceChangesArchiveCount">0</strong></div>
+      <div><small>الكليان</small><strong id="priceChangesArchiveClients">0</strong></div>
+      <div><small>زيادات</small><strong id="priceChangesArchiveUp">0</strong></div>
+      <div><small>تخفيضات</small><strong id="priceChangesArchiveDown">0</strong></div>
+    </div>
+    <div class="operations-archive-search"><span aria-hidden="true">⌕</span><input id="priceChangesArchiveSearch" type="search" placeholder="قلب باسم الكليان..." autocomplete="off"><button id="clearPriceChangesArchiveSearch" type="button" aria-label="مسح بحث تغييرات الأثمنة">×</button></div>
+    <div id="priceChangesArchiveList" class="operations-archive-list"></div>
+    <div id="priceChangesArchiveEmpty" class="operations-archive-empty">مازال ما تسجل حتى تغيير فالثمن.</div>
+  </div>
+</div>
+
+<!-- أرشيف Remise -->
+<div class="modal" id="discountsArchiveModal">
+  <div class="modal-card operations-archive-modal-card discounts-archive-modal-card">
+    <div class="modal-head">
+      <div><small class="modal-kicker">REMISE ARCHIVE</small><h3>أرشيف Remise / التخفيضات</h3></div>
+      <button class="close" id="closeDiscountsArchive" aria-label="إغلاق أرشيف Remise">×</button>
+    </div>
+    <div class="operations-archive-intro discounts-archive-intro">هنا كيبانو جميع التخفيضات المسجلة، مع الكليان، قيمة التخفيض، البون والتاريخ، باش تلقى أي Remise بسرعة.</div>
+    <div class="operations-archive-summary discounts-summary">
+      <div><small>عمليات Remise</small><strong id="discountsArchiveCount">0</strong></div>
+      <div><small>الكليان</small><strong id="discountsArchiveClients">0</strong></div>
+      <div><small>مجموع التخفيضات</small><strong id="discountsArchiveTotal">0,00 درهم</strong></div>
+      <div><small>أكبر تخفيض</small><strong id="discountsArchiveMax">0,00 درهم</strong></div>
+    </div>
+    <div class="operations-archive-search"><span aria-hidden="true">⌕</span><input id="discountsArchiveSearch" type="search" placeholder="قلب باسم الكليان..." autocomplete="off"><button id="clearDiscountsArchiveSearch" type="button" aria-label="مسح بحث أرشيف Remise">×</button></div>
+    <div id="discountsArchiveList" class="operations-archive-list"></div>
+    <div id="discountsArchiveEmpty" class="operations-archive-empty">مازال ما تسجل حتى Remise.</div>
+  </div>
+</div>
+
 <!-- Dashboard commercial -->
 <div class="modal" id="dashboardModal">
   <div class="modal-card dashboard-modal-card">
@@ -544,7 +619,7 @@
         <div id="paymentPriceChanges" class="payment-price-changes"></div>
         <button id="addPaymentPriceChange" class="add-price-change-btn" type="button">＋ إضافة تغيير ثمن</button>
       </section>
-      <div class="payment-form-actions"><button id="paymentSaveShareBtn" class="gold-btn full" type="submit">💾 حفظ وإرسال للزبون</button></div>
+      <div class="payment-form-actions"><button id="paymentSaveShareBtn" class="gold-btn full" type="submit">💾 حفظ وإرسال للزبون</button><button id="resendAllPaymentsBtn" class="operation-resend-btn resend-payments-btn" type="button">↻ إعادة إرسال صورة جميع الأقساط</button><button id="resendPriceChangesBtn" class="operation-resend-btn resend-price-btn" type="button">↻ إعادة إرسال صورة تغير الأثمنة</button><button id="resendDiscountsBtn" class="operation-resend-btn resend-discount-btn" type="button">↻ إعادة إرسال صورة Remise</button></div>
     </form>
   </div>
 </div>
@@ -573,7 +648,7 @@
 <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.2/dist/jspdf.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-<script src="app.js?v=20260816-0420"></script>
+<script src="app.js?v=20260816-0930"></script>
 
 <!-- إشعارات آجال الاستخلاص تظهر أسفل محتوى الصفحة -->
 <div id="dueAlertBar" class="due-alert-bar" role="status" aria-live="polite" hidden></div>
