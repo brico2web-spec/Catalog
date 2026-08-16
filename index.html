@@ -46,8 +46,9 @@
       <div class="menu-section-title"><span>02</span> إدارة المنتوجات</div>
       <button id="menuAdd"><span class="mi add"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><div><b>إضافة منتوج</b><small>إضافة منتوج جديد</small></div></button>
       <button id="menuEdit"><span class="mi edit"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4L19 9a2 2 0 0 0-4-4L4 16v4Z"/><path d="m13.5 6.5 4 4"/></svg></span><div><b>تعديل منتوج</b><small>تعديل المنتوج المحدد</small></div></button>
-      <button id="menuDelete"><span class="mi delete"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 11v5m4-5v5"/></svg></span><div><b>حذف منتوج</b><small>حذف المنتوج المحدد</small></div></button>
-      <div class="menu-section-title"><span>02</span> تحميل واستيراد</div>
+       <button id="menuDelete"><span class="mi delete"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3m-9 0 1 13h10l1-13M10 11v5m4-5v5"/></svg></span><div><b>حذف منتوج</b><small>حذف المنتوج المحدد</small></div></button>
+       <button id="menuReturns"><span class="mi returns"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7H5v4"/><path d="M5 11a7 7 0 1 0 2-5"/><path d="M12 9v4l3 2"/></svg></span><div><b>رجوع السلع</b><small>إرجاعات البونات · الكليان · المجموع</small></div></button>
+       <div class="menu-section-title"><span>02</span> تحميل واستيراد</div>
       <button id="menuExportProductsJson"><span class="mi excel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 20h14"/><path d="M8 7h8"/></svg></span><div><b>نسخة احتياطية خفيفة</b><small>المنتجات · الكوموندات · الديون · الأقساط · المستخلاصات بدون صور</small></div></button>
       <button id="menuImportProductsJson"><span class="mi import"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L8 7m4-4 4 4M5 20h14"/><path d="M8 12h8"/></svg></span><div><b>رفع نسخة احتياطية خفيفة</b><small>استرجاع البيانات التجارية بدون صور</small></div></button>
       <button id="menuExportProductsFullJson"><span class="mi excel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m0 0-4-4m4 4 4-4M5 20h14"/><path d="M8 7h8"/></svg></span><div><b>تحميل المنتجات والصور</b><small>المعلومات · الأسعار · الأقسام · الصور</small></div></button>
@@ -135,7 +136,7 @@
             <div class="focus-calculator" aria-live="polite">
               <div class="calc-row"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 7h14v13H5zM8 4h8M8 10h8M8 14h8M8 17h5"/></svg>عدد العلب</span><strong><b id="focusBoxesTotal">1</b> علبة</strong></div>
               <div class="calc-row"><span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8 12 4l8 4v10l-8 4-8-4V8Z"/><path d="m4 8 8 4 8-4"/></svg>مجموع الوحدات</span><strong><b id="focusUnitsTotal">0</b> وحدة</strong></div>
-              <div class="calc-total"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.2c.4-1.5 4.5-1.5 4.9 0 .4 1.5-4.6 1.3-4.9 2.8-.3 1.5 4.5 1.6 4.9.1"/></svg>TOTAL À PAYER</span><strong><b id="focusTotalPrice">0,00</b> DH</strong></div>
+              <div class="calc-total"><span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10.2c.4-1.5 4.5-1.5 4.9 0 .4 1.5-4.6 1.3-4.9 2.8-.3 1.5 4.5 1.6 4.9.1"/></svg>TOTAL À PAYER</span><strong><b id="focusTotalPrice">0,00</b> درهم</strong></div>
             </div>
             <div class="focus-quantity-group">
               <label class="focus-quantity">NOMBRE DE PIÈCES
@@ -206,7 +207,7 @@
       <div class="box-selector">
         <div class="box-selector-head">
           <div><span>QUANTITÉ</span><b>Nombre de boîtes</b></div>
-          <strong id="viewerBoxTotal">0,00 DH</strong>
+          <strong id="viewerBoxTotal">0,00 درهم</strong>
         </div>
         <div class="box-selector-controls">
           <button type="button" id="viewerMinus" aria-label="Diminuer">−</button>
@@ -244,14 +245,14 @@
       <section class="price-tier-editor" aria-labelledby="priceTierTitle">
         <div class="price-tier-editor-head"><div><b id="priceTierTitle">أسعار البيع حسب الكمية</b><small>عمر ثمن الوحدة لكل مستوى. التطبيق يختار الثمن حسب مجموع القطع.</small></div><span>6 مستويات</span></div>
         <div class="price-tier-grid">
-          <div class="price-tier-row"><span>المستوى 1</span><label>من قطعة<input id="tierMin1" type="number" min="1" step="1" required placeholder="1"></label><label>إلى قطعة<input id="tierMax1" type="number" min="1" step="1" required placeholder="20"></label><label>ثمن القطعة DH<input id="tierPrice1" type="number" min="0" step="0.01" required placeholder="12.00"></label></div>
-          <div class="price-tier-row"><span>المستوى 2</span><label>من قطعة<input id="tierMin2" type="number" min="1" step="1" placeholder="21"></label><label>إلى قطعة<input id="tierMax2" type="number" min="1" step="1" placeholder="50"></label><label>ثمن القطعة DH<input id="tierPrice2" type="number" min="0" step="0.01" placeholder="11.00"></label></div>
-          <div class="price-tier-row"><span>المستوى 3</span><label>من قطعة<input id="tierMin3" type="number" min="1" step="1" placeholder="51"></label><label>إلى قطعة<input id="tierMax3" type="number" min="1" step="1" placeholder="100"></label><label>ثمن القطعة DH<input id="tierPrice3" type="number" min="0" step="0.01" placeholder="10.75"></label></div>
-          <div class="price-tier-row"><span>المستوى 4</span><label>من قطعة<input id="tierMin4" type="number" min="1" step="1" placeholder="101"></label><label>إلى قطعة<input id="tierMax4" type="number" min="1" step="1" placeholder="200"></label><label>ثمن القطعة DH<input id="tierPrice4" type="number" min="0" step="0.01" placeholder="10.50"></label></div>
-          <div class="price-tier-row"><span>المستوى 5</span><label>من قطعة<input id="tierMin5" type="number" min="1" step="1" placeholder="201"></label><label>إلى قطعة<input id="tierMax5" type="number" min="1" step="1" placeholder="500"></label><label>ثمن القطعة DH<input id="tierPrice5" type="number" min="0" step="0.01" placeholder="10.25"></label></div>
-          <div class="price-tier-row"><span>المستوى 6</span><label>من قطعة<input id="tierMin6" type="number" min="1" step="1" placeholder="501"></label><label>إلى قطعة<input id="tierMax6" type="number" min="1" step="1" placeholder="∞"></label><label>ثمن القطعة DH<input id="tierPrice6" type="number" min="0" step="0.01" placeholder="10.00"></label></div>
+          <div class="price-tier-row"><span>المستوى 1</span><label>من قطعة<input id="tierMin1" type="number" min="1" step="1" required placeholder="1"></label><label>إلى قطعة<input id="tierMax1" type="number" min="1" step="1" required placeholder="20"></label><label>ثمن القطعة درهم<input id="tierPrice1" type="number" min="0" step="0.01" required placeholder="12.00"></label></div>
+          <div class="price-tier-row"><span>المستوى 2</span><label>من قطعة<input id="tierMin2" type="number" min="1" step="1" placeholder="21"></label><label>إلى قطعة<input id="tierMax2" type="number" min="1" step="1" placeholder="50"></label><label>ثمن القطعة درهم<input id="tierPrice2" type="number" min="0" step="0.01" placeholder="11.00"></label></div>
+          <div class="price-tier-row"><span>المستوى 3</span><label>من قطعة<input id="tierMin3" type="number" min="1" step="1" placeholder="51"></label><label>إلى قطعة<input id="tierMax3" type="number" min="1" step="1" placeholder="100"></label><label>ثمن القطعة درهم<input id="tierPrice3" type="number" min="0" step="0.01" placeholder="10.75"></label></div>
+          <div class="price-tier-row"><span>المستوى 4</span><label>من قطعة<input id="tierMin4" type="number" min="1" step="1" placeholder="101"></label><label>إلى قطعة<input id="tierMax4" type="number" min="1" step="1" placeholder="200"></label><label>ثمن القطعة درهم<input id="tierPrice4" type="number" min="0" step="0.01" placeholder="10.50"></label></div>
+          <div class="price-tier-row"><span>المستوى 5</span><label>من قطعة<input id="tierMin5" type="number" min="1" step="1" placeholder="201"></label><label>إلى قطعة<input id="tierMax5" type="number" min="1" step="1" placeholder="500"></label><label>ثمن القطعة درهم<input id="tierPrice5" type="number" min="0" step="0.01" placeholder="10.25"></label></div>
+          <div class="price-tier-row"><span>المستوى 6</span><label>من قطعة<input id="tierMin6" type="number" min="1" step="1" placeholder="501"></label><label>إلى قطعة<input id="tierMax6" type="number" min="1" step="1" placeholder="∞"></label><label>ثمن القطعة درهم<input id="tierPrice6" type="number" min="0" step="0.01" placeholder="10.00"></label></div>
         </div>
-        <small class="field-hint">كل مستوى هو فترة كاملة: من–إلى. مثال: 1–20 بسعر 12.00 DH، ثم 21–50 بسعر 11.00 DH. اترك «إلى» فارغة في المستوى الأخير إذا كان مفتوحًا.</small>
+        <small class="field-hint">كل مستوى هو فترة كاملة: من–إلى. مثال: 1–20 بسعر 12.00 درهم، ثم 21–50 بسعر 11.00 درهم. اترك «إلى» فارغة في المستوى الأخير إذا كان مفتوحًا.</small>
       </section>
       <label>Unités dans la boîte<input id="qty" type="number" min="0" step="1" required></label>
       <label>Catégorie
@@ -315,7 +316,7 @@
       </fieldset>
       <input id="orderPaymentTerm" type="hidden" value="cod">
       <div class="order-total-preview">
-        <span>Total commande</span><strong id="orderGrandTotal">0,00 DH</strong>
+        <span>Total commande</span><strong id="orderGrandTotal">0,00 درهم</strong>
       </div>
       <button class="gold-btn full" type="submit">✓ تسجيل الكوموند (غير مخلص)</button>
     </form>
@@ -387,6 +388,26 @@
   </div>
 </div>
 
+<!-- صفحة رجوع السلع -->
+<div class="modal" id="returnsModal">
+  <div class="modal-card returns-modal-card">
+    <div class="modal-head">
+      <div><small class="modal-kicker">RETOURS</small><h3>رجوع السلع</h3></div>
+      <button class="close" id="closeReturns" aria-label="إغلاق صفحة رجوع السلع">×</button>
+    </div>
+    <div class="returns-intro">هنا كيتجمعو أوتوماتيكياً الإرجاعات المسجلة فالبونات. كل كليان عندو سجل خاص فيه اسم المنتوج، الكود، العدد، الثمن، المجموع، التاريخ ورقم البون.</div>
+    <div class="returns-summary">
+      <div class="returns-stat"><small>مجموع الإرجاعات</small><strong id="returnsTotalAmount">0,00 درهم</strong></div>
+      <div class="returns-stat"><small>عدد القطع</small><strong id="returnsTotalUnits">0</strong></div>
+      <div class="returns-stat"><small>الكليان</small><strong id="returnsClientsCount">0</strong></div>
+      <div class="returns-stat"><small>عمليات الإرجاع</small><strong id="returnsOperationsCount">0</strong></div>
+    </div>
+    <div class="returns-toolbar"><div class="returns-search-wrap"><span>⌕</span><input id="returnsSearch" type="search" placeholder="قلب باسم الكليان أو المنتوج أو الكود أو البون..." autocomplete="off"><button id="clearReturnsSearch" type="button" aria-label="مسح بحث الإرجاعات">×</button></div><button id="refreshReturns" class="returns-refresh-btn" type="button">↻ تحديث</button></div>
+    <div id="returnsClientsList" class="returns-clients-list"></div>
+    <div id="returnsEmpty" class="returns-empty">مازال ما تسجل حتى رجوع سلعة فالبونات.</div>
+  </div>
+</div>
+
 <!-- Dashboard commercial -->
 <div class="modal" id="dashboardModal">
   <div class="modal-card dashboard-modal-card">
@@ -400,15 +421,15 @@
     </div>
     <div class="dashboard-summary" id="dashboardSummary">
       <div class="dashboard-stat"><span class="dashboard-stat-icon">▣</span><small>الطلبات</small><strong id="dashboardOrdersCount">0</strong></div>
-      <div class="dashboard-stat"><span class="dashboard-stat-icon">◈</span><small>المبيعات</small><strong id="dashboardSalesTotal">0,00 DH</strong></div>
+      <div class="dashboard-stat"><span class="dashboard-stat-icon">◈</span><small>المبيعات</small><strong id="dashboardSalesTotal">0,00 درهم</strong></div>
       <div class="dashboard-stat"><span class="dashboard-stat-icon">↗</span><small>الأكثر مبيعاً</small><strong id="dashboardTopProduct">—</strong></div>
       <div class="dashboard-stat"><span class="dashboard-stat-icon">◷</span><small>ذروة الطلبات</small><strong id="dashboardPeakHour">—</strong></div>
     </div>
     <div class="dashboard-summary dashboard-summary-finance">
-      <div class="dashboard-stat finance-cost"><span class="dashboard-stat-icon">⇩</span><small>ثمن الشراء/التكلفة</small><strong id="dashboardCostTotal">0,00 DH</strong></div>
-      <div class="dashboard-stat finance-profit"><span class="dashboard-stat-icon">◆</span><small>الربح التقريبي</small><strong id="dashboardProfitTotal">0,00 DH</strong></div>
-      <div class="dashboard-stat finance-paid"><span class="dashboard-stat-icon">✓</span><small>الخلاص المحصل</small><strong id="dashboardPaidTotal">0,00 DH</strong></div>
-      <div class="dashboard-stat finance-due"><span class="dashboard-stat-icon">!</span><small>الباقي والديون</small><strong id="dashboardDueTotal">0,00 DH</strong></div>
+      <div class="dashboard-stat finance-cost"><span class="dashboard-stat-icon">⇩</span><small>ثمن الشراء/التكلفة</small><strong id="dashboardCostTotal">0,00 درهم</strong></div>
+      <div class="dashboard-stat finance-profit"><span class="dashboard-stat-icon">◆</span><small>الربح التقريبي</small><strong id="dashboardProfitTotal">0,00 درهم</strong></div>
+      <div class="dashboard-stat finance-paid"><span class="dashboard-stat-icon">✓</span><small>الخلاص المحصل</small><strong id="dashboardPaidTotal">0,00 درهم</strong></div>
+      <div class="dashboard-stat finance-due"><span class="dashboard-stat-icon">!</span><small>الباقي والديون</small><strong id="dashboardDueTotal">0,00 درهم</strong></div>
     </div>
     <div class="dashboard-summary dashboard-summary-activity">
       <div class="dashboard-stat"><span class="dashboard-stat-icon">#</span><small>القطع المباعة</small><strong id="dashboardUnitsTotal">0 قطعة</strong></div>
@@ -442,8 +463,8 @@
     </div>
     <div class="collections-intro">هنا كيبانو غير الكليان اللي عندهم أقساط أو تغييرات أثمنة، وكل كليان بوحدو مع مجموع الأقساط وتفاصيل الثمن اللي تبدل.</div>
     <div class="collections-summary">
-      <div class="collection-card installments"><small>مجموع الأقساط</small><strong id="collectionsInstallmentsTotal">0,00 DH</strong><span id="collectionsInstallmentsCount">0 قسط</span></div>
-      <div class="collection-card price-changes"><small>قيمة تغييرات الأثمنة</small><strong id="collectionsPriceChangesTotal">0,00 DH</strong><span id="collectionsPriceChangesCount">0 تغيير</span></div>
+      <div class="collection-card installments"><small>مجموع الأقساط</small><strong id="collectionsInstallmentsTotal">0,00 درهم</strong><span id="collectionsInstallmentsCount">0 قسط</span></div>
+      <div class="collection-card price-changes"><small>قيمة تغييرات الأثمنة</small><strong id="collectionsPriceChangesTotal">0,00 درهم</strong><span id="collectionsPriceChangesCount">0 تغيير</span></div>
     </div>
     <div class="collections-toolbar"><div><b>الدورة الحالية</b><small>من تاريخ <span id="collectionsCycleDate">—</span> · تفاصيل العمليات الحالية</small></div><div class="collections-toolbar-actions"><button id="refreshCollections" type="button">↻ تحديث</button><button id="resetCollections" class="collections-reset-btn" type="button">تصفير الدورة</button></div></div>
     <div id="collectionsList" class="collections-list"></div>
@@ -451,6 +472,7 @@
     <div class="collections-history-head"><div><b>سجل المستخلاصات القديمة</b><small>الدورات السابقة محفوظة بالتاريخ بدون أسماء الزبناء</small></div></div>
     <div id="collectionsHistory" class="collections-history-list"></div>
     <div id="collectionsHistoryEmpty" class="collections-empty">مازال ما كاين حتى سجل قديم.</div>
+    <section class="auto-archive-panel"><div class="collections-history-head"><div><b>أرشيف المستخلاصات التلقائي</b><small>نسخة محفوظة كل 24 ساعة مع التاريخ والمجموع</small></div><div class="archive-actions"><span id="collectionsArchiveNextLabel" class="archive-next-label">الأرشيف التلقائي خدام</span><button id="saveCollectionsArchiveNow" class="archive-save-btn" type="button">حفظ أرشيف الآن</button></div></div><div id="collectionsArchiveHistory" class="auto-archive-list"></div><div id="collectionsArchiveHistoryEmpty" class="collections-empty">مازال ما تدار حتى نسخة أرشيفية.</div></section>
   </div>
 </div>
 
@@ -461,16 +483,16 @@
       <button class="close" id="closeOrders">×</button>
     </div>
     <div class="stats-grid">
-      <div class="stat-card"><small>المبيعات</small><strong id="statSales">0,00 DH</strong></div>
-      <div class="stat-card"><small>الخلاص</small><strong id="statPaid">0,00 DH</strong></div>
-      <div class="stat-card"><small>الباقي</small><strong id="statDue">0,00 DH</strong></div>
+      <div class="stat-card"><small>المبيعات</small><strong id="statSales">0,00 درهم</strong></div>
+      <div class="stat-card"><small>الخلاص</small><strong id="statPaid">0,00 درهم</strong></div>
+      <div class="stat-card"><small>الباقي</small><strong id="statDue">0,00 درهم</strong></div>
     </div>
     <div class="orders-tools">
       <input id="orderSearch" placeholder="🔎 قلب على الكليان...">
-      <button id="clearOrders" type="button">مسح الطلبات</button>
     </div>
     <div id="ordersList" class="orders-list"></div>
     <div id="ordersEmpty" class="cart-empty">مازال ما تسجل حتى طلب.</div>
+    <section class="auto-archive-panel"><div class="collections-history-head"><div><b>سجل أرشيف الكوموندات</b><small>كيتم حفظ نسخة تلقائيًا كل 24 ساعة، وكتبقى النسخ القديمة لتحت</small></div><div class="archive-actions"><span id="ordersArchiveNextLabel" class="archive-next-label">الأرشيف التلقائي خدام</span><button id="saveOrdersArchiveNow" class="archive-save-btn" type="button">حفظ أرشيف الآن</button></div></div><div id="ordersArchiveHistory" class="auto-archive-list"></div><div id="ordersArchiveHistoryEmpty" class="collections-empty">مازال ما تدار حتى نسخة أرشيفية.</div></section>
     <div class="section-file-actions orders-file-actions"><button id="exportOrdersArchiveExcel" class="section-excel-btn" type="button">⬇ Télécharger archive Excel</button><button id="restoreOrdersArchiveExcel" class="section-restore-btn" type="button">↥ Restoration</button></div>
   </div>
 </div>
@@ -500,16 +522,25 @@
       <label>رقم البون / N. Bon Commande
         <input id="paymentOrderCode" placeholder="Ex: CMD-2026-001" autocomplete="off" dir="ltr">
       </label>
-      <label id="paymentAmountLabel">مبلغ القسط (DH) <small>اختياري إذا اخترت تغيير الأثمنة فقط</small>
+      <label id="paymentAmountLabel">مبلغ القسط (درهم) <small>اختياري إذا اخترت تغيير الأثمنة فقط</small>
         <input id="paymentAmount" type="number" min="0.01" step="0.01" placeholder="مثلاً: 500">
       </label>
+      <label class="payment-discount-field">Remise / تخفيض (درهم) <small>اختياري؛ إلا تعمرات كتتنقص من الباقي وكتبان فالصورة</small>
+        <input id="paymentDiscount" type="number" min="0.01" step="0.01" placeholder="مثلاً: 50">
+      </label>
+      <section class="payment-return-box" aria-labelledby="paymentReturnTitle">
+        <div class="payment-return-head"><div><b id="paymentReturnTitle">الإرجاعات / Retours</b><small>اختياري؛ دخل كود منتوج من نفس الكوموند، اختار عدد القطع، وغادي يطرح الثمن من البون.</small></div><strong id="paymentReturnTotal">0,00 درهم</strong></div>
+        <div class="payment-return-fields"><label>كود المنتوج<input id="paymentReturnCode" type="text" placeholder="مثلاً: GR2500" autocomplete="off" dir="ltr"></label><label>عدد القطع<input id="paymentReturnQty" type="number" min="1" step="1" value="1"></label></div>
+        <div class="payment-return-price-fields"><label>ثمن المنتوج / قطعة (درهم)<input id="paymentReturnPrice" type="number" min="0" step="0.01" placeholder="يطلع تلقائيًا"></label><label>مجموع الإرجاع (درهم)<input id="paymentReturnTotalInput" type="text" readonly value="0,00 درهم"></label></div>
+        <div id="paymentReturnPreview" class="payment-return-preview">بدا كتب كود المنتوج باش يطلع الاسم الكامل والثمن.</div>
+      </section>
       <div class="payment-preview-grid">
-        <div><span>الباقي قبل القسط</span><strong id="paymentBeforeDue">0,00 DH</strong></div>
-        <div><span>مجموع الأقساط بعده</span><strong id="paymentAfterTotal">0,00 DH</strong></div>
-        <div><span>الباقي بعد القسط</span><strong id="paymentAfterDue">0,00 DH</strong></div>
+        <div><span>الباقي قبل القسط</span><strong id="paymentBeforeDue">0,00 درهم</strong></div>
+        <div><span>مجموع الأقساط بعده</span><strong id="paymentAfterTotal">0,00 درهم</strong></div>
+        <div><span>الباقي بعد القسط</span><strong id="paymentAfterDue">0,00 درهم</strong></div>
       </div>
       <section class="payment-price-change-box" aria-labelledby="paymentPriceChangeTitle">
-        <div class="payment-price-change-head"><div><b id="paymentPriceChangeTitle">تغيير ثمن خاص للزبون</b><small>غير المنتوجات اللي طلب الكليان فهاد الكوموند؛ تقدر تبدل الثمن بلا قسط.</small></div><strong id="paymentPriceChangeTotal">0,00 DH</strong></div>
+        <div class="payment-price-change-head"><div><b id="paymentPriceChangeTitle">تغيير ثمن خاص للزبون</b><small>غير المنتوجات اللي طلب الكليان فهاد الكوموند؛ تقدر تبدل الثمن بلا قسط.</small></div><strong id="paymentPriceChangeTotal">0,00 درهم</strong></div>
         <div id="paymentPriceChanges" class="payment-price-changes"></div>
         <button id="addPaymentPriceChange" class="add-price-change-btn" type="button">＋ إضافة تغيير ثمن</button>
       </section>
@@ -526,7 +557,7 @@
   <div class="cart-items" id="cartItems"></div>
   <div class="cart-empty" id="cartEmpty">Votre panier est vide.</div>
   <div class="cart-footer">
-    <div><span>Total</span><strong id="cartTotal">0,00 DH</strong></div>
+    <div><span>Total</span><strong id="cartTotal">0,00 درهم</strong></div>
     <button id="sendOrderSave" class="send-cart" type="button">🧾 إرسال الطلب إلى الشركة وإلى الزبون</button>
     <button id="clearCart" class="clear-cart">Vider le panier</button>
   </div>
@@ -579,7 +610,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
 <script src="ai-agent-reports.js?v=20260815-1512"></script>
-<script src="app.js"></script>
+<script src="app.js?v=20260816-0420"></script>
 
 <!-- إشعارات آجال الاستخلاص تظهر أسفل محتوى الصفحة -->
 <div id="dueAlertBar" class="due-alert-bar" role="status" aria-live="polite" hidden></div>

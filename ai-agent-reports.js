@@ -3,7 +3,7 @@
   const safeArray=value=>Array.isArray(value)?value:[];
   const norm=value=>String(value||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f\u064B-\u065F]/g,"").replace(/\s+/g," ").trim();
   const amount=value=>Number(value)||0;
-  const moneyValue=value=>`${amount(value).toFixed(2)}Dh`;
+  const moneyValue=value=>`${amount(value).toFixed(2)} درهم`;
   const changeMatchesItem=(change,item)=>{const id=String(change?.productId||""),code=norm(change?.productCode),name=norm(change?.productName);return (id&&String(item?.id||"")===id)||(code&&code===norm(item?.code))||(name&&name===norm(item?.name||item?.productName))};
   const changeQuantity=(order,change)=>{const stored=amount(change?.quantity??change?.paidUnits);if(stored>0)return stored;const item=safeArray(order?.items).find(row=>changeMatchesItem(change,row));return Math.max(1,amount(item?.paidUnits??item?.units??item?.qty??item?.boxes)||1)};
   const changeAdjustment=(order,change)=>{const stored=Number(change?.adjustment);if(Number.isFinite(stored))return stored;return (amount(change?.difference)||(amount(change?.newPrice)-amount(change?.oldPrice)))*changeQuantity(order,change)};
